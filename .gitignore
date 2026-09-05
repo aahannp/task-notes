@@ -1,0 +1,10 @@
+# Personal data — tasks, day meta, projects, AND Spotify secrets/tokens. Never commit.
+data/
+
+# Dependencies & build output
+node_modules/
+dist-app/
+
+# Logs & OS cruft
+*.log
+.DS_Store
