@@ -18,6 +18,7 @@
     },
     "files": [
       "main.js",
+      "preload.js",
       "server.js",
       "public/**/*",
       "package.json"

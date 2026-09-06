@@ -17,19 +17,23 @@ function runOsa(script, cb) {
 const SPOTIFY_READ = [
   'tell application "Spotify"',
   '  if it is running then',
+  '    set tn to ""',
+  '    set ta to ""',
+  '    set td to 0',
+  '    set tp to 0',
   '    set aUrl to ""',
-  '    try',
-  '      set aUrl to artwork url of current track',
-  '    end try',
   '    set aAlbum to ""',
-  '    try',
-  '      set aAlbum to album of current track',
-  '    end try',
   '    set aId to ""',
   '    try',
+  '      set tn to name of current track',
+  '      set ta to artist of current track',
+  '      set td to (duration of current track) / 1000',
+  '      set tp to player position',
+  '      set aUrl to artwork url of current track',
+  '      set aAlbum to album of current track',
   '      set aId to id of current track',
   '    end try',
-  '    return (player state as text) & "||" & (name of current track) & "||" & (artist of current track) & "||" & ((duration of current track) / 1000) & "||" & (player position) & "||" & aUrl & "||" & aAlbum & "||" & aId & "||" & (sound volume as text) & "||" & (shuffling as text) & "||" & (repeating as text)',
+  '    return (player state as text) & "||" & tn & "||" & ta & "||" & td & "||" & tp & "||" & aUrl & "||" & aAlbum & "||" & aId & "||" & (sound volume as text) & "||" & (shuffling as text) & "||" & (repeating as text)',
   '  else',
   '    return "notrunning"',
   '  end if',
@@ -231,6 +235,76 @@ function readMeta(date) {
 function writeMeta(date, meta) {
   writeAtomic(metaFileFor(date), JSON.stringify(meta, null, 2));
 }
+
+// ---------------------------------------------------------------------------
+// Collections: long-lived stores that aren't tied to a single day.
+// projects / learning / ideas / activity / reviews each live in their own file.
+// ---------------------------------------------------------------------------
+const COLLECTIONS = {
+  projects: 'projects.json',
+  learning: 'learning.json',
+  ideas: 'ideas.json',
+  activity: 'activity.json',
+  reviews: 'reviews.json',
+};
+// reviews is an object keyed by week-start; everything else is an array.
+const OBJECT_COLLECTIONS = new Set(['reviews']);
+
+function collectionFile(name) { return path.join(DATA_DIR, COLLECTIONS[name]); }
+function readCollection(name) {
+  const empty = OBJECT_COLLECTIONS.has(name) ? {} : [];
+  try {
+    const v = JSON.parse(fs.readFileSync(collectionFile(name), 'utf8'));
+    if (OBJECT_COLLECTIONS.has(name)) return (v && typeof v === 'object' && !Array.isArray(v)) ? v : empty;
+    return Array.isArray(v) ? v : empty;
+  } catch { return empty; }
+}
+function writeCollection(name, value) {
+  writeAtomic(collectionFile(name), JSON.stringify(value, null, 2));
+}
+
+// One-time migration: the old projects.json held projects, learning items and
+// ideas together (distinguished by `type`). Split them into their own stores,
+// preserving every field, and leave a marker so this only ever runs once.
+function migrateStores() {
+  const marker = path.join(DATA_DIR, '.migrated-v2');
+  if (fs.existsSync(marker)) return;
+  const legacy = readCollection('projects');
+  if (legacy.length) {
+    const projects = [], learning = [], ideas = [];
+    legacy.forEach((p) => {
+      if (p.type === 'learning') {
+        learning.push({
+          id: p.id, name: p.title || '', desc: p.note || '', want: '', why: '', context: '',
+          source: '', priority: 'normal', status: p.status === 'done' ? 'learned' : p.status === 'active' ? 'learning' : p.status === 'hold' ? 'paused' : 'bag',
+          tags: [], notes: p.note || '', createdAt: p.createdAt || Date.now(), lastStudied: null,
+          totalSeconds: p.focusSeconds || 0, projectId: null, deadline: p.deadline || '',
+          expectedMin: p.expectedMin || null, parts: Array.isArray(p.subs) ? p.subs : [], sessions: [],
+        });
+      } else if (p.type === 'idea') {
+        ideas.push({
+          id: p.id, title: p.title || '', desc: p.note || '', notes: '', tags: [],
+          status: p.status === 'done' ? 'archived' : 'captured',
+          createdAt: p.createdAt || Date.now(), updatedAt: p.createdAt || Date.now(),
+          convertedProjectId: null, sparks: Array.isArray(p.subs) ? p.subs : [],
+        });
+      } else {
+        projects.push({
+          id: p.id, title: p.title || '', desc: p.note || '',
+          status: p.status === 'backlog' ? 'planned' : (p.status || 'planned'),
+          start: '', due: p.deadline || '', notes: p.note || '',
+          learningIds: [], createdAt: p.createdAt || Date.now(), updatedAt: Date.now(),
+          focusSeconds: p.focusSeconds || 0, subs: Array.isArray(p.subs) ? p.subs : [],
+        });
+      }
+    });
+    writeCollection('projects', projects);
+    if (learning.length) writeCollection('learning', learning);
+    if (ideas.length) writeCollection('ideas', ideas);
+  }
+  try { fs.writeFileSync(marker, new Date().toISOString()); } catch {}
+}
+migrateStores();
 
 function sendJSON(res, code, obj) {
   res.writeHead(code, { 'Content-Type': 'application/json' });
@@ -542,11 +616,71 @@ const server = http.createServer((req, res) => {
     return res.end('Method not allowed');
   }
 
+  // API: /api/store?name=projects|learning|ideas|activity|reviews
+  // Generic persistence for the long-lived stores. GET returns the whole
+  // collection; PUT replaces it (the client owns the merge, same as projects).
+  if (u.pathname === '/api/store') {
+    const name = u.searchParams.get('name');
+    if (!Object.prototype.hasOwnProperty.call(COLLECTIONS, name)) {
+      return sendJSON(res, 400, { error: 'unknown collection' });
+    }
+    if (req.method === 'GET') {
+      return sendJSON(res, 200, { name, value: readCollection(name) });
+    }
+    if (req.method === 'PUT') {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        try {
+          const value = JSON.parse(body);
+          const wantObject = OBJECT_COLLECTIONS.has(name);
+          const ok = wantObject
+            ? (value && typeof value === 'object' && !Array.isArray(value))
+            : Array.isArray(value);
+          if (!ok) throw new Error('shape');
+          writeCollection(name, value);
+          sendJSON(res, 200, { ok: true });
+        } catch { sendJSON(res, 400, { error: 'bad body' }); }
+      });
+      return;
+    }
+    res.writeHead(405);
+    return res.end('Method not allowed');
+  }
+
+  // API: /api/alldays[?from=&to=] — every day's tasks + meta in one shot.
+  // Powers the global Tasks view, project progress and the Weekly Review, so
+  // that all of those read the *same* underlying per-day task records.
+  if (u.pathname === '/api/alldays' && req.method === 'GET') {
+    const from = safeDate(u.searchParams.get('from'));
+    const to = safeDate(u.searchParams.get('to'));
+    let dates = fs.readdirSync(DATA_DIR)
+      .filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f))
+      .map((f) => f.replace('.json', ''))
+      .sort();
+    if (from) dates = dates.filter((d) => d >= from);
+    if (to) dates = dates.filter((d) => d <= to);
+    const days = dates.map((date) => {
+      const m = readMeta(date);
+      return {
+        date,
+        tasks: readTasks(date),
+        sessions: Array.isArray(m.sessions) ? m.sessions : [],
+        focusSeconds: metaFocusSeconds(m),
+        dayType: m.dayType || '',
+        offLabel: m.offLabel || '',
+        location: m.location || '',
+        learning: m.learning || null,
+      };
+    });
+    return sendJSON(res, 200, { days });
+  }
+
   // List which dates have task data (exclude .meta.json sidecar files)
   if (u.pathname === '/api/days' && req.method === 'GET') {
     const days = fs
       .readdirSync(DATA_DIR)
-      .filter((f) => f.endsWith('.json') && !f.endsWith('.meta.json'))
+      .filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)) // only day files (not meta / projects / spotify)
       .map((f) => f.replace('.json', ''));
     return sendJSON(res, 200, { days });
   }
