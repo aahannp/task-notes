@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Capture</title>
+<style>
+  :root { --line: rgba(255,255,255,0.13); --text: #eef0f7; --muted: #a6adbf; --accent: #7c9bff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; }
+  .card { height: 100%; display: flex; flex-direction: column; -webkit-app-region: drag;
+    background: linear-gradient(160deg, rgba(23,26,35,.97), rgba(14,16,22,.98));
+    border: 1px solid var(--line); border-radius: 15px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12);
+    backdrop-filter: saturate(150%) blur(18px); -webkit-backdrop-filter: saturate(150%) blur(18px); }
+  .label { font-size: 9.5px; font-weight: 750; letter-spacing: .9px; text-transform: uppercase;
+    color: var(--muted); padding: 13px 17px 0; }
+  input { -webkit-app-region: no-drag; width: 100%; background: none; border: none; color: var(--text);
+    font-family: inherit; font-size: 16px; padding: 9px 17px 13px; outline: none; }
+  input::placeholder { color: #5d6478; }
+  .acts { -webkit-app-region: no-drag; display: flex; gap: 6px; padding: 10px 12px; margin-top: auto;
+    border-top: 1px solid var(--line); flex-wrap: wrap; align-items: center; }
+  button { -webkit-app-region: no-drag; background: rgba(255,255,255,.07); border: 1px solid var(--line);
+    color: var(--muted); font-family: inherit; font-size: 11.5px; padding: 6px 11px; border-radius: 8px;
+    cursor: pointer; transition: .13s; }
+  button:hover { color: var(--text); border-color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .prim { margin-left: auto; background: var(--accent); border-color: transparent; color: #fff; font-weight: 650; }
+  .prim:hover { filter: brightness(1.08); background: var(--accent); }
+  .done { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 15px;
+    background: rgba(14,16,22,.97); font-size: 14px; color: #6fd6a4; opacity: 0; pointer-events: none;
+    transition: opacity .14s; }
+  .done.show { opacity: 1; }
+  .hint { font-size: 10px; color: #5d6478; padding: 0 17px 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="label">Capture</div>
+  <input id="t" placeholder="What do you want to capture?" autocomplete="off" autofocus aria-label="What do you want to capture?" />
+  <div class="hint">Enter saves to your inbox · Esc closes</div>
+  <div class="acts">
+    <button data-k="task">✓ Task</button>
+    <button data-k="learning">🧠 Learning</button>
+    <button data-k="idea">💡 Idea</button>
+    <button data-k="doc">📄 Document</button>
+    <button class="prim" data-k="">Save ⏎</button>
+  </div>
+  <div class="done" id="done">✓ Captured</div>
+</div>
+<script>
+  const $ = (s) => document.querySelector(s);
+  const input = $('#t');
+
+  // The capture window talks to the same HTTP API the app uses, so a capture
+  // persists whether or not the main window is running.
+  async function save(kind) {
+    const text = input.value.trim();
+    if (!text) return;
+    try {
+      const r = await fetch('/api/store?name=captures');
+      const list = (await r.json()).value || [];
+      const item = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        text, note: '', context: 'quick capture',
+        status: 'open', becameKind: null, becameId: null,
+        createdAt: Date.now(), processedAt: null,
+      };
+      list.unshift(item);
+      await fetch('/api/store?name=captures', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(list),
+      });
+      // Let an open main window convert it and refresh straight away.
+      if (window.tn && window.tn.captureSaved) window.tn.captureSaved({ text, kind: kind || null, id: item.id });
+    } catch (e) {
+      input.value = '';
+      input.placeholder = 'Could not save — is Task Notes running?';
+      return;
+    }
+    input.value = '';
+    $('#done').textContent = kind ? '✓ Saved as ' + kind : '✓ Captured';
+    $('#done').classList.add('show');
+    setTimeout(() => {
+      $('#done').classList.remove('show');
+      if (window.tn && window.tn.closeCapture) window.tn.closeCapture();
+    }, 420);
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); save(null); }
+    else if (e.key === 'Escape') { e.preventDefault(); if (window.tn && window.tn.closeCapture) window.tn.closeCapture(); }
+  });
+  document.querySelectorAll('[data-k]').forEach((b) => { b.onclick = () => save(b.dataset.k || null); });
+  // The window is reused between invocations, so refocus each time it shows.
+  addEventListener('focus', () => { input.focus(); input.select(); });
+  input.focus();
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 // Electron main process — wraps the local Task Notes server in a native window,
 // plus a small always-on-top Focus companion window.
-const { app, BrowserWindow, shell, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut } = require('electron');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -128,6 +128,51 @@ ipcMain.on('focus:control', (_e, action) => {
   if (win && !win.isDestroyed()) win.webContents.send('focus:control', action);
 });
 
+
+// --- Global Quick Capture ----------------------------------------------
+// A tiny always-on-top window on Cmd+Shift+Space. It writes straight to the
+// same capture store the app uses, so nothing depends on the main window
+// being open or focused.
+let capWin = null;
+const CAPTURE_ACCELERATOR = 'CommandOrControl+Shift+Space';
+
+function createCaptureWindow() {
+  if (capWin && !capWin.isDestroyed()) { capWin.show(); capWin.focus(); return; }
+  const disp = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+  const W = 460, H = 168;
+  capWin = new BrowserWindow({
+    width: W, height: H,
+    x: Math.round(disp.x + (disp.width - W) / 2),
+    y: Math.round(disp.y + disp.height * 0.24),
+    frame: false, transparent: true, resizable: false, movable: true,
+    minimizable: false, maximizable: false, fullscreenable: false,
+    skipTaskbar: true, alwaysOnTop: true, hasShadow: true,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+      additionalArguments: ['--tn-capture'],
+    },
+  });
+  capWin.setAlwaysOnTop(true, 'floating');
+  capWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  capWin.loadURL(`http://127.0.0.1:${appPort}/capture.html`);
+  capWin.once('ready-to-show', () => { capWin.show(); capWin.focus(); });
+  // Dismiss on blur: this is a transient prompt, not a window to manage.
+  capWin.on('blur', () => { if (capWin && !capWin.isDestroyed()) capWin.hide(); });
+  capWin.on('closed', () => { capWin = null; });
+}
+function toggleCaptureWindow() {
+  if (capWin && !capWin.isDestroyed() && capWin.isVisible()) { capWin.hide(); return; }
+  createCaptureWindow();
+}
+ipcMain.on('capture:close', () => { if (capWin && !capWin.isDestroyed()) capWin.hide(); });
+// A capture made in the little window is pushed to the main window too, so an
+// open app updates immediately rather than on next load.
+ipcMain.on('capture:saved', (_e, payload) => {
+  if (win && !win.isDestroyed()) win.webContents.send('capture:new', payload);
+});
+
 app.whenReady().then(() => {
   // Listen on a random free port bound to localhost only.
   const listener = server.listen(0, '127.0.0.1', () => {
@@ -138,7 +183,19 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(appPort);
   });
+
+  // Registration can fail if another app already owns the combination; the app
+  // must still start normally in that case.
+  try {
+    if (!globalShortcut.register(CAPTURE_ACCELERATOR, toggleCaptureWindow)) {
+      console.warn('Quick Capture shortcut unavailable (already taken):', CAPTURE_ACCELERATOR);
+    }
+  } catch (e) {
+    console.warn('Quick Capture shortcut could not be registered:', e.message);
+  }
 });
+
+app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch {} });
 
 app.on('before-quit', saveMiniState);
 app.on('window-all-closed', () => {

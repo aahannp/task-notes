@@ -246,6 +246,7 @@ const COLLECTIONS = {
   ideas: 'ideas.json',
   activity: 'activity.json',
   reviews: 'reviews.json',
+  captures: 'captures.json',
 };
 // reviews is an object keyed by week-start; everything else is an array.
 const OBJECT_COLLECTIONS = new Set(['reviews']);
@@ -306,6 +307,82 @@ function migrateStores() {
 }
 migrateStores();
 
+// ---------------------------------------------------------------------------
+// DOCUMENTS — a markdown knowledge store.
+//
+// Adapted from central-dashboard's document handler: metadata and body are
+// stored apart so listing never has to read document bodies (their
+// `defer(Document.content)`), edits carry a `baseVersion` for optimistic
+// concurrency (their 409-on-mismatch), and every save snapshots a version.
+// Bodies live one-file-per-document as plain .md you can read outside the app.
+// ---------------------------------------------------------------------------
+const DOCS_DIR = () => path.join(DATA_DIR, 'docs');
+const ASSETS_DIR = () => path.join(DATA_DIR, 'assets');
+const MAX_DOC_BYTES = 4 * 1024 * 1024;      // matches the reference's content cap
+const MAX_ASSET_BYTES = 10 * 1024 * 1024;
+
+function ensureDir(d) { try { fs.mkdirSync(d, { recursive: true }); } catch {} }
+function docIdOk(id) { return /^[A-Za-z0-9_-]{1,64}$/.test(id || ''); }
+function docBodyFile(id) { return path.join(DOCS_DIR(), id + '.md'); }
+function docVersionsFile(id) { return path.join(DOCS_DIR(), id + '.versions.json'); }
+
+function readDocBody(id) {
+  try { return fs.readFileSync(docBodyFile(id), 'utf8'); } catch { return ''; }
+}
+function writeDocBody(id, content) {
+  ensureDir(DOCS_DIR());
+  writeAtomic(docBodyFile(id), content == null ? '' : String(content));
+}
+function readDocVersions(id) {
+  try { const v = JSON.parse(fs.readFileSync(docVersionsFile(id), 'utf8')); return Array.isArray(v) ? v : []; }
+  catch { return []; }
+}
+// Snapshot the state we are leaving behind, newest first, capped so a long-
+// lived document cannot grow its history without bound.
+function snapshotDocVersion(id, meta, content) {
+  const versions = readDocVersions(id);
+  versions.unshift({
+    version: meta.version || 1, title: meta.title || '', content: content || '',
+    tags: Array.isArray(meta.tags) ? meta.tags.slice() : [], at: Date.now(),
+  });
+  if (versions.length > 30) versions.length = 30;
+  try { ensureDir(DOCS_DIR()); writeAtomic(docVersionsFile(id), JSON.stringify(versions)); } catch {}
+}
+function deleteDocFiles(id) {
+  [docBodyFile(id), docVersionsFile(id)].forEach((f) => { try { fs.unlinkSync(f); } catch {} });
+  try { fs.rmSync(path.join(ASSETS_DIR(), id), { recursive: true, force: true }); } catch {}
+}
+
+// Everything a list view needs — deliberately without the body.
+function docSummary(d) {
+  return {
+    id: d.id, title: d.title || 'Untitled', tags: d.tags || [], folder: d.folder || '',
+    status: d.status || 'active', pinned: !!d.pinned,
+    projectId: d.projectId || null, learningId: d.learningId || null,
+    taskId: d.taskId || null, ideaId: d.ideaId || null,
+    version: d.version || 1, createdAt: d.createdAt, updatedAt: d.updatedAt,
+    archivedAt: d.archivedAt || null,
+  };
+}
+
+const ASSET_TYPES = {
+  'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif',
+  'image/webp': '.webp', 'image/svg+xml': '.svg', 'image/avif': '.avif',
+};
+const ASSET_MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.avif': 'image/avif' };
+
+function readBody(req, cb, limit) {
+  let body = '';
+  let over = false;
+  req.on('data', (c) => {
+    if (over) return;
+    body += c;
+    if (body.length > (limit || MAX_DOC_BYTES) * 1.4) { over = true; cb(new Error('too large')); }
+  });
+  req.on('end', () => { if (!over) cb(null, body); });
+}
+
 function sendJSON(res, code, obj) {
   res.writeHead(code, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(obj));
@@ -319,7 +396,9 @@ const MIME = {
 };
 
 function serveStatic(req, res) {
-  let urlPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+  // Strip the query BEFORE testing for the root, so "/?x=1" still serves the app.
+  let urlPath = req.url.split('?')[0];
+  if (urlPath === '/' || urlPath === '') urlPath = '/index.html';
   const filePath = path.join(PUBLIC_DIR, path.normalize(urlPath));
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403);
@@ -674,6 +753,196 @@ const server = http.createServer((req, res) => {
       };
     });
     return sendJSON(res, 200, { days });
+  }
+
+  // ---- Assets: images embedded in documents -------------------------------
+  // Stored under data/assets/<docId>/ and served back from the same origin, so
+  // an image survives reload and packaging (never a blob: URL).
+  if (u.pathname === '/api/assets' && req.method === 'POST') {
+    const docId = u.searchParams.get('doc');
+    if (!docIdOk(docId)) return sendJSON(res, 400, { error: 'bad doc id' });
+    readBody(req, (err, body) => {
+      if (err) return sendJSON(res, 413, { error: 'file too large' });
+      let payload;
+      try { payload = JSON.parse(body); } catch { return sendJSON(res, 400, { error: 'bad body' }); }
+      const ext = ASSET_TYPES[payload.type];
+      if (!ext) return sendJSON(res, 415, { error: 'unsupported image type' });
+      let buf;
+      try { buf = Buffer.from(String(payload.data || ''), 'base64'); }
+      catch { return sendJSON(res, 400, { error: 'bad data' }); }
+      if (!buf.length) return sendJSON(res, 400, { error: 'empty file' });
+      if (buf.length > MAX_ASSET_BYTES) return sendJSON(res, 413, { error: 'file too large' });
+      const dir = path.join(ASSETS_DIR(), docId);
+      ensureDir(dir);
+      const name = Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + ext;
+      try { fs.writeFileSync(path.join(dir, name), buf); }
+      catch { return sendJSON(res, 500, { error: 'write failed' }); }
+      return sendJSON(res, 201, { url: `/assets/${docId}/${name}`, name, bytes: buf.length });
+    }, MAX_ASSET_BYTES);
+    return;
+  }
+  if (u.pathname.startsWith('/assets/') && req.method === 'GET') {
+    const parts = u.pathname.split('/').filter(Boolean); // assets, docId, file
+    if (parts.length !== 3 || !docIdOk(parts[1]) || !/^[A-Za-z0-9_.-]+$/.test(parts[2]) || parts[2].includes('..')) {
+      res.writeHead(404); return res.end('Not found');
+    }
+    const file = path.join(ASSETS_DIR(), parts[1], parts[2]);
+    if (!file.startsWith(ASSETS_DIR())) { res.writeHead(403); return res.end('Forbidden'); }
+    fs.readFile(file, (e, data) => {
+      if (e) { res.writeHead(404); return res.end('Not found'); }
+      res.writeHead(200, {
+        'Content-Type': ASSET_MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        // Served content is user-supplied; never let an SVG script run inline.
+        'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+        'X-Content-Type-Options': 'nosniff',
+      });
+      res.end(data);
+    });
+    return;
+  }
+
+  // ---- Documents ----------------------------------------------------------
+  if (u.pathname === '/api/documents') {
+    const docsFile = path.join(DATA_DIR, 'documents.json');
+    const readDocs = () => { try { const v = JSON.parse(fs.readFileSync(docsFile, 'utf8')); return Array.isArray(v) ? v : []; } catch { return []; } };
+    const writeDocs = (arr) => writeAtomic(docsFile, JSON.stringify(arr, null, 2));
+
+    if (req.method === 'GET') {
+      const docs = readDocs();
+      const q = (u.searchParams.get('q') || '').trim().toLowerCase();
+      const tag = (u.searchParams.get('tag') || '').trim().toLowerCase();
+      const includeArchived = u.searchParams.get('include_archived') === 'true';
+      let list = docs.filter((d) => includeArchived || d.status !== 'archived');
+      if (tag) list = list.filter((d) => (d.tags || []).some((t) => String(t).toLowerCase() === tag));
+      ['projectId', 'learningId', 'taskId', 'ideaId'].forEach((k) => {
+        const v = u.searchParams.get(k);
+        if (v) list = list.filter((d) => d[k] === v);
+      });
+      // Free-text runs over title, tags and the body — the body is only read
+      // when a query is actually present, so plain listing stays cheap.
+      let out = list.map(docSummary);
+      if (q) {
+        out = [];
+        list.forEach((d) => {
+          const inTitle = (d.title || '').toLowerCase().includes(q);
+          const inTags = (d.tags || []).some((t) => String(t).toLowerCase().includes(q));
+          const body = readDocBody(d.id);
+          const at = body.toLowerCase().indexOf(q);
+          if (!inTitle && !inTags && at < 0) return;
+          const s = docSummary(d);
+          if (at >= 0) {
+            const from = Math.max(0, at - 40);
+            s.snippet = (from > 0 ? '…' : '') +
+              body.slice(from, at + q.length + 60).replace(/\s+/g, ' ').trim() +
+              (at + q.length + 60 < body.length ? '…' : '');
+          }
+          s.matchedTitle = inTitle; s.matchedTags = inTags;
+          out.push(s);
+        });
+      }
+      out.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      return sendJSON(res, 200, { documents: out });
+    }
+
+    if (req.method === 'POST') {
+      readBody(req, (err, body) => {
+        if (err) return sendJSON(res, 413, { error: 'too large' });
+        let p; try { p = JSON.parse(body); } catch { return sendJSON(res, 400, { error: 'bad body' }); }
+        const docs = readDocs();
+        const id = (p.id && docIdOk(p.id)) ? p.id
+          : Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        if (docs.some((d) => d.id === id)) return sendJSON(res, 409, { error: 'exists' });
+        const now = Date.now();
+        const d = {
+          id, title: (p.title || 'Untitled').slice(0, 300),
+          tags: Array.isArray(p.tags) ? p.tags.slice(0, 30) : [],
+          folder: p.folder || '', status: 'active', pinned: false,
+          projectId: p.projectId || null, learningId: p.learningId || null,
+          taskId: p.taskId || null, ideaId: p.ideaId || null,
+          version: 1, createdAt: now, updatedAt: now, archivedAt: null,
+        };
+        docs.unshift(d);
+        writeDocs(docs);
+        const content = typeof p.content === 'string' ? p.content : '';
+        writeDocBody(id, content);
+        return sendJSON(res, 201, { document: Object.assign(docSummary(d), { content }) });
+      });
+      return;
+    }
+    res.writeHead(405); return res.end('Method not allowed');
+  }
+
+  if (u.pathname.startsWith('/api/documents/')) {
+    const rest = u.pathname.slice('/api/documents/'.length).split('/');
+    const id = rest[0];
+    const sub = rest[1] || '';
+    if (!docIdOk(id)) return sendJSON(res, 400, { error: 'bad id' });
+    const docsFile = path.join(DATA_DIR, 'documents.json');
+    const readDocs = () => { try { const v = JSON.parse(fs.readFileSync(docsFile, 'utf8')); return Array.isArray(v) ? v : []; } catch { return []; } };
+    const writeDocs = (arr) => writeAtomic(docsFile, JSON.stringify(arr, null, 2));
+    const docs = readDocs();
+    const idx = docs.findIndex((d) => d.id === id);
+    if (idx < 0) return sendJSON(res, 404, { error: 'not found' });
+    const doc = docs[idx];
+
+    if (!sub && req.method === 'GET') {
+      return sendJSON(res, 200, { document: Object.assign(docSummary(doc), { content: readDocBody(id) }) });
+    }
+
+    if (!sub && req.method === 'PUT') {
+      readBody(req, (err, body) => {
+        if (err) return sendJSON(res, 413, { error: 'too large' });
+        let p; try { p = JSON.parse(body); } catch { return sendJSON(res, 400, { error: 'bad body' }); }
+        const contentChanged = typeof p.content === 'string' && p.content !== readDocBody(id);
+        const titleChanged = typeof p.title === 'string' && p.title !== doc.title;
+        // Optimistic concurrency, as in the reference: an edit that started
+        // from an older version loses rather than silently overwriting.
+        if ((contentChanged || titleChanged) && p.baseVersion != null && p.baseVersion !== doc.version) {
+          return sendJSON(res, 409, {
+            error: 'conflict', serverVersion: doc.version,
+            detail: 'This document changed elsewhere while you were editing.',
+          });
+        }
+        if (typeof p.content === 'string' && p.content.length > MAX_DOC_BYTES) {
+          return sendJSON(res, 413, { error: 'document too large' });
+        }
+        if (contentChanged || titleChanged) snapshotDocVersion(id, doc, readDocBody(id));
+        if (typeof p.title === 'string') doc.title = p.title.slice(0, 300) || 'Untitled';
+        if (Array.isArray(p.tags)) doc.tags = p.tags.slice(0, 30);
+        if (typeof p.folder === 'string') doc.folder = p.folder;
+        if (typeof p.pinned === 'boolean') doc.pinned = p.pinned;
+        ['projectId', 'learningId', 'taskId', 'ideaId'].forEach((k) => {
+          if (k in p) doc[k] = p[k] || null;
+        });
+        if (typeof p.content === 'string') writeDocBody(id, p.content);
+        if (contentChanged || titleChanged) doc.version = (doc.version || 1) + 1;
+        doc.updatedAt = Date.now();
+        docs[idx] = doc; writeDocs(docs);
+        return sendJSON(res, 200, { document: Object.assign(docSummary(doc), { content: readDocBody(id) }) });
+      });
+      return;
+    }
+
+    if (sub === 'archive' && req.method === 'POST') {
+      doc.status = 'archived'; doc.archivedAt = Date.now(); doc.updatedAt = Date.now();
+      docs[idx] = doc; writeDocs(docs);
+      return sendJSON(res, 200, { document: docSummary(doc) });
+    }
+    if (sub === 'restore' && req.method === 'POST') {
+      doc.status = 'active'; doc.archivedAt = null; doc.updatedAt = Date.now();
+      docs[idx] = doc; writeDocs(docs);
+      return sendJSON(res, 200, { document: docSummary(doc) });
+    }
+    if (sub === 'versions' && req.method === 'GET') {
+      return sendJSON(res, 200, { versions: readDocVersions(id) });
+    }
+    if (!sub && req.method === 'DELETE') {
+      docs.splice(idx, 1); writeDocs(docs);
+      deleteDocFiles(id);
+      return sendJSON(res, 200, { ok: true });
+    }
+    res.writeHead(405); return res.end('Method not allowed');
   }
 
   // List which dates have task data (exclude .meta.json sidecar files)

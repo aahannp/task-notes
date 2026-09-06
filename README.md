@@ -26,6 +26,8 @@ Most productivity apps are one CRUD list wearing six different hats. This one is
 | **Projects** | What am I trying to **accomplish**? |
 | **Learning** | What do I want to **understand**? |
 | **Ideas** | What might I **pursue**? |
+| **Documents** | What have I actually **written down**? |
+| **Inbox** | What did I **just think of**? |
 | **Calendar** | **When** — and in what context? |
 | **Weekly Review** | What actually **happened**? |
 
@@ -53,13 +55,51 @@ Prefer not to rummage? There's a plain list view, every chip is keyboard-reachab
 
 <br>
 
+## A knowledge workspace, not a notes tab
+
+Documents are a first-class entity with their own workspace: a sidebar (pinned, recent, tags, folders, full-text search), tabs, a markdown editor, a reading view, a resizable split, an outline, and distraction-free writing.
+
+![Documents](docs/screenshots/documents.png)
+
+Markdown is rendered by a small purpose-built engine — GFM tables, task lists, fenced code with syntax highlighting, blockquotes, images — with **every URL allowlisted and every value escaped**, so a pasted document can't smuggle script into the app.
+
+**`[[Wiki links]]`** are real relationships: they resolve to documents, offer to create the page when it doesn't exist yet, and produce **backlinks** on the other side.
+
+![Reading mode and backlinks](docs/screenshots/documents-read.png)
+
+**Images** paste, drop, or pick from a file dialog. They're stored on disk beside the document and served from the app — never a temporary blob URL, so they survive reload and packaging. Existing `.md` files can be imported and kept.
+
+**One document, many contexts.** A document links to a Project, a Task, a Learning item and an Idea, and shows up in each of them — the same record, never a copy. Creating a document from any of those carries the context automatically.
+
+<br>
+
+## Capture first, decide later
+
+You constantly think of things mid-task. The Inbox is a buffer: dump it now, decide what it is later.
+
+![Inbox](docs/screenshots/inbox.png)
+
+On macOS, **⌘⇧Space** opens a tiny always-on-top capture window from anywhere — VS Code, a browser, anywhere. It writes straight to the same store; the main window doesn't need to be open.
+
+<br>
+
+## Knowledge that comes back
+
+Marking something "Learned" usually means never seeing it again. Learned topics resurface on a widening schedule (5 → 13 → 30 → 60 → 120 days), pulled in sooner if you keep postponing them or flagged them high priority.
+
+When one comes up you're asked what you remember **before** you're shown your notes — recall, not rereading. Revisit, not now, snooze, or archive.
+
+<br>
+
 ## Projects that know their own progress
 
 Progress is computed from real tasks — never a number you typed in.
 
 ![Projects](docs/screenshots/projects.png)
 
-Each project opens into a command center: progress, completed/remaining/blocked, time spent (derived from focus sessions), its tasks grouped by status, the learning topics it depends on, notes, and a history of what happened.
+Each project opens into a command center: **health**, progress, completed/remaining/blocked, time spent (derived from focus sessions), tasks grouped by status, learning topics, documents, dependencies, notes, and its own history.
+
+Health is explained in words, never an opaque score — *"Active this week, nothing blocked"*, *"No activity for 9 days"*, *"3 blocked tasks and deadline approaching"* — plus a momentum strip of tasks finished per week. Tasks can **depend on** other tasks; a blocked one says what it's waiting on, and the project shows the chain.
 
 ![Project detail](docs/screenshots/project-detail.png)
 
@@ -85,7 +125,7 @@ Past weeks are **snapshotted** the first time you view them after they end, so h
 
 ## Focus
 
-A full-screen focus mode with pause/resume, a daily goal ring, and a session log. Sessions can be tagged to a task or a project, which is where project time-spent comes from.
+A full-screen focus mode with pause/resume, a daily goal ring, and a session log. A session attaches to **what you're actually doing** — a task, project, learning item or document — and shows that thing's context while you work. Quick thoughts go on the session itself, and when you stop it asks what you accomplished and what's next (the "next" becomes a capture so it isn't lost).
 
 ![Focus](docs/screenshots/focus.png)
 
@@ -127,6 +167,10 @@ The board is where you work a single day. The Tasks page is every task you have,
 - **Global task view** — every task across every day, filterable by state and project
 - **Estimates vs actuals** — estimate a task, then see it against the time you actually focused
 - **Spotify control** — play/pause, skip, volume, seek and search-and-play against the desktop app (optional)
+- **Continue where you left off** — a strip of the documents, learning, projects and tasks you were actually in the middle of
+- **Day-aware suggestions** — the app knows if you're at the office, working from home or off, and suggests accordingly (it never schedules anything for you)
+- **Things that have gone quiet** — stale projects, tasks, learning, ideas and documents, with keep / snooze / archive, so commitments don't silently pile up
+- **Command palette** (⌘K) — every command that actually does something, plus document search
 - **Search, keyboard shortcuts, and a motion language** that's meant to be felt more than noticed
 
 <br>
@@ -165,6 +209,11 @@ Everything lives in `data/`, which is git-ignored:
 | `ideas.json` | ideas |
 | `activity.json` | the activity log that feeds project history and the weekly review |
 | `reviews.json` | weekly reflections and frozen week snapshots |
+| `captures.json` | the capture inbox |
+| `documents.json` | document metadata (never bodies) |
+| `docs/<id>.md` | one plain markdown file per document — readable outside the app |
+| `docs/<id>.versions.json` | recent version history for that document |
+| `assets/<id>/…` | images embedded in that document |
 
 Plain JSON you can read, back up, grep, or edit by hand. The desktop app stores it in `~/task-notes/data`; set `TASKNOTES_DATA` to point it somewhere else.
 
@@ -180,7 +229,9 @@ Nothing leaves your machine. The only outbound calls are the ones Spotify makes 
 | `/` | search |
 | `F` | focus mode |
 | `T` `P` `L` `I` `W` | Tasks · Projects · Learning · Ideas · Weekly Review |
-| `C` | calendar |
+| `C` | capture a thought |
+| `⌘K` | command palette |
+| `⌘⇧Space` | global quick capture (anywhere on macOS) |
 | `←` `→` | previous / next day |
 | `Esc` | close whatever's open |
 
@@ -191,7 +242,8 @@ Nothing leaves your machine. The only outbound calls are the ones Spotify makes 
 Deliberately small and boring so it stays hackable:
 
 - **`server.js`** — a zero-dependency Node HTTP server. Serves the frontend and a small JSON API over the files above.
-- **`public/index.html`** — the entire frontend. One file: markup, styles and logic.
+- **`public/index.html`** — the entire frontend. One file: markup, styles and logic, including a dependency-free markdown parser, sanitiser and highlighter.
+- **`public/mini.html` / `public/capture.html`** — the two small native companion windows.
 - **`main.js` / `preload.js`** — the Electron shell for the macOS app and the Focus companion window, talking over a tiny explicit IPC bridge.
 
 <br>

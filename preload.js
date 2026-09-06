@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('tn', {
   isDesktop: true,
   // The mini window is launched with this extra argument (see main.js).
   isMini: process.argv.includes('--tn-mini'),
+  isCapture: process.argv.includes('--tn-capture'),
 
   // main window → native shell
   openMini: () => ipcRenderer.send('mini:open'),
@@ -23,4 +24,9 @@ contextBridge.exposeInMainWorld('tn', {
   // mini asks the main window to re-broadcast current state (on open/reload)
   requestState: () => ipcRenderer.send('focus:request'),
   onRequest: (cb) => ipcRenderer.on('focus:request', () => cb()),
+
+  // Quick Capture window
+  closeCapture: () => ipcRenderer.send('capture:close'),
+  captureSaved: (payload) => ipcRenderer.send('capture:saved', payload),
+  onCapture: (cb) => ipcRenderer.on('capture:new', (_e, p) => cb(p)),
 });
