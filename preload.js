@@ -28,6 +28,10 @@ contextBridge.exposeInMainWorld('tn', {
   requestState: () => ipcRenderer.send('focus:request'),
   onRequest: (cb) => ipcRenderer.on('focus:request', () => cb()),
 
+  // Native notifications (new meetings, for now)
+  notify: (payload) => ipcRenderer.send('notify', payload),
+  onNotifyOpen: (cb) => ipcRenderer.on('notify:open', (_e, p) => cb(p)),
+
   // Quick Capture window
   closeCapture: () => ipcRenderer.send('capture:close'),
   captureSaved: (payload) => ipcRenderer.send('capture:saved', payload),

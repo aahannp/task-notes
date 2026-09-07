@@ -1054,6 +1054,10 @@ const server = http.createServer((req, res) => {
         if (req.method === 'PUT') {
           if (!p.id) return sendJSON(res, 400, { error: 'id required' });
           args.push('--event', String(p.id));
+          // Which occurrence of a recurring series is meant. Without it the
+          // helper can only find the first one, and editing Wednesday's
+          // meeting would change Monday's.
+          if (p.occurrence) args.push('--occurrence', String(p.occurrence));
         }
         if (p.title != null) args.push('--title', String(p.title).slice(0, 300));
         if (p.start) args.push('--start', String(p.start));
@@ -1070,7 +1074,10 @@ const server = http.createServer((req, res) => {
     if (req.method === 'DELETE') {
       const id = u.searchParams.get('id');
       if (!id) return sendJSON(res, 400, { error: 'id required' });
-      runCalendarHelper(['--delete', '--event', id], (_e, r) => finish(r));
+      const occ = u.searchParams.get('occurrence');
+      const del = ['--delete', '--event', id];
+      if (occ) del.push('--occurrence', occ);
+      runCalendarHelper(del, (_e, r) => finish(r));
       return;
     }
 

@@ -1,6 +1,6 @@
 // Electron main process — wraps the local Task Notes server in a native window,
 // plus a small always-on-top Focus companion window.
-const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut, Notification } = require('electron');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -181,6 +181,22 @@ function toggleCaptureWindow() {
   createCaptureWindow();
 }
 ipcMain.on('capture:close', () => { if (capWin && !capWin.isDestroyed()) capWin.hide(); });
+
+// Native notifications, e.g. when a meeting appears in the calendar. Clicking
+// one brings the app forward on the day in question.
+ipcMain.on('notify', (_e, payload) => {
+  if (!Notification.isSupported() || !payload || !payload.title) return;
+  const n = new Notification({
+    title: String(payload.title).slice(0, 120),
+    body: String(payload.body || '').slice(0, 300),
+    silent: !!payload.silent,
+  });
+  n.on('click', () => {
+    if (win && !win.isDestroyed()) { win.show(); win.focus(); }
+    if (payload.day && win && !win.isDestroyed()) win.webContents.send('notify:open', payload);
+  });
+  n.show();
+});
 // A capture made in the little window is pushed to the main window too, so an
 // open app updates immediately rather than on next load.
 ipcMain.on('capture:saved', (_e, payload) => {

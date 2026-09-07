@@ -152,7 +152,13 @@ Today's meetings sit above the board: what's on, what's next, how much of the da
 
 Open a meeting and it becomes something you can act on — **focus until it starts** (the timer counts down to it), turn it into a task, or spin up a notes document pre-filled with the time, organiser and an actions checklist. The month grid marks days that have meetings, the Weekly Review reports hours spent in them, and a meeting-heavy day quietly changes the day's suggestions from deep work to something that fits between calls.
 
-You can also **manage the calendar from here**: add an event, edit one, or delete it. Moving the start drags the end along so the duration holds. Writes go to the calendar macOS already syncs, so an event created in Task Notes turns up in Google Calendar — without this app ever holding a token of its own. Pick which calendars are included from the ⚙ on the agenda.
+There is a full **Calendar page** too — **Day**, **Week**, **Month** and **Year** — reading the same calendars. Day and Week are hour grids with overlapping meetings laid out side by side and a line showing where you are in the day; Month lists what is on each day; Year marks the days that have anything on them. Clicking any day drops into it.
+
+Last week through next month is fetched in one call and kept, so moving between days and months does not wait on anything. A day it does not yet hold says it is loading — it will never show you one day's meetings under another day's date.
+
+**New meetings find you.** Invitations arrive while you are working, and a calendar you only read is one you hear about too late, so Task Notes watches the coming week and tells you when a meeting is added or moved. Recurring series are understood, so your standing weekly meetings do not announce themselves every few minutes.
+
+You can also **manage the calendar from here**: add an event, edit one, or delete it. Moving the start drags the end along so the duration holds. Every occurrence of a recurring series shares one identifier in EventKit, so editing "Wednesday's standup" the naive way changes Monday's — the app addresses the occurrence you actually opened, and says so before it changes anything. Writes go to the calendar macOS already syncs, so an event created in Task Notes turns up in Google Calendar — without this app ever holding a token of its own. Pick which calendars are included from the ⚙ on the agenda.
 
 Event data never leaves the machine.
 

@@ -1400,6 +1400,112 @@
   .bagshine { position: absolute; inset: 0; pointer-events: none; z-index: 5; border-radius: inherit;
     background: radial-gradient(60% 40% at 30% 8%, rgba(255,255,255,.06), transparent 70%); }
 
+  /* ---- Calendar page: day / week / month / year over the real calendar ---- */
+  .cw-top { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  .cw-title h2 { font-size: 27px; font-weight: 800; letter-spacing: -.5px; margin: 0; }
+  .cw-title h2 span { font-weight: 400; color: var(--muted); }
+  .cw-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .cw-spring { flex: 1; }
+  .cw-views { display: inline-flex; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 3px; gap: 2px; }
+  .cw-views button { background: none; border: none; color: var(--muted); font-family: inherit;
+    font-size: 12.5px; font-weight: 650; padding: 6px 14px; border-radius: 7px; cursor: pointer; transition: .15s; }
+  .cw-views button:hover { color: var(--text); }
+  .cw-views button.on { background: var(--panel-2); color: var(--text); box-shadow: var(--glass-hi); }
+  .cw-nav { display: inline-flex; align-items: center; gap: 6px; }
+  .cw-nav button { background: var(--panel); border: 1px solid var(--line); color: var(--text);
+    font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 11px; border-radius: 9px;
+    cursor: pointer; transition: .15s; }
+  .cw-nav button:hover { border-color: var(--accent); }
+  .cw-body { position: relative; }
+  .cw-loading { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* time grid, shared by day and week */
+  .cw-grid { display: grid; grid-template-columns: 52px repeat(var(--cols,1), minmax(0,1fr));
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
+  .cw-head { display: contents; }
+  .cw-colhead { padding: 8px 6px; text-align: center; font-size: 11.5px; font-weight: 700;
+    color: var(--muted); border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); }
+  .cw-colhead.today { color: var(--text); }
+  .cw-colhead b { display: inline-grid; place-items: center; min-width: 21px; height: 21px; border-radius: 99px;
+    font-size: 12px; margin-left: 5px; }
+  .cw-colhead.today b { background: #ff4d4f; color: #fff; }
+  .cw-corner { border-bottom: 1px solid var(--line); }
+  .cw-allday { border-left: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    min-height: 26px; padding: 4px; display: flex; flex-direction: column; gap: 3px; }
+  .cw-allday-l { border-bottom: 1px solid var(--line); font-size: 10px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .4px; padding: 7px 6px; text-align: right; }
+  .cw-adchip { font-size: 11px; font-weight: 650; padding: 2px 7px; border-radius: 5px;
+    background: var(--panel-2); border-left: 3px solid var(--accent); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  /* The hour rail and the day columns scroll together. */
+  .cw-scroll { grid-column: 1 / -1; display: grid; grid-template-columns: 52px repeat(var(--cols,1), minmax(0,1fr));
+    max-height: 62vh; overflow-y: auto; }
+  .cw-hours { position: relative; }
+  .cw-hour { height: 46px; font-size: 10.5px; color: var(--muted); text-align: right;
+    padding: 0 7px; transform: translateY(-6px); }
+  .cw-col { position: relative; border-left: 1px solid var(--line); }
+  .cw-col .cw-slot { height: 46px; border-bottom: 1px solid rgba(255,255,255,.045); cursor: pointer; }
+  .cw-col .cw-slot:hover { background: rgba(255,255,255,.03); }
+  .cw-col.weekend { background: rgba(255,255,255,.014); }
+  .cw-ev { position: absolute; left: 2px; right: 2px; border-radius: 6px; padding: 3px 6px;
+    font-size: 11.5px; line-height: 1.25; overflow: hidden; cursor: pointer; text-align: left;
+    background: color-mix(in srgb, var(--evc,#7c9bff) 26%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--evc,#7c9bff) 55%, transparent);
+    border-left: 3px solid var(--evc,#7c9bff); color: var(--text);
+    font-family: inherit; transition: filter .15s; }
+  .cw-ev:hover { filter: brightness(1.25); z-index: 5; }
+  .cw-ev.past { opacity: .55; }
+  .cw-ev b { font-weight: 700; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cw-ev i { font-style: normal; color: var(--muted); font-size: 10.5px; }
+  /* "now" line, only on today's column */
+  .cw-now { position: absolute; left: 0; right: 0; height: 0; border-top: 2px solid #ff4d4f; z-index: 6; pointer-events: none; }
+  .cw-now::before { content: ''; position: absolute; left: -4px; top: -4px; width: 7px; height: 7px;
+    border-radius: 50%; background: #ff4d4f; }
+
+  /* month grid */
+  .cw-month { display: grid; grid-template-columns: repeat(7, minmax(0,1fr));
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
+  .cw-dow { padding: 8px 6px; text-align: center; font-size: 11.5px; font-weight: 700; color: var(--muted);
+    border-bottom: 1px solid var(--line); }
+  .cw-day { min-height: 104px; border-top: 1px solid var(--line); border-left: 1px solid var(--line);
+    padding: 5px 6px 7px; display: flex; flex-direction: column; gap: 2px; }
+  .cw-day:nth-child(7n+1) { border-left: none; }
+  .cw-day.other { opacity: .38; }
+  .cw-day.wknd { background: rgba(255,255,255,.015); }
+  .cw-daynum { font-size: 12px; font-weight: 700; color: var(--muted); align-self: flex-end;
+    display: inline-grid; place-items: center; min-width: 21px; height: 21px; border-radius: 99px; cursor: pointer; }
+  .cw-day.istoday .cw-daynum { background: #ff4d4f; color: #fff; }
+  .cw-mev { font-size: 11px; padding: 1px 5px; border-radius: 4px; cursor: pointer; text-align: left;
+    display: flex; gap: 5px; align-items: baseline; background: none; border: none; color: var(--text);
+    font-family: inherit; white-space: nowrap; overflow: hidden; }
+  .cw-mev:hover { background: var(--panel-2); }
+  .cw-mev .d { width: 5px; height: 5px; border-radius: 50%; background: var(--evc,#7c9bff); flex-shrink: 0; }
+  .cw-mev .t { color: var(--muted); font-size: 10px; margin-left: auto; padding-left: 4px; }
+  .cw-mev.allday { background: color-mix(in srgb, var(--evc,#7c9bff) 24%, transparent); }
+  .cw-more { font-size: 10.5px; color: var(--muted); background: none; border: none; cursor: pointer;
+    font-family: inherit; text-align: left; padding: 0 5px; }
+  .cw-more:hover { color: var(--text); }
+
+  /* year grid */
+  .cw-year { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px; }
+  .cw-mini h4 { font-size: 14px; font-weight: 750; color: var(--accent); margin: 0 0 7px; }
+  .cw-mini table { width: 100%; border-collapse: collapse; }
+  .cw-mini th { font-size: 10px; color: var(--muted); font-weight: 600; padding-bottom: 3px; }
+  .cw-mini td { text-align: center; padding: 0; }
+  .cw-mini button { width: 100%; aspect-ratio: 1; background: none; border: none; color: var(--text);
+    font-family: inherit; font-size: 11px; border-radius: 50%; cursor: pointer; position: relative; }
+  .cw-mini button:hover { background: var(--panel-2); }
+  .cw-mini button.other { color: var(--muted); opacity: .4; }
+  .cw-mini button.istoday { background: #ff4d4f; color: #fff; font-weight: 700; }
+  .cw-mini button.busy::after { content: ''; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%);
+    width: 3px; height: 3px; border-radius: 50%; background: var(--accent); }
+  .cw-mini button.istoday.busy::after { background: #fff; }
+  @media (max-width: 700px) {
+    .cw-day { min-height: 74px; }
+    .cw-scroll { max-height: 56vh; }
+  }
+
   /* Items live spatially inside the bag. */
   .bagfield { position: absolute; inset: 60px 14px 22px; z-index: 2; }
   .bagitem { position: absolute; display: inline-flex; align-items: center; gap: 7px;
@@ -2301,7 +2407,7 @@
 <div class="modal-overlay hidden" id="calendarModal">
   <div class="modal" style="max-width:720px">
     <div class="cal-head">
-      <h2>📅 Calendar</h2>
+      <h2>🗓 Day planner</h2>
       <div class="cal-nav">
         <button id="calPrev" title="Previous month">‹</button>
         <span class="cal-month" id="calMonth">—</span>
@@ -2521,6 +2627,35 @@
     </div>
     <div class="page-bar"><div class="filters" id="ideaFilters"></div></div>
     <div class="ilist" id="ideaList"></div>
+  </div>
+</div>
+
+<!-- ============ CALENDAR (day / week / month / year) ============ -->
+<div class="page hidden" id="page-calendar">
+  <div class="page-inner wide">
+    <div class="page-head">
+      <div><h2>📅 Calendar</h2><p class="page-sub">Your real calendar, the way you need to look at it.</p></div>
+      <button class="page-close" title="Back to today">✕</button>
+    </div>
+    <div class="cw-top">
+      <div class="cw-title"><h2 id="cwTitle">—</h2><div class="cw-sub" id="cwSub"></div></div>
+      <div class="cw-spring"></div>
+      <div class="cw-views" id="cwViews">
+        <button data-view="day">Day</button>
+        <button data-view="week">Week</button>
+        <button data-view="month">Month</button>
+        <button data-view="year">Year</button>
+      </div>
+      <div class="cw-nav">
+        <button id="cwPrev" title="Previous">‹</button>
+        <button id="cwToday">Today</button>
+        <button id="cwNext" title="Next">›</button>
+        <button id="cwNew" title="New event">＋ Event</button>
+        <button id="cwDays" title="Day types, location and login times">🗓 Day planner</button>
+        <button id="cwPick" title="Choose calendars">⚙</button>
+      </div>
+    </div>
+    <div class="cw-body" id="cwBody"></div>
   </div>
 </div>
 
@@ -3924,7 +4059,7 @@ function projectById(id) { return projects.find((p) => p.id === id); }
 // =====================================================================
 // PAGE ROUTING — each area is a full-screen surface over the Today board.
 // =====================================================================
-const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review'];
+const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar'];
 let activePage = null;
 
 async function openPage(name) {
@@ -3941,6 +4076,7 @@ async function openPage(name) {
   if (name === 'inbox') renderInboxPage();
   if (name === 'ideas') renderIdeasPage();
   if (name === 'review') renderReviewPage();
+  if (name === 'calendar') renderCalendarPage();
 }
 function closePage() {
   PAGES.forEach((p) => $('#page-' + p).classList.add('hidden'));
@@ -5415,7 +5551,8 @@ function docCommands() {
     { ic: '💡', t: 'Open Ideas', run: () => openPage('ideas') },
     { ic: '✓', t: 'Open Tasks', run: () => openPage('tasks') },
     { ic: '📈', t: 'Open Weekly Review', run: () => openPage('review') },
-    { ic: '📅', t: 'Open Calendar', run: () => openCalendar() },
+    { ic: '📅', t: 'Open Calendar', run: () => openPage('calendar') },
+    { ic: '🗓', t: 'Day planner — day types, jump to a day', run: () => openCalendar() },
     { ic: '🎯', t: 'Start focus session', run: () => { closePage(); fmProject = null; openFocusMode(); } },
   ].filter(Boolean);
 }
@@ -6581,6 +6718,10 @@ function calWarmAround(day) {
 }
 
 // ---- helpers ----
+// An occurrence's identity. The id alone is shared by every occurrence of a
+// recurring series, so anything that has to pick one out — a click target, a
+// seen-before record — has to include its start.
+const evKey = (e) => e.id + '|' + e.start;
 function evStart(e) { return new Date(e.start); }
 function evEnd(e) { return new Date(e.end); }
 function evMinutes(e) { return Math.max(0, (evEnd(e) - evStart(e)) / 60000); }
@@ -6688,6 +6829,7 @@ async function renderAgenda() {
   }
   calEvents = evs;
   calWarmAround(day);
+  startCalWatch();
   if (!calEvents.length) {
     el.style.display = '';
     el.className = 'agenda clear';
@@ -6726,7 +6868,7 @@ async function renderAgenda() {
         const s = evStart(e), en = evEnd(e);
         const isNow = cur && cur.id === e.id;
         const past = en.getTime() < now;
-        return '<button class="ag-ev' + (isNow ? ' now' : '') + (past ? ' past' : '') + '" data-ev="' + escapeHtml(e.id) + '">' +
+        return '<button class="ag-ev' + (isNow ? ' now' : '') + (past ? ' past' : '') + '" data-ev="' + escapeHtml(evKey(e)) + '">' +
           '<span class="ag-time">' + hhmm(s) + '</span>' +
           '<span class="ag-bar" style="background:' + (e.color || '#7c9bff') + '"></span>' +
           '<span class="ag-title">' + escapeHtml(e.title) + '</span>' +
@@ -6741,7 +6883,7 @@ async function renderAgenda() {
   $('#agNew').onclick = agendaNewEvent;
   el.querySelectorAll('[data-ev]').forEach((b) => {
     b.onclick = () => {
-      const e = calEvents.find((x) => x.id === b.dataset.ev);
+      const e = calEvents.find((x) => evKey(x) === b.dataset.ev);
       if (e) openEventSheet(e);
     };
   });
@@ -6757,6 +6899,8 @@ function openEventSheet(e) {
     '<div class="es-cal" style="color:' + (e.color || 'var(--muted)') + '">● ' + escapeHtml(e.calendar) + '</div>' +
     '<div class="es-title">' + escapeHtml(e.title) + '</div>' +
     '<div class="es-when">' + (e.allDay ? 'All day' : hhmm(s) + ' – ' + hhmm(en) + ' · ' + fmtDur(evMinutes(e) * 60)) + '</div>' +
+    // Worth saying, because editing or deleting affects this occurrence only.
+    (e.recurring ? '<div class="es-row">🔁 Repeats — changes here apply to this occurrence</div>' : '') +
     (e.location ? '<div class="es-row">📍 ' + escapeHtml(e.location) + '</div>' : '') +
     (e.organizer ? '<div class="es-row">👤 ' + escapeHtml(e.organizer) + (e.attendees ? ' · ' + e.attendees + ' invited' : '') + '</div>' : '') +
     (e.url ? '<div class="es-row"><a href="' + escapeHtml(e.url) + '" target="_blank" rel="noopener noreferrer">Join / open link</a></div>' : '') +
@@ -6816,9 +6960,10 @@ async function saveEvent(payload) {
     return { ok: true, id: r.id, calendar: r.calendar };
   } catch { return { error: 'offline' }; }
 }
-async function removeEvent(id) {
+async function removeEvent(id, occurrence) {
   try {
-    const res = await fetch('/api/calendar/event?id=' + encodeURIComponent(id), { method: 'DELETE' });
+    const res = await fetch('/api/calendar/event?id=' + encodeURIComponent(id) +
+      (occurrence ? '&occurrence=' + encodeURIComponent(occurrence) : ''), { method: 'DELETE' });
     const r = await res.json().catch(() => ({}));
     if (!res.ok || r.error) return { error: r.error || 'delete failed' };
     return { ok: true };
@@ -6833,8 +6978,12 @@ function dtLocal(d) {
 }
 
 let editingEventId = null;
+// Every occurrence of a recurring series shares one id, so the start it was
+// opened at is what tells the helper which instance is meant.
+let editingOccurrence = null;
 function openEventEditor(existing, seed) {
   editingEventId = existing ? existing.id : null;
+  editingOccurrence = existing ? existing.start : null;
   const now = new Date();
   const start = existing ? evStart(existing)
     : (seed && seed.start) ? seed.start
@@ -6899,7 +7048,8 @@ function openEventEditor(existing, seed) {
     if (e <= s) return err('It has to end after it starts.');
     $('#eeSave').disabled = true;
     const payload = {
-      id: editingEventId || undefined, title,
+      id: editingEventId || undefined,
+      occurrence: editingOccurrence || undefined, title,
       start: $('#eeStart').value, end: $('#eeEnd').value,
       location: $('#eeLoc').value.trim(), notes: $('#eeNotes').value.trim(),
     };
@@ -6921,8 +7071,12 @@ function openEventEditor(existing, seed) {
   };
   const del = $('#eeDelete');
   if (del) del.onclick = async () => {
-    if (!confirm('Delete “' + existing.title + '” from your calendar?')) return;
-    const r = await removeEvent(existing.id);
+    const warn = existing.recurring
+      ? 'Delete the ' + fmtShort(iso(evStart(existing))) + ' occurrence of “' + existing.title +
+        '”?\n\nThe rest of the series stays.'
+      : 'Delete “' + existing.title + '” from your calendar?';
+    if (!confirm(warn)) return;
+    const r = await removeEvent(existing.id, existing.start);
     if (r.error) return err(r.error === 'not-granted'
       ? 'Calendar access is needed to delete. Grant Full Access in System Settings.' : r.error);
     closeEventEditor();
@@ -6932,7 +7086,10 @@ function openEventEditor(existing, seed) {
     if (!$('#calendarModal').classList.contains('hidden')) loadCalendar();
   };
 }
-function closeEventEditor() { $('#eventEditor').classList.add('hidden'); editingEventId = null; }
+function closeEventEditor() {
+  $('#eventEditor').classList.add('hidden');
+  editingEventId = null; editingOccurrence = null;
+}
 
 // A new event defaults to the day being viewed, at the next quarter hour if
 // that day is today and otherwise at 9am.
@@ -6981,6 +7138,425 @@ function closeCalendarPicker() {
 // The server caches for a minute; changing the selection changes the key anyway,
 // but the month grid keeps its own copy.
 function calCacheBust() { calWeek = {}; calDayCache = new Map(); }
+
+// ---- watching for meetings that appear or move ----
+// Invitations land while you are working, and a calendar you only read is a
+// calendar you find out about too late. This keeps a record of the events it
+// has already seen over the next week and tells you when that set changes.
+// The first run only seeds the record, so switching this on does not announce
+// your whole week as new.
+const CAL_WATCH_DAYS = 7;
+const CAL_WATCH_EVERY = 120000;        // two minutes
+// series id -> { dayISO: startISO }. Keyed this way because every occurrence
+// of a recurring series shares one id: keyed by id alone, each pass saw the
+// series' start "change" and reported every recurring meeting as moved.
+let calSeen = null;
+let calWatchTimer = null;
+
+// The record is { ids: { seriesId: [startISO, …] }, to: dayISO } — one entry
+// per series with every occurrence start it was last seen at, plus how far
+// ahead the record reaches. Both parts are needed: the starts because a
+// recurring series shares one id across occurrences, and `to` because the
+// window rolls forward, and an occurrence appearing on a newly covered day is
+// the recurrence arriving, not a change worth telling anyone about.
+let calSeenTo = null;
+function loadCalSeen() {
+  if (calSeen) return calSeen;
+  try {
+    const raw = JSON.parse(localStorage.getItem('tasknotes.calseen') || 'null');
+    const ids = raw && raw.ids && typeof raw.ids === 'object' ? raw.ids : null;
+    // Earlier shapes stored a single start, then one start per day. Anything
+    // that is not the current shape is discarded and reseeded silently rather
+    // than misread as a week of rescheduled meetings.
+    const shaped = ids && Object.values(ids).every((v) => Array.isArray(v));
+    calSeen = shaped ? ids : null;
+    calSeenTo = shaped && typeof raw.to === 'string' ? raw.to : null;
+  } catch { calSeen = null; calSeenTo = null; }
+  return calSeen;
+}
+function saveCalSeen(to) {
+  calSeenTo = to || calSeenTo;
+  try {
+    localStorage.setItem('tasknotes.calseen', JSON.stringify({ ids: calSeen, to: calSeenTo, at: Date.now() }));
+  } catch {}
+}
+
+function calNotify(title, body, day) {
+  flash('📅 ' + title);
+  if (DESKTOP && window.tn && window.tn.notify) {
+    try { window.tn.notify({ title, body, day }); } catch {}
+  }
+}
+const calWhen = (e) => {
+  const s = evStart(e);
+  const day = iso(s) === iso(new Date()) ? 'today'
+    : iso(s) === calShift(iso(new Date()), 1) ? 'tomorrow'
+    : fmtShort(iso(s));
+  return e.allDay ? day + ', all day' : day + ' at ' + hhmm(s);
+};
+
+async function calCheckForNew(quiet) {
+  if (!calStatus.available) return { skipped: 'no access' };
+  const from = iso(new Date()), to = calShift(from, CAL_WATCH_DAYS);
+  const r = await fetchEvents(from, to);
+  if (r.error) return { skipped: r.error };
+  const events = realEvents(r.events).filter((e) => evEnd(e).getTime() >= Date.now());
+  const now = {};
+  events.forEach((e) => { (now[e.id] = now[e.id] || []).push(e.start); });
+
+  const seen = loadCalSeen();
+  if (!seen) {                          // first run: remember, say nothing
+    calSeen = now; saveCalSeen(to);
+    return { seeded: Object.keys(now).length };
+  }
+  // Only the stretch the record already covered can be compared. Anything
+  // starting past its far edge is the window having rolled forward.
+  const covered = calSeenTo || to;
+  const inCovered = (e) => iso(evStart(e)) <= covered;
+
+  const added = [], moved = [];
+  events.filter(inCovered).forEach((e) => {
+    const prior = seen[e.id];
+    // A series never seen before is new.
+    if (!prior) { if (!added.some((x) => x.id === e.id)) added.push(e); return; }
+    // A known series at a start it was not seen at is a reschedule — which
+    // catches a meeting moved to another day, not just to another time.
+    if (!prior.includes(e.start)) moved.push(e);
+  });
+  calSeen = now; saveCalSeen(to);
+
+  if (!quiet) {
+    if (added.length === 1) {
+      calNotify('New meeting: ' + added[0].title, calWhen(added[0]), iso(evStart(added[0])));
+    } else if (added.length > 1) {
+      calNotify(added.length + ' new meetings',
+        added.slice(0, 3).map((e) => e.title + ' — ' + calWhen(e)).join('\n'), iso(evStart(added[0])));
+    }
+    moved.forEach((e) => calNotify('Moved: ' + e.title, 'Now ' + calWhen(e), iso(evStart(e))));
+    // What is on screen is now out of date by definition.
+    if (added.length || moved.length) {
+      calCacheBust();
+      renderAgenda();
+      if (activePage === 'calendar') renderCalendarPage();
+    }
+  }
+  return { added: added.map((e) => e.title), moved: moved.map((e) => e.title) };
+}
+
+function startCalWatch() {
+  if (calWatchTimer) return;
+  // Seed quietly, then watch.
+  calCheckForNew(true).then(() => {
+    calWatchTimer = setInterval(() => { if (!document.hidden) calCheckForNew(); }, CAL_WATCH_EVERY);
+  });
+  // A machine coming back from sleep should check straight away rather than
+  // waiting out the rest of the interval.
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) calCheckForNew(); });
+}
+if (DESKTOP && window.tn && window.tn.onNotifyOpen) {
+  window.tn.onNotifyOpen((p) => {
+    if (!p || !p.day) return;
+    cwAnchor = new Date(p.day + 'T00:00:00');
+    current = new Date(p.day + 'T00:00:00');
+    openPage('calendar');
+  });
+}
+
+// =====================================================================
+// CALENDAR PAGE — day / week / month / year over the real calendar
+// =====================================================================
+let cwView = 'month';
+let cwAnchor = new Date();
+try { cwView = localStorage.getItem('tasknotes.cwView') || 'month'; } catch {}
+
+const CW_DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const CW_MONTH = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+const CW_ROW_H = 46;            // px per hour, matches .cw-hour/.cw-slot
+
+// Ensures every day in a range is held, then hands back the per-day lists.
+// Range views tolerate slightly older data than the agenda does, so a month or
+// a year is not refetched every time you glance at it.
+async function calRangeEvents(fromISO, toISO, maxAgeMs) {
+  const age = maxAgeMs == null ? 300000 : maxAgeMs;
+  let stale = false;
+  for (let d = fromISO; d <= toISO; d = calShift(d, 1)) {
+    const h = calDayCache.get(d);
+    if (!h || Date.now() - h.at >= age) { stale = true; break; }
+  }
+  if (stale) {
+    const r = await fetchEvents(fromISO, toISO);
+    if (r.error) return { error: r.error };
+    calStoreRange(r.events, fromISO, toISO);
+  }
+  const byDay = {};
+  for (let d = fromISO; d <= toISO; d = calShift(d, 1)) byDay[d] = (calDayCache.get(d) || { events: [] }).events;
+  return { byDay };
+}
+
+const cwMid = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const cwWeekStart = (d) => { const x = cwMid(d); x.setDate(x.getDate() - x.getDay()); return x; };
+function cwMinutes(d, dayStart) {
+  // Clamped, so an event that began yesterday starts at the top of today.
+  return Math.max(0, Math.min(1440, (d - dayStart) / 60000));
+}
+
+// Events that overlap in time are laid out side by side. Columns are assigned
+// greedily within each cluster of mutually overlapping events, which is what
+// makes two 3pm meetings sit next to each other rather than on top.
+function cwLayout(events, dayStart) {
+  const items = events.map((e) => ({
+    e,
+    top: cwMinutes(evStart(e), dayStart),
+    bot: Math.max(cwMinutes(evEnd(e), dayStart), cwMinutes(evStart(e), dayStart) + 20),
+  })).sort((a, b) => a.top - b.top || b.bot - a.bot);
+  let cluster = [], clusterEnd = -1;
+  const out = [];
+  const flush = () => {
+    const cols = [];
+    cluster.forEach((it) => {
+      let c = cols.findIndex((end) => end <= it.top);
+      if (c < 0) { c = cols.length; cols.push(0); }
+      cols[c] = it.bot;
+      it.col = c;
+    });
+    cluster.forEach((it) => { it.of = cols.length; out.push(it); });
+    cluster = [];
+  };
+  items.forEach((it) => {
+    if (cluster.length && it.top >= clusterEnd) { flush(); clusterEnd = -1; }
+    cluster.push(it);
+    clusterEnd = Math.max(clusterEnd, it.bot);
+  });
+  if (cluster.length) flush();
+  return out;
+}
+
+function cwEventBlock(it, now) {
+  const e = it.e;
+  const topPct = (it.top / 1440) * 100, hPct = ((it.bot - it.top) / 1440) * 100;
+  const w = 100 / it.of, left = it.col * w;
+  return '<button class="cw-ev' + (evEnd(e).getTime() < now ? ' past' : '') + '"' +
+    ' data-ev="' + escapeHtml(evKey(e)) + '"' +
+    ' style="top:' + topPct.toFixed(3) + '%;height:' + hPct.toFixed(3) + '%;' +
+      'left:calc(' + left + '% + 2px);width:calc(' + w + '% - 4px);' +
+      '--evc:' + (e.color || '#7c9bff') + '">' +
+    '<b>' + escapeHtml(e.title) + '</b>' +
+    '<i>' + hhmm(evStart(e)) + (it.bot - it.top > 45 ? ' – ' + hhmm(evEnd(e)) : '') + '</i>' +
+    '</button>';
+}
+
+// ---- the time grid, used by both the day and the week view ----
+function cwTimeGrid(days, byDay) {
+  const now = Date.now(), todayISO = iso(new Date());
+  const head = '<div class="cw-corner"></div>' + days.map((d) => {
+    const t = iso(d) === todayISO;
+    return '<div class="cw-colhead' + (t ? ' today' : '') + '">' + CW_DOW[d.getDay()] +
+      '<b>' + d.getDate() + '</b></div>';
+  }).join('');
+
+  const allDayRow = '<div class="cw-allday-l">all-day</div>' + days.map((d) => {
+    const ad = (byDay[iso(d)] || []).filter((e) => e.allDay);
+    return '<div class="cw-allday">' + ad.map((e) =>
+      '<button class="cw-adchip" data-ev="' + escapeHtml(evKey(e)) + '" style="border-left-color:' +
+      (e.color || '#7c9bff') + '">' + escapeHtml(e.title) + '</button>').join('') + '</div>';
+  }).join('');
+
+  let hours = '';
+  for (let h = 0; h < 24; h++) {
+    hours += '<div class="cw-hour">' + (h === 0 ? '' : h === 12 ? 'Noon' :
+      (h % 12 === 0 ? 12 : h % 12) + (h < 12 ? ' AM' : ' PM')) + '</div>';
+  }
+  const cols = days.map((d) => {
+    const dayStart = cwMid(d);
+    const timed = (byDay[iso(d)] || []).filter((e) => !e.allDay);
+    const blocks = cwLayout(timed, dayStart).map((it) => cwEventBlock(it, now)).join('');
+    let slots = '';
+    for (let h = 0; h < 24; h++) slots += '<div class="cw-slot" data-newat="' + iso(d) + 'T' + String(h).padStart(2, '0') + '"></div>';
+    const isToday_ = iso(d) === todayISO;
+    const nowLine = isToday_
+      ? '<div class="cw-now" style="top:' + ((cwMinutes(new Date(), dayStart) / 1440) * 100).toFixed(3) + '%"></div>'
+      : '';
+    const wknd = d.getDay() === 0 || d.getDay() === 6 ? ' weekend' : '';
+    return '<div class="cw-col' + wknd + '">' + slots + nowLine + blocks + '</div>';
+  }).join('');
+
+  return '<div class="cw-grid" style="--cols:' + days.length + '">' +
+    head + allDayRow +
+    '<div class="cw-scroll" style="--cols:' + days.length + '">' +
+      '<div class="cw-hours">' + hours + '</div>' + cols +
+    '</div></div>';
+}
+
+async function cwRenderDay() {
+  const day = iso(cwAnchor);
+  const r = await calRangeEvents(day, day, 60000);
+  if (r.error) return '<div class="cw-loading">Could not read the calendar.</div>';
+  return cwTimeGrid([new Date(cwAnchor)], r.byDay);
+}
+
+async function cwRenderWeek() {
+  const start = cwWeekStart(cwAnchor);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start); d.setDate(d.getDate() + i); return d;
+  });
+  const r = await calRangeEvents(iso(days[0]), iso(days[6]));
+  if (r.error) return '<div class="cw-loading">Could not read the calendar.</div>';
+  return cwTimeGrid(days, r.byDay);
+}
+
+async function cwRenderMonth() {
+  const first = new Date(cwAnchor.getFullYear(), cwAnchor.getMonth(), 1);
+  const gridStart = cwWeekStart(first);
+  const cells = [];
+  for (let i = 0; i < 42; i++) { const d = new Date(gridStart); d.setDate(d.getDate() + i); cells.push(d); }
+  // Six rows always, minus a trailing row that belongs entirely to next month.
+  const weeks = cells[35].getMonth() === cwAnchor.getMonth() ? 42 : 35;
+  const r = await calRangeEvents(iso(cells[0]), iso(cells[weeks - 1]));
+  if (r.error) return '<div class="cw-loading">Could not read the calendar.</div>';
+  const todayISO = iso(new Date());
+  let html = '<div class="cw-month">' + CW_DOW.map((d) => '<div class="cw-dow">' + d + '</div>').join('');
+  for (let i = 0; i < weeks; i++) {
+    const d = cells[i], ds = iso(d);
+    const evs = r.byDay[ds] || [];
+    const shown = evs.slice(0, 3);
+    html += '<div class="cw-day' + (d.getMonth() !== cwAnchor.getMonth() ? ' other' : '') +
+      (ds === todayISO ? ' istoday' : '') + (d.getDay() === 0 || d.getDay() === 6 ? ' wknd' : '') + '">' +
+      '<button class="cw-daynum" data-goday="' + ds + '" title="Open this day">' + d.getDate() + '</button>' +
+      shown.map((e) => '<button class="cw-mev' + (e.allDay ? ' allday' : '') + '" data-ev="' + escapeHtml(evKey(e)) +
+        '" style="--evc:' + (e.color || '#7c9bff') + '">' +
+        (e.allDay ? '' : '<span class="d"></span>') +
+        '<span>' + escapeHtml(e.title) + '</span>' +
+        (e.allDay ? '' : '<span class="t">' + hhmm(evStart(e)) + '</span>') + '</button>').join('') +
+      (evs.length > 3 ? '<button class="cw-more" data-goday="' + ds + '">+' + (evs.length - 3) + ' more</button>' : '') +
+      '</div>';
+  }
+  return html + '</div>';
+}
+
+async function cwRenderYear() {
+  const y = cwAnchor.getFullYear();
+  const from = y + '-01-01', to = y + '-12-31';
+  const r = await calRangeEvents(from, to, 900000);
+  if (r.error) return '<div class="cw-loading">Could not read the calendar.</div>';
+  const todayISO = iso(new Date());
+  let html = '<div class="cw-year">';
+  for (let m = 0; m < 12; m++) {
+    const first = new Date(y, m, 1);
+    const start = cwWeekStart(first);
+    html += '<div class="cw-mini"><h4>' + CW_MONTH[m] + '</h4><table><thead><tr>' +
+      CW_DOW.map((d) => '<th>' + d[0] + '</th>').join('') + '</tr></thead><tbody>';
+    for (let w = 0; w < 6; w++) {
+      html += '<tr>';
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start); d.setDate(d.getDate() + w * 7 + i);
+        const ds = iso(d);
+        const busy = (r.byDay[ds] || []).length ? ' busy' : '';
+        html += '<td><button data-goday="' + ds + '" class="' + (d.getMonth() !== m ? 'other' : '') +
+          (ds === todayISO ? ' istoday' : '') + busy + '">' + d.getDate() + '</button></td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+  }
+  return html + '</div>';
+}
+
+function cwTitleText() {
+  if (cwView === 'year') return { t: String(cwAnchor.getFullYear()), s: '' };
+  if (cwView === 'day') {
+    return { t: cwAnchor.getDate() + ' ' + CW_MONTH[cwAnchor.getMonth()] + ' <span>' + cwAnchor.getFullYear() + '</span>',
+             s: CW_DOW[cwAnchor.getDay()] + (iso(cwAnchor) === iso(new Date()) ? ' · today' : '') };
+  }
+  if (cwView === 'week') {
+    const a = cwWeekStart(cwAnchor), b = new Date(a); b.setDate(b.getDate() + 6);
+    const span = a.getMonth() === b.getMonth()
+      ? CW_MONTH[a.getMonth()] + ' ' + a.getDate() + '–' + b.getDate()
+      : CW_MONTH[a.getMonth()] + ' ' + a.getDate() + ' – ' + CW_MONTH[b.getMonth()] + ' ' + b.getDate();
+    return { t: CW_MONTH[a.getMonth()] + ' <span>' + a.getFullYear() + '</span>', s: span };
+  }
+  return { t: CW_MONTH[cwAnchor.getMonth()] + ' <span>' + cwAnchor.getFullYear() + '</span>', s: '' };
+}
+
+let cwRenderSeq = 0;
+async function renderCalendarPage() {
+  const body = $('#cwBody'); if (!body) return;
+  const seq = ++cwRenderSeq;
+  const ttl = cwTitleText();
+  $('#cwTitle').innerHTML = ttl.t;
+  $('#cwSub').textContent = ttl.s;
+  document.querySelectorAll('#cwViews button').forEach((b) => b.classList.toggle('on', b.dataset.view === cwView));
+
+  await refreshCalStatus();
+  if (seq !== cwRenderSeq) return;
+  if (!calStatus.available) {
+    body.innerHTML = '<div class="cw-loading">' + (calStatus.status === 'writeOnly'
+      ? 'Task Notes can add events but not read them. Grant Calendars → Full Access in System Settings.'
+      : 'Calendar access is needed to show your schedule.') + '</div>';
+    return;
+  }
+  // Anything not already held has to be fetched, so say so rather than leaving
+  // the previous month on screen looking like this one.
+  body.innerHTML = '<div class="cw-loading">Loading your calendar…</div>';
+  const html = cwView === 'day' ? await cwRenderDay()
+    : cwView === 'week' ? await cwRenderWeek()
+    : cwView === 'year' ? await cwRenderYear()
+    : await cwRenderMonth();
+  if (seq !== cwRenderSeq) return;
+  body.innerHTML = html;
+
+  body.querySelectorAll('[data-ev]').forEach((b) => {
+    b.onclick = () => {
+      const all = [...calDayCache.values()].flatMap((v) => v.events);
+      const e = all.find((x) => evKey(x) === b.dataset.ev);
+      if (e) openEventSheet(e);
+    };
+  });
+  body.querySelectorAll('[data-goday]').forEach((b) => {
+    b.onclick = () => { cwAnchor = new Date(b.dataset.goday + 'T00:00:00'); cwSetView('day'); };
+  });
+  body.querySelectorAll('[data-newat]').forEach((b) => {
+    b.ondblclick = async () => {
+      await loadCalendarList();
+      openEventEditor(null, { start: new Date(b.dataset.newat + ':00:00') });
+    };
+  });
+  // Open the day scrolled to the working day rather than to midnight.
+  const sc = body.querySelector('.cw-scroll');
+  if (sc) sc.scrollTop = Math.max(0, (iso(cwAnchor) === iso(new Date())
+    ? new Date().getHours() - 2 : 8) * CW_ROW_H);
+}
+
+function cwSetView(v) {
+  cwView = v;
+  try { localStorage.setItem('tasknotes.cwView', v); } catch {}
+  renderCalendarPage();
+}
+function cwStep(dir) {
+  const d = new Date(cwAnchor);
+  if (cwView === 'day') d.setDate(d.getDate() + dir);
+  else if (cwView === 'week') d.setDate(d.getDate() + 7 * dir);
+  else if (cwView === 'month') d.setMonth(d.getMonth() + dir, 1);
+  else d.setFullYear(d.getFullYear() + dir, 0, 1);
+  cwAnchor = d;
+  renderCalendarPage();
+}
+function bindCalendarPage() {
+  document.querySelectorAll('#cwViews button').forEach((b) => { b.onclick = () => cwSetView(b.dataset.view); });
+  $('#cwPrev').onclick = () => cwStep(-1);
+  $('#cwNext').onclick = () => cwStep(1);
+  $('#cwToday').onclick = () => { cwAnchor = new Date(); renderCalendarPage(); };
+  $('#cwNew').onclick = async () => {
+    await loadCalendarList();
+    const d = new Date(cwAnchor);
+    const start = iso(d) === iso(new Date())
+      ? new Date(Math.ceil(Date.now() / (15 * 60000)) * 15 * 60000)
+      : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9, 0, 0, 0);
+    openEventEditor(null, { start });
+  };
+  $('#cwPick').onclick = openCalendarPicker;
+  $('#cwDays').onclick = openCalendar;
+}
 
 // ---- month grid: how busy each day is ----
 async function loadMonthEvents(fromISO, toISO) {
@@ -8069,9 +8645,10 @@ function renderReviewPage() {
 // WIRING
 // =====================================================================
 document.querySelectorAll('.nav-btn').forEach((b) => {
-  b.onclick = () => { const p = b.dataset.page; if (p === 'today') goToday(); else if (p === 'calendar') openCalendar(); else openPage(p); };
+  b.onclick = () => { const p = b.dataset.page; if (p === 'today') goToday(); else openPage(p); };
 });
 document.querySelectorAll('.page-close').forEach((b) => { b.onclick = closePage; });
+bindCalendarPage();
 $('#pdClose').onclick = closeProjectDetail;
 $('#ldClose').onclick = closeLearnDetail;
 $('#lsClose').onclick = closeLearnSession;

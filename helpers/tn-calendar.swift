@@ -183,11 +183,28 @@ if flags.contains("create") {
     exit(0)
 }
 
+// Every occurrence of a recurring event shares one eventIdentifier, and
+// event(withIdentifier:) hands back the *first* one. Editing or deleting
+// "Wednesday's standup" that way would silently change Monday's. So when the
+// caller says which occurrence it means, the matching instance is looked up by
+// its start date instead.
+func findEvent(_ id: String, occurrence: String?) -> EKEvent? {
+    if let occ = occurrence, !occ.isEmpty, let want = parseISO(occ) {
+        let pred = store.predicateForEvents(withStart: want.addingTimeInterval(-86400),
+                                            end: want.addingTimeInterval(86400), calendars: nil)
+        let hit = store.events(matching: pred).first {
+            $0.eventIdentifier == id && abs(($0.startDate ?? .distantPast).timeIntervalSince(want)) < 60
+        }
+        if let hit = hit { return hit }
+    }
+    return store.event(withIdentifier: id)
+}
+
 if flags.contains("update") || flags.contains("delete") {
     guard let id = args["event"], !id.isEmpty else { fail("--event is required") }
     // Finding an existing event needs read access, so this is the one place a
     // write also depends on full access rather than write-only.
-    guard let event = store.event(withIdentifier: id) else { fail("event not found", 3) }
+    guard let event = findEvent(id, occurrence: args["occurrence"]) else { fail("event not found", 3) }
     guard event.calendar?.allowsContentModifications ?? false else { fail("that calendar is read-only") }
     if flags.contains("delete") {
         do {
@@ -267,6 +284,9 @@ let out = events.map { e -> [String: Any] in
         "organizer": e.organizer?.name ?? "",
         "attendees": e.attendees?.count ?? 0,
         "declined": declined,
+        // Every occurrence of a series shares an id, so the caller needs to
+        // know when it is looking at one.
+        "recurring": e.hasRecurrenceRules,
         "status": {
             switch e.status {
             case .confirmed: return "confirmed"
