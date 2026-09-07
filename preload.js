@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld('tn', {
   // main window → native shell
   openMini: () => ipcRenderer.send('mini:open'),
   closeMini: () => ipcRenderer.send('mini:close'),
+  // Dismiss = hide the companion but keep the session running.
+  dismissMini: () => ipcRenderer.send('mini:dismiss'),
+  miniIsOpen: () => ipcRenderer.invoke('mini:isOpen'),
   pushState: (state) => ipcRenderer.send('focus:state', state),
 
   // native shell → any window

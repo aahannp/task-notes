@@ -35,12 +35,25 @@
 
   #aurora { display: none; }
   .wrap { max-width: 1060px; margin: 0 auto; padding: 44px 28px 120px; animation: fadeIn .4s ease; }
+  /* Maximised, the board and cards deserve the room rather than leaving half
+     the window empty. */
+  @media (min-width: 1500px) { .wrap { max-width: 1300px; } }
+  @media (min-width: 1750px) { .wrap { max-width: 1540px; } }
+  @media (min-width: 2100px) { .wrap { max-width: 1760px; } }
 
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @keyframes rowIn { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
   @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
 
-  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;
+    -webkit-app-region: drag; }
+  /* Everything interactive opts back out, or it would just move the window. */
+  header h1, header .head-right, header button, header input, header .search-wrap, header svg,
+  header .count { -webkit-app-region: no-drag; }
+  /* A little breathing room at the very top that is draggable too, so there is
+     always somewhere to grab even when the header is crowded. */
+  .titlebar-grab { position: fixed; top: 0; left: 0; right: 0; height: 26px; z-index: 5;
+    -webkit-app-region: drag; pointer-events: none; }
   header h1 { font-size: 15px; font-weight: 600; letter-spacing: .3px; color: var(--muted); margin: 0; text-transform: uppercase; }
   .count { font-size: 13px; color: var(--muted); }
 
@@ -2048,6 +2061,7 @@
   }
 
 
+  #miniToggle.on { color: #6fd6a4; border-color: rgba(63,178,127,.4); }
   .ee-h { margin: 0 0 6px; font-size: 17px; font-weight: 750; letter-spacing: -.3px; padding-right: 30px; }
   .ee-cal { font-size: 12px; color: var(--muted); margin-top: 14px; }
   .ee-err { display: none; font-size: 12.5px; color: var(--danger); margin-top: 12px;
@@ -2062,6 +2076,7 @@
 </head>
 <body>
 <div id="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div></div>
+<div class="titlebar-grab"></div>
 <div class="wrap">
   <header>
     <h1>Task Notes</h1>
@@ -2186,6 +2201,7 @@
         <span class="focus-timer" id="focusTimer">00:00</span>
         <button class="focus-btn" id="focusBtn">▶ Start</button>
         <button class="focus-end" id="focusEnd" title="End session" style="display:none">■ End</button>
+        <button class="fm-open" id="miniToggle" title="Pop out the floating timer" style="display:none">🗗</button>
         <button class="fm-open" id="fmOpen" title="Full-screen focus mode">⛶</button>
       </div>
     </div>
@@ -2985,6 +3001,7 @@ function focusTimerText() {
 
 function updateFocusUI() {
   if (typeof syncMini === 'function') syncMini();
+  if (typeof refreshMiniToggle === 'function') refreshMiniToggle();
   const s = openSession();
   const running = isRunning(s);
   const total = focusedTotal();
@@ -3095,6 +3112,15 @@ function renderSessionLog() {
 // Start a brand-new focus session, optionally tagged to the selected task
 function startFocus() {
   if (!Array.isArray(meta.sessions)) meta.sessions = [];
+  // Never open a second session alongside an existing one. openSession() takes
+  // the first un-ended entry, so a leftover open session (say the app was
+  // force-quit mid-session) would keep being reported instead of this one —
+  // and a paused leftover would make a fresh start look stopped. Resume it.
+  const already = openSession();
+  if (already) {
+    if (!already.runningSince) resumeFocus();
+    return;
+  }
   let taskText = '', projectId = null;
   const taskId = fmSelectedTask;
   if (fmProject) { projectId = fmProject.id; taskText = fmProject.title; }
@@ -8411,6 +8437,27 @@ if (window.tn && window.tn.onCapture) {
     renderTodayExtras();
     if (activePage === 'inbox') renderInboxPage();
   });
+}
+
+// The floating companion can be dismissed from its own ✕, so this brings it
+// back. It asks the shell whether the window exists rather than guessing.
+async function refreshMiniToggle() {
+  const b = $('#miniToggle');
+  if (!b) return;
+  if (!DESKTOP || !openSession()) { b.style.display = 'none'; return; }
+  b.style.display = '';
+  let open = false;
+  try { open = window.tn.miniIsOpen ? await window.tn.miniIsOpen() : false; } catch {}
+  b.classList.toggle('on', open);
+  b.title = open ? 'Hide the floating timer' : 'Pop out the floating timer';
+}
+if (DESKTOP) {
+  $('#miniToggle').onclick = async () => {
+    let open = false;
+    try { open = window.tn.miniIsOpen ? await window.tn.miniIsOpen() : false; } catch {}
+    if (open) window.tn.dismissMini(); else window.tn.openMini();
+    setTimeout(refreshMiniToggle, 250);
+  };
 }
 
 $('#esClose').onclick = closeEventSheet;

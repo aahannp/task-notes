@@ -108,18 +108,29 @@ function destroyMini() {
 }
 
 // --- IPC: one state, two views -------------------------------------------
-ipcMain.on('mini:open', () => createMini());
+// Closing the companion is not the same as ending the session: the timer keeps
+// running and the window simply goes away, like dismissing any other panel.
+// Without this flag the next state push (one a second while running) would
+// reopen it instantly.
+let miniDismissed = false;
+ipcMain.on('mini:open', () => { miniDismissed = false; createMini(); });
 ipcMain.on('mini:close', () => destroyMini());
+ipcMain.on('mini:dismiss', () => { miniDismissed = true; destroyMini(); });
 
 // Main window broadcasts focus/music state. The SHELL owns the companion's
 // lifecycle from that state, so a reload of the main window can never orphan
 // the window or lose track of whether it is open.
 ipcMain.on('focus:state', (_e, state) => {
   const active = !!(state && state.active);
-  if (active && (!mini || mini.isDestroyed())) createMini();
+  // A session ending clears the dismissal, so the next one pops out again.
+  if (!active) miniDismissed = false;
+  if (active && !miniDismissed && (!mini || mini.isDestroyed())) createMini();
   else if (!active && mini && !mini.isDestroyed()) destroyMini();
   if (mini && !mini.isDestroyed()) mini.webContents.send('focus:state', state);
 });
+// Whether the companion is currently on screen, so the app can label its
+// pop-out control correctly.
+ipcMain.handle('mini:isOpen', () => !!(mini && !mini.isDestroyed()));
 // Mini window asks for a fresh broadcast (on open / reload).
 ipcMain.on('focus:request', () => {
   if (win && !win.isDestroyed()) win.webContents.send('focus:request');

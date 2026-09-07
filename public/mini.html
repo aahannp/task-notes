@@ -28,6 +28,12 @@
   .dot.paused { background: #f5a623; animation: none; }
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(63,178,127,.5)} 70%{box-shadow:0 0 0 7px rgba(63,178,127,0)} 100%{box-shadow:0 0 0 0 rgba(63,178,127,0)} }
   .label { font-size: 9.5px; font-weight: 750; letter-spacing: .9px; text-transform: uppercase; color: var(--muted); }
+  /* Sits in the drag region, so it opts out of dragging itself. */
+  .x { -webkit-app-region: no-drag; margin-left: auto; width: 20px; height: 20px; min-width: 20px;
+    padding: 0; font-size: 10px; line-height: 1; background: none; border: none; color: var(--muted);
+    border-radius: 6px; opacity: .55; }
+  .x:hover { opacity: 1; color: #ff8f8f; background: rgba(255,107,129,.14); }
+  .x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
   .timer { font-size: 34px; font-weight: 250; letter-spacing: -1.4px; font-variant-numeric: tabular-nums;
     text-align: center; margin: 5px 0 2px; line-height: 1.08; }
   .task { font-size: 11.5px; color: var(--muted); text-align: center; margin-bottom: 8px;
@@ -62,7 +68,11 @@
 </head>
 <body>
 <div class="card">
-  <div class="top"><span class="dot" id="dot"></span><span class="label" id="label">Focusing</span></div>
+  <div class="top">
+    <span class="dot" id="dot"></span>
+    <span class="label" id="label">Focusing</span>
+    <button class="x" id="close" title="Close (⌘W) — the timer keeps running" aria-label="Close">✕</button>
+  </div>
   <div class="timer" id="timer">00:00</div>
   <div class="task" id="task"></div>
   <div class="track hidden" id="track"><span>🎧</span><span class="track-name" id="trackName"></span></div>
@@ -128,6 +138,15 @@
     $('#prev').onclick   = () => send('prev');
     $('#play').onclick   = () => send('playpause');
     $('#next').onclick   = () => send('next');
+
+    // Dismissing is not ending: the session keeps running and this window just
+    // goes away, reachable again from the app's pop-out control.
+    const dismiss = () => { if (window.tn.dismissMini) window.tn.dismissMini(); };
+    $('#close').onclick = dismiss;
+    addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); dismiss(); }
+      else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'w') { e.preventDefault(); dismiss(); }
+    });
 
     // Volume is applied by the main window, like every other control here, so
     // there is still exactly one music player.
