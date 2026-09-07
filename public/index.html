@@ -6,6 +6,9 @@
 <title>Task Notes</title>
 <style>
   :root {
+    /* Learning is purple. Amber stays the app's "in progress" colour, so the
+       two are not confusable on the board or in project status. */
+    --lrn: #a78bfa; --lrn-2: #c4b5fd; --lrn-line: rgba(167,139,250,.55);
     --bg: #07080e;
     /* Liquid-glass surfaces: translucent, blurred, with a specular top edge */
     --panel: rgba(255,255,255,0.055);
@@ -553,12 +556,12 @@
   .learn-today {
     position: relative;
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
-    background: linear-gradient(135deg, rgba(245,166,35,.10), rgba(199,125,255,.06));
-    border: 1px solid rgba(245,166,35,.30); border-radius: 14px; padding: 11px 15px;
+    background: linear-gradient(135deg, rgba(167,139,250,.10), rgba(199,125,255,.06));
+    border: 1px solid rgba(167,139,250,.30); border-radius: 14px; padding: 11px 15px;
     -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   }
   .learn-today.done { opacity: .6; }
-  .learn-badge { font-size: 11.5px; font-weight: 700; color: #f5a623; background: rgba(245,166,35,.16); padding: 5px 11px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; }
+  .learn-badge { font-size: 11.5px; font-weight: 700; color: var(--lrn); background: rgba(167,139,250,.16); padding: 5px 11px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; }
   .learn-text { flex: 1; min-width: 160px; background: transparent; border: none; color: var(--text); font-family: inherit; font-size: 15px; font-weight: 500; outline: none; }
   .learn-today.done .learn-text { text-decoration: line-through; color: var(--muted); }
   .learn-text::placeholder { color: var(--muted); font-weight: 400; }
@@ -568,8 +571,8 @@
   .learn-num { width: 34px; text-align: right; }
   .learn-unit { background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 12px; outline: none; color-scheme: dark; cursor: pointer; }
   .learn-done { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; font-size: 14px; flex-shrink: 0; transition: .15s; }
-  .learn-done:hover { border-color: #f5a623; color: #f5a623; }
-  .learn-today.done .learn-done { background: #f5a623; color: #06210f; border-color: #f5a623; }
+  .learn-done:hover { border-color: var(--lrn); color: var(--lrn); }
+  .learn-today.done .learn-done { background: var(--lrn); color: #1b1030; border-color: var(--lrn); }
   .learn-pick { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; font-size: 14px; flex-shrink: 0; transition: .15s; }
   .learn-pick:hover { border-color: #c77dff; color: #c77dff; }
   .learn-menu {
@@ -582,7 +585,7 @@
   .learn-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: pointer; font-size: 13.5px; transition: .1s; }
   .learn-item:hover { background: rgba(255,255,255,.05); }
   .learn-item .li-type { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
-  .learn-item .li-type.learning { color: #f5a623; background: rgba(245,166,35,.15); }
+  .learn-item .li-type.learning { color: var(--lrn); background: rgba(167,139,250,.15); }
   .learn-item .li-type.idea { color: #c77dff; background: rgba(199,125,255,.15); }
   .learn-msg { padding: 14px 16px; font-size: 13px; color: var(--muted); line-height: 1.5; }
 
@@ -826,18 +829,18 @@
 
   /* Learning bag */
   .bag-zone { display: flex; align-items: center; gap: 22px; margin-bottom: 22px; padding: 18px 24px;
-    background: linear-gradient(135deg, rgba(245,166,35,.12), rgba(199,125,255,.07));
-    border: 1px solid rgba(245,166,35,.3); border-radius: 18px; }
+    background: linear-gradient(135deg, rgba(167,139,250,.12), rgba(199,125,255,.07));
+    border: 1px solid rgba(167,139,250,.3); border-radius: 18px; }
   .bag { position: relative; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 4px; }
   .bag-emoji { font-size: 60px; display: block; transition: transform .2s; }
   .bag:hover .bag-emoji { transform: scale(1.06) rotate(-4deg); }
   .bag.shaking .bag-emoji { animation: bagShake .6s ease; }
   @keyframes bagShake { 0%,100%{transform:rotate(0) translateY(0)} 15%{transform:rotate(-13deg)} 30%{transform:rotate(11deg) translateY(-3px)} 45%{transform:rotate(-8deg)} 60%{transform:rotate(6deg) translateY(-2px)} 78%{transform:rotate(-3deg)} }
-  .bag-count { position: absolute; top: 0; right: -2px; background: #f5a623; color: #06210f; font-size: 12px; font-weight: 800; min-width: 22px; height: 22px; border-radius: 99px; display: grid; place-items: center; padding: 0 5px; }
+  .bag-count { position: absolute; top: 0; right: -2px; background: var(--lrn); color: #1b1030; font-size: 12px; font-weight: 800; min-width: 22px; height: 22px; border-radius: 99px; display: grid; place-items: center; padding: 0 5px; }
   .bag-info { flex: 1; min-width: 0; }
   .bag-title { font-size: 17px; font-weight: 700; }
   .bag-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
-  .bag-pick { margin-top: 12px; background: #f5a623; border: none; color: #06210f; font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 18px; border-radius: 10px; cursor: pointer; transition: .15s; }
+  .bag-pick { margin-top: 12px; background: var(--lrn); border: none; color: #1b1030; font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 18px; border-radius: 10px; cursor: pointer; transition: .15s; }
   .bag-pick:hover { filter: brightness(1.06); }
   .bag-pick:disabled { opacity: .45; cursor: default; }
   .learn-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px; }
@@ -850,8 +853,8 @@
   .learn-filters { display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
   .learn-filters button { background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 7px; cursor: pointer; transition: .15s; }
   .learn-filters button.active { background: var(--accent); color: #fff; }
-  .proj.today-learning { box-shadow: 0 0 0 2px #f5a623, var(--glass-hi); }
-  @keyframes pickPulse { 0%{box-shadow:0 0 0 0 rgba(245,166,35,.6)} 70%{box-shadow:0 0 0 12px rgba(245,166,35,0)} 100%{box-shadow:0 0 0 0 rgba(245,166,35,0)} }
+  .proj.today-learning { box-shadow: 0 0 0 2px var(--lrn), var(--glass-hi); }
+  @keyframes pickPulse { 0%{box-shadow:0 0 0 0 rgba(167,139,250,.6)} 70%{box-shadow:0 0 0 12px rgba(167,139,250,0)} 100%{box-shadow:0 0 0 0 rgba(167,139,250,0)} }
   .proj.picked { animation: pickPulse 1s ease 2; }
   .hub-empty { text-align: center; color: var(--muted); padding: 60px 0; }
   .hub-empty .big { font-size: 40px; margin-bottom: 10px; }
@@ -864,7 +867,7 @@
   .proj-top { display: flex; align-items: center; gap: 10px; }
   .proj-type { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 3px 9px; border-radius: 99px; }
   .proj-type.project { color: #7c9bff; background: rgba(124,155,255,.14); }
-  .proj-type.learning { color: #f5a623; background: rgba(245,166,35,.14); }
+  .proj-type.learning { color: var(--lrn); background: rgba(167,139,250,.14); }
   .proj-type.idea { color: #c77dff; background: rgba(199,125,255,.14); }
   .proj-title { font-size: 16px; font-weight: 700; flex: 1; cursor: text; word-break: break-word; }
   .proj-status { font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 8px; cursor: pointer; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); white-space: nowrap; }
@@ -1025,7 +1028,7 @@
   .trow-text.done { color: var(--done); text-decoration: line-through; }
   .trow-tag { font-size: 11px; padding: 3px 9px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
   .trow-tag.proj { background: rgba(124,155,255,.16); color: #a8bcff; }
-  .trow-tag.learn { background: rgba(245,166,35,.16); color: #f5c26b; }
+  .trow-tag.learn { background: rgba(167,139,250,.16); color: var(--lrn-2); }
   .trow-est { font-size: 11.5px; color: var(--muted); flex-shrink: 0; }
 
   /* ==================== PROJECTS (command center cards) ==================== */
@@ -1133,27 +1136,27 @@
 
   /* ==================== LEARNING BAG ==================== */
   .bagzone { display: flex; align-items: center; gap: 24px; padding: 22px 26px; margin-bottom: 18px;
-    background: linear-gradient(135deg, rgba(245,166,35,.13), rgba(167,139,250,.08));
-    border: 1px solid rgba(245,166,35,.28); border-radius: 18px; }
+    background: linear-gradient(135deg, rgba(167,139,250,.13), rgba(167,139,250,.08));
+    border: 1px solid rgba(167,139,250,.28); border-radius: 18px; }
   .bag-visual { position: relative; flex-shrink: 0; }
   .bag-emoji { font-size: 62px; display: block; transition: transform .25s; }
   .bag-visual:hover .bag-emoji { transform: scale(1.05) rotate(-4deg); }
   .bag-visual.shaking .bag-emoji { animation: bagShake .7s cubic-bezier(.36,.07,.19,.97); }
   @keyframes bagShake { 0%,100%{transform:rotate(0) translateY(0)} 12%{transform:rotate(-14deg)} 26%{transform:rotate(12deg) translateY(-5px)}
     42%{transform:rotate(-9deg)} 58%{transform:rotate(7deg) translateY(-3px)} 74%{transform:rotate(-4deg)} 88%{transform:rotate(2deg)} }
-  .bag-count { position: absolute; top: 2px; right: -4px; background: #f5a623; color: #2a1a00; font-size: 12px;
+  .bag-count { position: absolute; top: 2px; right: -4px; background: var(--lrn); color: #1b1030; font-size: 12px;
     font-weight: 800; min-width: 23px; height: 23px; border-radius: 99px; display: grid; place-items: center; padding: 0 6px; }
   .pullwrap { flex: 1; min-width: 0; }
   .pull-cta { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
   .pull-copy { flex: 1; min-width: 180px; }
   .pull-title { font-size: 18px; font-weight: 750; letter-spacing: -.3px; }
   .pull-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
-  .pull-btn { background: linear-gradient(135deg, #f5a623, #f5c26b); border: none; color: #2a1a00; font-family: inherit;
+  .pull-btn { background: linear-gradient(135deg, var(--lrn), var(--lrn-2)); border: none; color: #1b1030; font-family: inherit;
     font-size: 14px; font-weight: 750; padding: 13px 24px; border-radius: 12px; cursor: pointer; transition: .16s;
-    box-shadow: 0 6px 20px rgba(245,166,35,.28); white-space: nowrap; }
-  .pull-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 26px rgba(245,166,35,.36); }
+    box-shadow: 0 6px 20px rgba(167,139,250,.28); white-space: nowrap; }
+  .pull-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 26px rgba(167,139,250,.36); }
   .pull-btn:disabled { opacity: .4; cursor: default; box-shadow: none; }
-  .today-learn-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: #f5c26b; font-weight: 750; }
+  .today-learn-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--lrn-2); font-weight: 750; }
   .today-learn-name { font-size: 20px; font-weight: 750; letter-spacing: -.3px; margin-top: 5px; }
   .today-learn-desc { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
   .today-learn-acts { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
@@ -1168,15 +1171,15 @@
     color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 10px 15px;
     border-radius: 30px; cursor: pointer; transition: .15s; animation: chipIn .3s ease backwards; }
   @keyframes chipIn { from { opacity: 0; transform: scale(.9) translateY(6px); } to { opacity: 1; transform: none; } }
-  .lchip:hover { transform: translateY(-2px); border-color: #f5a623; background: var(--panel-2); }
+  .lchip:hover { transform: translateY(-2px); border-color: var(--lrn); background: var(--panel-2); }
   .lchip.mini { font-size: 12.5px; padding: 7px 12px; }
   .lchip-ic { font-size: 14px; }
-  .lchip.st-learning { border-color: rgba(245,166,35,.42); background: rgba(245,166,35,.09); }
+  .lchip.st-learning { border-color: rgba(167,139,250,.42); background: rgba(167,139,250,.09); }
   .lchip.st-learned { color: var(--muted); border-color: rgba(63,178,127,.3); background: rgba(63,178,127,.07); }
   .lchip.st-paused { opacity: .65; }
   .lchip.st-archived { opacity: .4; }
   .lchip.overdue { border-color: rgba(255,107,129,.45); }
-  .lchip.istoday { box-shadow: 0 0 0 2px #f5a623; }
+  .lchip.istoday { box-shadow: 0 0 0 2px var(--lrn); }
   .lchip-pri { color: #ff8f8f; font-weight: 800; }
   .lchip-time { font-size: 11px; color: var(--muted); }
   .lchip-st { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: var(--panel-2); color: var(--muted); }
@@ -1202,7 +1205,7 @@
   .ld-task:hover { background: var(--panel-2); }
   .ld-task .dot { width: 7px; height: 7px; border-radius: 50%; }
   .ld-sess { display: flex; align-items: center; gap: 11px; font-size: 12.5px; padding: 8px 11px; background: var(--panel); border-radius: 9px; }
-  .ld-sess b { color: #f5c26b; }
+  .ld-sess b { color: var(--lrn-2); }
   .ld-sess span { color: var(--muted); font-size: 11.5px; }
   .ld-sess em { color: var(--muted); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ld-foot { display: flex; gap: 9px; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); flex-wrap: wrap; }
@@ -1212,12 +1215,12 @@
   .lsession { position: fixed; inset: 0; z-index: 90; overflow-y: auto; background: rgba(6,7,11,.86);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); animation: pageIn .2s ease; }
   .ls-inner { max-width: 560px; margin: 60px auto; padding: 34px 34px 30px; position: relative;
-    background: #101219; border: 1px solid rgba(245,166,35,.3); border-radius: 20px; box-shadow: var(--shadow); }
-  .ls-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .7px; color: #f5c26b; font-weight: 750; }
+    background: #101219; border: 1px solid rgba(167,139,250,.3); border-radius: 20px; box-shadow: var(--shadow); }
+  .ls-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .7px; color: var(--lrn-2); font-weight: 750; }
   .ls-name { font-size: 25px; font-weight: 750; letter-spacing: -.5px; margin-top: 6px; }
   .ls-want { font-size: 13.5px; color: var(--muted); margin-top: 7px; line-height: 1.5; }
   .ls-timer { font-size: 52px; font-weight: 250; letter-spacing: -2px; text-align: center; margin: 24px 0 8px;
-    font-variant-numeric: tabular-nums; color: #f5c26b; }
+    font-variant-numeric: tabular-nums; color: var(--lrn-2); }
   .ls-foot { display: flex; gap: 10px; margin-top: 24px; }
   .ls-foot button { flex: 1; }
 
@@ -1292,11 +1295,11 @@
 
   /* ==================== LEARN TODAY (board card) ==================== */
   .learn-today { display: flex; align-items: center; gap: 13px; flex-wrap: wrap; padding: 14px 18px; margin-bottom: 18px;
-    background: linear-gradient(135deg, rgba(245,166,35,.10), rgba(167,139,250,.05));
-    border: 1px solid rgba(245,166,35,.24); border-radius: 14px; }
-  .learn-today.roomy { border-color: rgba(245,166,35,.45); background: linear-gradient(135deg, rgba(245,166,35,.16), rgba(167,139,250,.08)); }
+    background: linear-gradient(135deg, rgba(167,139,250,.10), rgba(167,139,250,.05));
+    border: 1px solid rgba(167,139,250,.24); border-radius: 14px; }
+  .learn-today.roomy { border-color: rgba(167,139,250,.45); background: linear-gradient(135deg, rgba(167,139,250,.16), rgba(167,139,250,.08)); }
   .learn-today.done { border-color: rgba(63,178,127,.35); background: linear-gradient(135deg, rgba(63,178,127,.12), rgba(63,178,127,.04)); }
-  .learn-badge { font-size: 11px; font-weight: 750; color: #f5c26b; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+  .learn-badge { font-size: 11px; font-weight: 750; color: var(--lrn-2); text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
   .learn-today.done .learn-badge { color: #6fd6a4; }
   .lt-name { font-size: 15px; font-weight: 650; }
   .learn-today.done .lt-name { text-decoration: line-through; color: var(--muted); }
@@ -1371,28 +1374,28 @@
   /* The bag body: a stylised backpack drawn with gradients, not an emoji. */
   .bagbody { position: relative; height: 380px; border-radius: 30px 30px 38px 38px;
     background:
-      radial-gradient(120% 70% at 50% 0%, rgba(245,166,35,.12), transparent 60%),
+      radial-gradient(120% 70% at 50% 0%, rgba(167,139,250,.12), transparent 60%),
       linear-gradient(178deg, rgba(38,32,24,.92) 0%, rgba(26,24,22,.95) 42%, rgba(18,17,20,.97) 100%);
-    border: 1px solid rgba(245,166,35,.26);
+    border: 1px solid rgba(167,139,250,.26);
     box-shadow: 0 26px 70px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.09),
       inset 0 -40px 70px rgba(0,0,0,.35);
     overflow: hidden; transition: transform var(--t-base) var(--ease-out), box-shadow var(--t-base); }
   .bagbody.rummaging { box-shadow: 0 30px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12),
-      inset 0 -40px 70px rgba(0,0,0,.3), 0 0 0 1px rgba(245,166,35,.22); }
+      inset 0 -40px 70px rgba(0,0,0,.3), 0 0 0 1px rgba(167,139,250,.22); }
   .bagbody.jolt { animation: bagJolt .5s var(--ease-spring); }
   @keyframes bagJolt { 0%,100% { transform: none; } 22% { transform: translateY(-5px) rotate(-.7deg); }
     52% { transform: translateY(3px) rotate(.5deg); } 78% { transform: translateY(-1px); } }
   /* Flap + strap details */
   .bagflap { position: absolute; top: 0; left: 0; right: 0; height: 76px; border-radius: 30px 30px 24px 24px;
-    background: linear-gradient(180deg, rgba(245,166,35,.16), rgba(245,166,35,.04) 70%, transparent);
-    border-bottom: 1px solid rgba(245,166,35,.2); pointer-events: none; z-index: 3; }
+    background: linear-gradient(180deg, rgba(167,139,250,.16), rgba(167,139,250,.04) 70%, transparent);
+    border-bottom: 1px solid rgba(167,139,250,.2); pointer-events: none; z-index: 3; }
   .bagzip { position: absolute; top: 74px; left: 8%; right: 8%; height: 2px; z-index: 3; pointer-events: none;
-    background: repeating-linear-gradient(90deg, rgba(245,166,35,.5) 0 5px, transparent 5px 10px); opacity: .5; }
+    background: repeating-linear-gradient(90deg, rgba(167,139,250,.5) 0 5px, transparent 5px 10px); opacity: .5; }
   .bagstrap { position: absolute; width: 15px; top: -8px; height: 62px; border-radius: 9px; z-index: 4; pointer-events: none;
-    background: linear-gradient(180deg, rgba(245,166,35,.4), rgba(245,166,35,.13)); }
+    background: linear-gradient(180deg, rgba(167,139,250,.4), rgba(167,139,250,.13)); }
   .bagstrap.l { left: 20%; } .bagstrap.r { right: 20%; }
   .bagpocket { position: absolute; left: 12%; right: 12%; bottom: -1px; height: 92px; z-index: 3; pointer-events: none;
-    border-radius: 22px 22px 34px 34px; border: 1px solid rgba(245,166,35,.16); border-bottom: none;
+    border-radius: 22px 22px 34px 34px; border: 1px solid rgba(167,139,250,.16); border-bottom: none;
     background: linear-gradient(180deg, transparent, rgba(0,0,0,.28)); }
   .bagshine { position: absolute; inset: 0; pointer-events: none; z-index: 5; border-radius: inherit;
     background: radial-gradient(60% 40% at 30% 8%, rgba(255,255,255,.06), transparent 70%); }
@@ -1401,12 +1404,13 @@
   .bagfield { position: absolute; inset: 60px 14px 22px; z-index: 2; }
   .bagitem { position: absolute; display: inline-flex; align-items: center; gap: 7px;
     padding: 8px 14px; border-radius: 26px; cursor: pointer; white-space: nowrap;
-    background: linear-gradient(165deg, rgba(46,44,52,.96), rgba(30,29,36,.96));
+    background: linear-gradient(165deg, rgba(50,45,66,.96), rgba(33,30,44,.96));
     border: 1px solid rgba(255,255,255,.14); color: var(--text);
     font-family: inherit; font-size: 13px; font-weight: 600;
     box-shadow: 0 5px 16px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.09);
-    /* --dx/--dy = cursor push, --lift = hover rise; base pose from JS vars */
-    transform: translate3d(calc(var(--dx,0px)), calc(var(--dy,0px) - var(--lift,0px)), 0)
+    /* --ox/--oy = where you dragged it to, --dx/--dy = the crowd parting,
+       --lift = hover rise; base pose from JS vars */
+    transform: translate3d(calc(var(--ox,0px) + var(--dx,0px)), calc(var(--oy,0px) + var(--dy,0px) - var(--lift,0px)), 0)
                rotate(calc(var(--rot,0deg) + var(--tilt,0deg))) scale(var(--sc,1));
     transition: transform .55s var(--ease-out), opacity var(--t-base), box-shadow var(--t-base),
                 border-color var(--t-base), background var(--t-base);
@@ -1415,12 +1419,21 @@
   .bagitem .bi-ic { font-size: 13px; opacity: .9; }
   .bagitem:hover, .bagitem:focus-visible {
     z-index: 40 !important; outline: none;
-    border-color: rgba(245,166,35,.75);
-    background: linear-gradient(165deg, rgba(58,50,36,.99), rgba(40,35,28,.99));
-    box-shadow: 0 14px 34px rgba(0,0,0,.55), 0 0 0 1px rgba(245,166,35,.35), inset 0 1px 0 rgba(255,255,255,.15);
+    border-color: rgba(167,139,250,.75);
+    background: linear-gradient(165deg, rgba(56,46,84,.99), rgba(38,32,58,.99));
+    box-shadow: 0 14px 34px rgba(0,0,0,.55), 0 0 0 1px rgba(167,139,250,.35), inset 0 1px 0 rgba(255,255,255,.15);
     transition: transform .18s var(--ease-spring), box-shadow .18s, border-color .18s, background .18s; }
-  .bagfield.rummaging .bagitem:not(:hover) { opacity: .62; }
-  .bagitem.st-learning { border-color: rgba(245,166,35,.45); }
+  .bagfield.rummaging .bagitem { transition: opacity var(--t-base), box-shadow var(--t-base),
+                border-color var(--t-base), background var(--t-base); }
+  .bagfield.rummaging .bagitem:not(:hover):not(.near) { opacity: .62; }
+  /* The nearest chip is the one you are reaching for: it holds still, grows a
+     little and comes to the front, so it is a bigger target rather than a
+     smaller moving one. */
+  .bagitem.near { z-index: 45; scale: 1.06; }
+  .bagitem.grabbed { cursor: grabbing; z-index: 55 !important; transition: none !important;
+    box-shadow: 0 20px 44px rgba(0,0,0,.6), 0 0 0 1px var(--lrn-line); }
+  .bagitem.placed { cursor: grab; }
+  .bagitem.st-learning { border-color: rgba(167,139,250,.45); }
   .bagitem.st-learned { opacity: .45; }
   .bagitem.overdue::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #ff6b81; box-shadow: 0 0 7px #ff6b81; }
   .bagitem.high::before { content: '!'; color: #ff8f8f; font-weight: 800; font-size: 12px; }
@@ -1429,7 +1442,7 @@
     animation: pullOut .72s var(--ease-out) forwards; }
   @keyframes pullOut {
     0%   { }
-    28%  { transform: translate3d(var(--dx,0px), calc(var(--dy,0px) - 26px), 0) rotate(0deg) scale(1.14); }
+    28%  { transform: translate3d(calc(var(--ox,0px) + var(--dx,0px)), calc(var(--oy,0px) + var(--dy,0px) - 26px), 0) rotate(0deg) scale(1.14); }
     100% { transform: translate3d(var(--px,0px), var(--py,-260px), 0) rotate(0deg) scale(1.3); opacity: 0; }
   }
   /* Neighbours recoil when something is yanked out. */
@@ -1437,13 +1450,13 @@
 
   /* Peek tooltip — know what a chip is without opening a modal. */
   .bagpeek { position: absolute; z-index: 70; pointer-events: none; max-width: 230px;
-    background: rgba(18,20,27,.98); border: 1px solid rgba(245,166,35,.3); border-radius: 11px;
+    background: rgba(18,20,27,.98); border: 1px solid rgba(167,139,250,.3); border-radius: 11px;
     padding: 9px 12px; box-shadow: 0 12px 32px rgba(0,0,0,.55);
     opacity: 0; transform: translateY(5px) scale(.97); transition: opacity .15s, transform .15s var(--ease-out); }
   .bagpeek.show { opacity: 1; transform: none; }
   .bagpeek-n { font-size: 13px; font-weight: 700; }
   .bagpeek-d { font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
-  .bagpeek-m { font-size: 10.5px; color: #f5c26b; margin-top: 5px; text-transform: uppercase; letter-spacing: .4px; font-weight: 700; }
+  .bagpeek-m { font-size: 10.5px; color: var(--lrn-2); margin-top: 5px; text-transform: uppercase; letter-spacing: .4px; font-weight: 700; }
 
   .baghint { text-align: center; font-size: 12px; color: var(--muted); margin-top: 11px; }
   .baghint kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 10.5px; }
@@ -1453,11 +1466,11 @@
 
   /* Today's learning — the reward for rummaging */
   .todaycard { position: relative; overflow: hidden; margin-bottom: 20px; padding: 22px 24px; border-radius: 18px;
-    background: linear-gradient(140deg, rgba(245,166,35,.16), rgba(167,139,250,.07));
-    border: 1px solid rgba(245,166,35,.36); animation: popIn .5s var(--ease-spring) backwards; }
+    background: linear-gradient(140deg, rgba(167,139,250,.16), rgba(167,139,250,.07));
+    border: 1px solid rgba(167,139,250,.36); animation: popIn .5s var(--ease-spring) backwards; }
   .todaycard.arriving { animation: todayLand .6s var(--ease-spring) backwards; }
   @keyframes todayLand { 0% { opacity: 0; transform: translateY(-34px) scale(.86); } 100% { opacity: 1; transform: none; } }
-  .todaycard-l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px; color: #f5c26b; font-weight: 750; }
+  .todaycard-l { font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px; color: var(--lrn-2); font-weight: 750; }
   .todaycard-n { font-size: 25px; font-weight: 750; letter-spacing: -.6px; margin-top: 7px; }
   .todaycard-d { font-size: 13.5px; color: var(--muted); margin-top: 7px; line-height: 1.55; max-width: 60ch; }
   .todaycard-a { display: flex; gap: 9px; margin-top: 17px; flex-wrap: wrap; }
@@ -2303,7 +2316,7 @@
         <span><span class="sw" style="background:var(--panel);border:1px solid var(--line)"></span>Working</span>
         <span><span class="sw" style="background:rgba(87,217,163,.5)"></span>Day off</span>
         <span><span class="sw" style="background:rgba(199,125,255,.6)"></span>Vacation</span>
-        <span><span class="sw" style="background:rgba(245,166,35,.6)"></span>Holiday</span>
+        <span><span class="sw" style="background:rgba(167,139,250,.6)"></span>Holiday</span>
         <span><span class="cal-dot t" style="display:inline-block"></span> tasks · <span class="cal-dot f" style="display:inline-block"></span> focus</span>
       </div>
       <div class="cal-actions" id="calActions" style="display:none">
@@ -2450,7 +2463,7 @@
       </div>
       <div class="bagpeek" id="bagPeek"></div>
     </div>
-    <div class="baghint" id="bagHint">Rummage around · click something to pull it out · <kbd>Tab</kbd> to step through</div>
+    <div class="baghint" id="bagHint">Click one to pull it out · drag to move it · <kbd>Tab</kbd> to step through</div>
 
     <div class="bagactions">
       <button class="pull-btn" id="pullBtn">✨ Pull one for today</button>
@@ -6481,7 +6494,10 @@ async function fetchEvents(from, to) {
 // Days are fetched a week at a time and split per day. One helper call for
 // seven days costs about what one day costs, so this is what makes flipping
 // between days instant instead of a fresh round trip for each one.
-const CAL_WINDOW = 3;                 // days fetched either side of the one asked for
+// Last week through next month, fetched in one go. The helper costs about the
+// same for forty days as for one, so this is fetched up front and in the
+// background rather than a few days at a time.
+const CAL_BACK = 7, CAL_FWD = 31;
 function calShift(dayISO, delta) {
   const d = new Date(dayISO + 'T00:00:00');
   d.setDate(d.getDate() + delta);
@@ -6520,15 +6536,48 @@ function calStoreRange(events, fromISO, toISO) {
   });
   return byDay;
 }
-// The day's events, fetching the window around it only if they aren't held.
+// One fetch covering last week through next month around `day`, kept so that
+// moving around inside it needs nothing further.
+let calWarmed = null;                 // the range currently held
+const calInFlight = new Map();        // day -> promise, so a day is fetched once
+function calFetchWindow(day) {
+  if (calInFlight.has(day)) return calInFlight.get(day);
+  const from = calShift(day, -CAL_BACK), to = calShift(day, CAL_FWD);
+  const pr = fetchEvents(from, to).then((r) => {
+    calInFlight.delete(day);
+    if (r.error) return { error: r.error };
+    calStoreRange(r.events, from, to);
+    calWarmed = { from, to };
+    return { events: (calDayCache.get(day) || { events: [] }).events };
+  });
+  calInFlight.set(day, pr);
+  return pr;
+}
+// The day's events, fetching only if they aren't already held.
 async function calEventsFor(day) {
   const hit = calDayCache.get(day);
   if (hit && Date.now() - hit.at < 60000) return { events: hit.events };
-  const from = calShift(day, -CAL_WINDOW), to = calShift(day, CAL_WINDOW);
-  const r = await fetchEvents(from, to);
-  if (r.error) return { error: r.error };
-  calStoreRange(r.events, from, to);
-  return { events: (calDayCache.get(day) || { events: [] }).events };
+  return calFetchWindow(day);
+}
+// Refreshes what is held without blocking anything, and repaints only if the
+// day on screen actually changed. This is what keeps a stale-but-correct day
+// from ever having to show a spinner.
+const calRefreshing = new Set();
+async function calRefresh(day) {
+  if (calRefreshing.has(day)) return;
+  calRefreshing.add(day);
+  const ids = (d) => ((calDayCache.get(d) || { events: [] }).events).map((e) => e.id).join(',');
+  const before = ids(day);
+  const r = await calFetchWindow(day);
+  calRefreshing.delete(day);
+  if (r.error) return;
+  if (before !== ids(day) && iso(current) === day) renderAgenda();
+}
+// Warms the window in the background when the viewed day walks out of it.
+function calWarmAround(day) {
+  if (!calStatus.available) return;
+  if (calWarmed && day >= calWarmed.from && day <= calWarmed.to) return;
+  calFetchWindow(day);
 }
 
 // ---- helpers ----
@@ -6556,18 +6605,37 @@ function currentMeeting(list) {
 }
 
 // ---- today's agenda on the board ----
+// Which day the agenda is currently showing, so a render can tell whether
+// what is on screen belongs to some other day.
+let calShownDay = null;
+function agendaLoading(el, day) {
+  el.style.display = '';
+  el.className = 'agenda loading';
+  el.innerHTML = '<span class="ag-badge">📅 ' + (iso(current) === day && isToday(current) ? 'Today' : fmtShort(day)) +
+    '</span><span class="ag-msg">Checking your calendar…</span>';
+  calShownDay = day;
+}
 async function renderAgenda() {
   const el = $('#agenda'); if (!el) return;
   const day = iso(current);
   const seq = ++calRenderSeq;
+
+  // Before anything is awaited. Another day's meetings must never sit under a
+  // new date, so if the screen belongs to a different day and nothing is held
+  // for this one, it says it is loading — synchronously, so no frame can show
+  // the wrong day. Not done on the very first render, when there is nothing
+  // stale to replace and the agenda may not belong on screen at all.
+  if (calShownDay && calShownDay !== day && !calDayCache.has(day)) agendaLoading(el, day);
+
   await refreshCalStatus();
   if (seq !== calRenderSeq) return;
 
-  if (!calStatus.helper) { el.style.display = 'none'; return; }
+  if (!calStatus.helper) { el.style.display = 'none'; calShownDay = null; return; }
 
   if (calStatus.status === 'notDetermined') {
     el.style.display = '';
     el.className = 'agenda ask';
+    calShownDay = null;
     el.innerHTML =
       '<span class="ag-badge">📅 Calendar</span>' +
       '<span class="ag-msg">Show your meetings next to your tasks?</span>' +
@@ -6588,6 +6656,7 @@ async function renderAgenda() {
   if (calStatus.status === 'denied' || calStatus.status === 'restricted' || calStatus.status === 'writeOnly') {
     el.style.display = '';
     el.className = 'agenda ask';
+    calShownDay = null;
     el.innerHTML =
       '<span class="ag-badge">📅 Calendar</span>' +
       '<span class="ag-msg">' + (calStatus.status === 'writeOnly'
@@ -6601,28 +6670,28 @@ async function renderAgenda() {
     return;
   }
 
-  // A held answer for *this* day paints immediately; anything older than a
-  // minute is refetched (the server caches for the same minute anyway).
+  // Anything held for *this* day is shown straight away — it is this day's
+  // data, so it is never misleading, only possibly a minute old — and it is
+  // refreshed quietly behind the paint. A day nothing is held for shows that
+  // it is loading instead of the day you came from.
   const hit = calDayCache.get(day);
-  let evs = hit && Date.now() - hit.at < 60000 ? hit.events : null;
-  if (!evs) {
-    if (!hit) {
-      // Nothing at all for this day yet. Say so, rather than leaving the day
-      // you just navigated away from sitting there looking current.
-      el.style.display = '';
-      el.className = 'agenda loading';
-      el.innerHTML = '<span class="ag-badge">📅 ' + (isToday(current) ? 'Today' : fmtShort(day)) +
-        '</span><span class="ag-msg">Checking your calendar…</span>';
-    }
+  let evs = null;
+  if (hit) {
+    evs = hit.events;
+    if (Date.now() - hit.at >= 60000) calRefresh(day);
+  } else {
+    if (calShownDay !== day) agendaLoading(el, day);
     const r = await calEventsFor(day);
     if (seq !== calRenderSeq) return;
-    if (r.error) { el.style.display = 'none'; return; }
+    if (r.error) { el.style.display = 'none'; calShownDay = null; return; }
     evs = r.events;
   }
   calEvents = evs;
+  calWarmAround(day);
   if (!calEvents.length) {
     el.style.display = '';
     el.className = 'agenda clear';
+    calShownDay = day;
     el.innerHTML = '<span class="ag-badge">📅 ' + (isToday(current) ? 'Today' : fmtShort(day)) +
       '</span><span class="ag-msg">No meetings. The day is yours.</span>' +
       '<button class="btn-ghost sm" id="agNew">＋ New event</button>' +
@@ -6640,6 +6709,7 @@ async function renderAgenda() {
 
   el.style.display = '';
   el.className = 'agenda';
+  calShownDay = day;
   el.innerHTML =
     '<div class="ag-head">' +
       '<span class="ag-badge">📅 ' + (isToday(current) ? 'Today' : fmtShort(day)) + '</span>' +
@@ -6997,7 +7067,7 @@ function layoutBag(items) {
     el.style.zIndex = String(10 + row * 2 + (seeded(l.id, 'z') > .5 ? 1 : 0));
     el.style.opacity = String(0.9 + depth * 0.1);
 
-    el.onclick = () => pullItem(l.id);
+    el.onclick = () => { if (bagSuppressClick) return; pullItem(l.id); };
     el.onmouseenter = () => showPeek(el, l);
     el.onfocus = () => { showPeek(el, l); nudgeFrom(el); };
     el.onmouseleave = hidePeek;
@@ -7007,29 +7077,57 @@ function layoutBag(items) {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pullItem(l.id); }
       else if (e.key === 'i') { e.preventDefault(); openLearnDetail(l.id); }
     };
-    bagNodes.push({ el, item: l, bx, by, w, h });
+    // dx/dy/tilt are the eased crowd-parting; ox/oy is where it was dragged to
+    const node = { el, item: l, bx, by, w, h, dx: 0, dy: 0, tilt: 0, ox: 0, oy: 0 };
+    bindBagDrag(el, node);
+    bagNodes.push(node);
   });
 }
 
 // ---- cursor physics: one bounded rAF, only while rummaging ----
+// The chips used to be pushed *away* from the cursor, so the one you were
+// reaching for fled as you approached and nothing could be caught. Now the
+// nearest chip is a fixed target — it does not move at all — and only the
+// others yield, gently and by a few pixels, the way graph nodes settle. Every
+// position is eased toward its goal instead of jumping, and the pose has no
+// CSS transform transition while the loop owns it.
+const BAG_REACH = 165;        // where the crowd starts noticing the cursor
+const BAG_GIVE = 11;          // how far a chip will ever yield, in px
+const BAG_GRAB = 105;         // within this, a chip becomes the held target
+const BAG_EASE = 0.22;        // per-frame approach; lower is heavier
 function bagFrame() {
   bagLastFrame = performance.now();
   if (!bagPointer) { bagRaf = null; return; }
-  const R = 170;
+
+  // Whichever chip is closest inside the grab radius is the one being reached
+  // for. Ties do not matter; it only has to be stable frame to frame.
+  let target = null, best = BAG_GRAB;
   bagNodes.forEach((n) => {
-    const cx = n.bx + n.w / 2, cy = n.by + n.h / 2;
-    const dx = cx - bagPointer.x, dy = cy - bagPointer.y;
-    const dist = Math.hypot(dx, dy) || 1;
-    if (dist < R) {
-      const push = (1 - dist / R) ** 1.5 * 30;    // eases off with distance
-      n.el.style.setProperty('--dx', (dx / dist * push).toFixed(2) + 'px');
-      n.el.style.setProperty('--dy', (dy / dist * push).toFixed(2) + 'px');
-      n.el.style.setProperty('--tilt', ((dx / dist) * 6).toFixed(2) + 'deg');
-    } else {
-      n.el.style.setProperty('--dx', '0px');
-      n.el.style.setProperty('--dy', '0px');
-      n.el.style.setProperty('--tilt', '0deg');
+    if (n === bagDrag) return;
+    const d = Math.hypot(n.bx + n.w / 2 + n.ox - bagPointer.x, n.by + n.h / 2 + n.oy - bagPointer.y);
+    if (d < best) { best = d; target = n; }
+  });
+
+  bagNodes.forEach((n) => {
+    const isTarget = n === target || n === bagDrag;
+    let gx = 0, gy = 0, gt = 0;
+    if (!isTarget) {
+      const cx = n.bx + n.w / 2 + n.ox, cy = n.by + n.h / 2 + n.oy;
+      const dx = cx - bagPointer.x, dy = cy - bagPointer.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      if (dist < BAG_REACH) {
+        const give = (1 - dist / BAG_REACH) ** 2 * BAG_GIVE;   // eases off with distance
+        gx = dx / dist * give; gy = dy / dist * give; gt = (dx / dist) * 2.5;
+      }
     }
+    n.dx += (gx - n.dx) * BAG_EASE;
+    n.dy += (gy - n.dy) * BAG_EASE;
+    n.tilt += (gt - n.tilt) * BAG_EASE;
+    // Sub-pixel residue is not worth a style write every frame.
+    n.el.style.setProperty('--dx', Math.abs(n.dx) < .05 ? '0px' : n.dx.toFixed(2) + 'px');
+    n.el.style.setProperty('--dy', Math.abs(n.dy) < .05 ? '0px' : n.dy.toFixed(2) + 'px');
+    n.el.style.setProperty('--tilt', Math.abs(n.tilt) < .05 ? '0deg' : n.tilt.toFixed(2) + 'deg');
+    n.el.classList.toggle('near', isTarget);
   });
   bagRaf = requestAnimationFrame(bagFrame);
 }
@@ -7050,15 +7148,57 @@ function bindBagPointer() {
     startBagLoop();
   };
   body.onpointerleave = () => {
+    if (bagDrag) return;                            // mid-drag, keep following
     bagPointer = null;                              // loop stops on next frame
     field.classList.remove('rummaging'); body.classList.remove('rummaging');
     bagNodes.forEach((n) => {                        // settle back
+      n.dx = n.dy = n.tilt = 0;
       n.el.style.setProperty('--dx', '0px');
       n.el.style.setProperty('--dy', '0px');
       n.el.style.setProperty('--tilt', '0deg');
+      n.el.classList.remove('near');
     });
   };
 }
+
+// ---- dragging a chip ----
+// Graph nodes can be picked up and put down, and that is most of what makes
+// them feel catchable, so chips can be too: drag one and it stays where it is
+// dropped. A press that never moves is still a click, so pulling out is
+// unaffected.
+let bagDrag = null, bagDragFrom = null, bagDragMoved = false;
+const BAG_DRAG_SLOP = 4;      // px of movement before a press becomes a drag
+function bindBagDrag(el, node) {
+  if (REDUCED) return;
+  el.onpointerdown = (e) => {
+    if (e.button !== 0) return;
+    bagDrag = node; bagDragMoved = false;
+    bagDragFrom = { x: e.clientX, y: e.clientY, ox: node.ox, oy: node.oy };
+    try { el.setPointerCapture(e.pointerId); } catch {}
+  };
+  el.onpointermove = (e) => {
+    if (bagDrag !== node) return;
+    const dx = e.clientX - bagDragFrom.x, dy = e.clientY - bagDragFrom.y;
+    if (!bagDragMoved && Math.hypot(dx, dy) < BAG_DRAG_SLOP) return;
+    if (!bagDragMoved) { bagDragMoved = true; el.classList.add('grabbed'); hidePeek(); }
+    node.ox = bagDragFrom.ox + dx;
+    node.oy = bagDragFrom.oy + dy;
+    el.style.setProperty('--ox', node.ox.toFixed(1) + 'px');
+    el.style.setProperty('--oy', node.oy.toFixed(1) + 'px');
+  };
+  const release = (e) => {
+    if (bagDrag !== node) return;
+    try { el.releasePointerCapture(e.pointerId); } catch {}
+    el.classList.remove('grabbed');
+    if (bagDragMoved) el.classList.add('placed');
+    bagDrag = null;
+    // The click that follows a real drag would otherwise pull the item out.
+    if (bagDragMoved) { bagSuppressClick = true; setTimeout(() => { bagSuppressClick = false; }, 0); }
+  };
+  el.onpointerup = release;
+  el.onpointercancel = release;
+}
+let bagSuppressClick = false;
 // Keyboard focus should also part the crowd a little.
 function nudgeFrom(el) {
   if (REDUCED) return;
