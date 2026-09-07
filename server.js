@@ -1034,6 +1034,50 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Managing events. Writes go to the calendar macOS already syncs, so an event
+  // created here reaches Google without this app holding any credentials.
+  if (u.pathname === '/api/calendar/event') {
+    const finish = (r) => {
+      calCache.clear();                    // the agenda must not serve a stale copy
+      if (!r || r.error) {
+        const code = r && r.error === 'not-granted' ? 403 : 400;
+        return sendJSON(res, code, { error: (r && r.error) || 'unknown' });
+      }
+      sendJSON(res, 200, r);
+    };
+
+    if (req.method === 'POST' || req.method === 'PUT') {
+      readBody(req, (err, body) => {
+        if (err) return sendJSON(res, 413, { error: 'too large' });
+        let p; try { p = JSON.parse(body); } catch { return sendJSON(res, 400, { error: 'bad body' }); }
+        const args = [req.method === 'POST' ? '--create' : '--update'];
+        if (req.method === 'PUT') {
+          if (!p.id) return sendJSON(res, 400, { error: 'id required' });
+          args.push('--event', String(p.id));
+        }
+        if (p.title != null) args.push('--title', String(p.title).slice(0, 300));
+        if (p.start) args.push('--start', String(p.start));
+        if (p.end) args.push('--end', String(p.end));
+        if (p.location != null) args.push('--location', String(p.location).slice(0, 300));
+        if (p.notes != null) args.push('--notes', String(p.notes).slice(0, 2000));
+        if (p.calendarId) args.push('--calendar', String(p.calendarId));
+        if (p.allDay) args.push('--all-day');
+        runCalendarHelper(args, (_e, r) => finish(r));
+      });
+      return;
+    }
+
+    if (req.method === 'DELETE') {
+      const id = u.searchParams.get('id');
+      if (!id) return sendJSON(res, 400, { error: 'id required' });
+      runCalendarHelper(['--delete', '--event', id], (_e, r) => finish(r));
+      return;
+    }
+
+    res.writeHead(405);
+    return res.end('Method not allowed');
+  }
+
   // List which dates have task data (exclude .meta.json sidecar files)
   if (u.pathname === '/api/days' && req.method === 'GET') {
     const days = fs

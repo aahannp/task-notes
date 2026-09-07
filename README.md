@@ -152,9 +152,13 @@ Today's meetings sit above the board: what's on, what's next, how much of the da
 
 Open a meeting and it becomes something you can act on — **focus until it starts** (the timer counts down to it), turn it into a task, or spin up a notes document pre-filled with the time, organiser and an actions checklist. The month grid marks days that have meetings, the Weekly Review reports hours spent in them, and a meeting-heavy day quietly changes the day's suggestions from deep work to something that fits between calls.
 
-It is **read-only and local**: the app never writes to a calendar, and event data never leaves the machine. Pick which calendars are included from the ⚙ on the agenda.
+You can also **manage the calendar from here**: add an event, edit one, or delete it. Moving the start drags the end along so the duration holds. Writes go to the calendar macOS already syncs, so an event created in Task Notes turns up in Google Calendar — without this app ever holding a token of its own. Pick which calendars are included from the ⚙ on the agenda.
 
-Under the hood this is a small compiled EventKit helper (`helpers/tn-calendar`), not AppleScript — driving Calendar.app over Apple events takes about eleven seconds for a single week even when it returns nothing, which is far too slow to sit behind a request. EventKit answers in milliseconds and doesn't need Calendar.app running. macOS will ask for Calendar permission the first time; **Full Access** is required, since "Add Events Only" cannot read.
+Event data never leaves the machine.
+
+Under the hood this is a small compiled EventKit helper (`helpers/tn-calendar`), not AppleScript — driving Calendar.app over Apple events takes about eleven seconds for a single week even when it returns nothing, which is far too slow to sit behind a request. EventKit answers in milliseconds and doesn't need Calendar.app running. macOS will ask for Calendar permission the first time. **Full Access** is needed to *read* your agenda; "Add Events Only" is enough to *add* events, and the app asks for only what each action requires.
+
+Why not a Google sign-in? Because it would be strictly worse: a sensitive Calendar scope from an unverified personal app is the category a Workspace admin normally blocks, and it would mean storing a client secret and refresh token on disk. Going through the account macOS already holds needs no approval and no credentials here.
 
 <br>
 

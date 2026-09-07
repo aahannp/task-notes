@@ -7,8 +7,15 @@
 //
 //   tn-calendar --list
 //   tn-calendar --from 2026-09-07 --to 2026-09-14 [--ids A,B]
+//   tn-calendar --create --title T --start ISO --end ISO [--calendar ID]
+//                        [--location L] [--notes N] [--all-day]
+//   tn-calendar --update --event ID [--title T] [--start ISO] [--end ISO]
+//                        [--location L] [--notes N]
+//   tn-calendar --delete --event ID
 //
-// Read-only by design: nothing here mutates a calendar.
+// Writes go to the calendar the OS already syncs, so an event created here
+// reaches Google (or wherever the calendar lives) without this app holding any
+// credentials of its own.
 
 import Foundation
 import EventKit
@@ -24,13 +31,25 @@ func fail(_ message: String, _ code: Int32 = 1) -> Never {
     exit(code)
 }
 
-/// EventKit access is asynchronous and the modern call is only on macOS 14+, so
-/// this bridges both to a blocking result the CLI can act on.
-func requestAccess() -> Bool {
+/// EventKit access is asynchronous and the modern calls are only on macOS 14+,
+/// so this bridges them to a blocking result the CLI can act on.
+///
+/// Reading needs full access. *Adding* an event does not — macOS has a separate
+/// "Add Events Only" grant — so a write asks only for what it needs. Someone who
+/// granted add-only can still create events here even though the agenda cannot
+/// be read.
+func requestAccess(writeOnly: Bool = false) -> Bool {
     let sem = DispatchSemaphore(value: 0)
     var granted = false
     if #available(macOS 14.0, *) {
-        store.requestFullAccessToEvents { ok, _ in granted = ok; sem.signal() }
+        if writeOnly {
+            // Full access also satisfies a write, so don't downgrade someone
+            // who already granted it.
+            if EKEventStore.authorizationStatus(for: .event) == .fullAccess { return true }
+            store.requestWriteOnlyAccessToEvents { ok, _ in granted = ok; sem.signal() }
+        } else {
+            store.requestFullAccessToEvents { ok, _ in granted = ok; sem.signal() }
+        }
     } else {
         store.requestAccess(to: .event) { ok, _ in granted = ok; sem.signal() }
     }
@@ -44,6 +63,28 @@ func isoDay(_ s: String) -> Date? {
     f.dateFormat = "yyyy-MM-dd"
     f.timeZone = TimeZone.current
     return f.date(from: s)
+}
+
+/// Accepts the ISO-8601 the frontend sends, and is deliberately lenient about
+/// a missing timezone offset: ISO8601DateFormatter *requires* one, so a plain
+/// "2026-09-07T18:00:00" would silently fail to parse. Anything without an
+/// offset is read as local time, which is what a hand-written time means.
+func parseISO(_ s: String) -> Date? {
+    let iso = ISO8601DateFormatter()
+    iso.timeZone = TimeZone.current
+    for opts in [[.withInternetDateTime, .withFractionalSeconds] as ISO8601DateFormatter.Options,
+                 [.withInternetDateTime]] {
+        iso.formatOptions = opts
+        if let d = iso.date(from: s) { return d }
+    }
+    for pattern in ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "yyyy-MM-dd"] {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone.current
+        f.dateFormat = pattern
+        if let d = f.date(from: s) { return d }
+    }
+    return nil
 }
 
 func iso(_ d: Date) -> String {
@@ -97,7 +138,72 @@ if flags.contains("status") {
     exit(0)
 }
 
-guard requestAccess() else { fail("calendar access not granted", 2) }
+// A bare create only needs add-only; everything else has to read.
+let needsWriteOnly = flags.contains("create") && !flags.contains("update") && !flags.contains("delete")
+guard requestAccess(writeOnly: needsWriteOnly) else { fail("calendar access not granted", 2) }
+
+// ---- write commands -------------------------------------------------------
+// Grouped before the read path so a create/update/delete never depends on the
+// range arguments.
+
+func calendarFor(_ id: String?) -> EKCalendar? {
+    if let id = id, !id.isEmpty {
+        return store.calendars(for: .event).first { $0.calendarIdentifier == id }
+    }
+    // No explicit target: the calendar the OS considers default for new events.
+    return store.defaultCalendarForNewEvents
+}
+
+func applyFields(_ event: EKEvent) {
+    if let t = args["title"] { event.title = t }
+    if let l = args["location"] { event.location = l }
+    if let n = args["notes"] { event.notes = n }
+    if flags.contains("all-day") { event.isAllDay = true }
+    if let s = args["start"], let d = parseISO(s) { event.startDate = d }
+    if let e = args["end"], let d = parseISO(e) { event.endDate = d }
+}
+
+if flags.contains("create") {
+    guard let title = args["title"], !title.isEmpty else { fail("--title is required") }
+    guard let cal = calendarFor(args["calendar"]) else { fail("no writable calendar found") }
+    guard cal.allowsContentModifications else { fail("that calendar is read-only") }
+    let event = EKEvent(eventStore: store)
+    event.calendar = cal
+    event.title = title
+    // Sensible default so a bare create still produces a valid event.
+    let start = args["start"].flatMap(parseISO) ?? Date()
+    event.startDate = start
+    event.endDate = args["end"].flatMap(parseISO) ?? start.addingTimeInterval(30 * 60)
+    applyFields(event)
+    if event.endDate <= event.startDate { fail("end must be after start") }
+    do {
+        try store.save(event, span: .thisEvent, commit: true)
+        emit(["ok": true, "id": event.eventIdentifier ?? "", "calendar": cal.title])
+    } catch { fail("could not save: \(error.localizedDescription)") }
+    exit(0)
+}
+
+if flags.contains("update") || flags.contains("delete") {
+    guard let id = args["event"], !id.isEmpty else { fail("--event is required") }
+    // Finding an existing event needs read access, so this is the one place a
+    // write also depends on full access rather than write-only.
+    guard let event = store.event(withIdentifier: id) else { fail("event not found", 3) }
+    guard event.calendar?.allowsContentModifications ?? false else { fail("that calendar is read-only") }
+    if flags.contains("delete") {
+        do {
+            try store.remove(event, span: .thisEvent, commit: true)
+            emit(["ok": true, "deleted": id])
+        } catch { fail("could not delete: \(error.localizedDescription)") }
+        exit(0)
+    }
+    applyFields(event)
+    if event.endDate <= event.startDate { fail("end must be after start") }
+    do {
+        try store.save(event, span: .thisEvent, commit: true)
+        emit(["ok": true, "id": event.eventIdentifier ?? ""])
+    } catch { fail("could not save: \(error.localizedDescription)") }
+    exit(0)
+}
 
 if flags.contains("list") {
     let cals = store.calendars(for: .event).map { c -> [String: Any] in

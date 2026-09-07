@@ -2047,6 +2047,17 @@
     .ag-loc { display: none; }
   }
 
+
+  .ee-h { margin: 0 0 6px; font-size: 17px; font-weight: 750; letter-spacing: -.3px; padding-right: 30px; }
+  .ee-cal { font-size: 12px; color: var(--muted); margin-top: 14px; }
+  .ee-err { display: none; font-size: 12.5px; color: var(--danger); margin-top: 12px;
+    background: rgba(255,107,129,.1); border: 1px solid rgba(255,107,129,.3);
+    border-radius: 8px; padding: 8px 11px; }
+  .ee-acts { display: flex; gap: 8px; margin-top: 20px; align-items: center; }
+  .ee-acts .btn-primary { margin-left: auto; }
+  .ee-acts .btn-danger { margin-right: auto; }
+  input[type="datetime-local"].ld-input { color-scheme: dark; }
+
 </style>
 </head>
 <body>
@@ -2631,6 +2642,13 @@
     <button class="detail-close" id="cpClose" title="Close">✕</button>
     <h3 style="margin:0 0 4px;font-size:16px">Calendars</h3>
     <div id="cpBody"></div>
+  </div>
+</div>
+
+<div class="sheet hidden" id="eventEditor">
+  <div class="sheet-box" role="dialog" aria-label="Event editor">
+    <button class="detail-close" id="eeClose" title="Close">✕</button>
+    <div id="eeBody"></div>
   </div>
 </div>
 
@@ -6487,8 +6505,10 @@ async function renderAgenda() {
     el.className = 'agenda clear';
     el.innerHTML = '<span class="ag-badge">📅 ' + (isToday(current) ? 'Today' : fmtShort(day)) +
       '</span><span class="ag-msg">No meetings. The day is yours.</span>' +
+      '<button class="btn-ghost sm" id="agNew">＋ New event</button>' +
       '<button class="ws-act" id="agPick" title="Choose calendars">⚙</button>';
     $('#agPick').onclick = openCalendarPicker;
+    $('#agNew').onclick = agendaNewEvent;
     return;
   }
 
@@ -6506,6 +6526,7 @@ async function renderAgenda() {
       '<span class="ag-sum">' + calEvents.length + ' event' + (calEvents.length > 1 ? 's' : '') +
         (mins ? ' · ' + fmtDur(mins * 60) + ' in meetings' : '') + '</span>' +
       (next ? '<span class="ag-next">next: ' + escapeHtml(next.title) + ' at ' + hhmm(evStart(next)) + '</span>' : '') +
+      '<button class="ws-act" id="agNew" title="New event">＋</button>' +
       '<button class="ws-act" id="agPick" title="Choose calendars">⚙</button>' +
     '</div>' +
     (allDay.length ? '<div class="ag-allday">' + allDay.map((e) =>
@@ -6527,6 +6548,7 @@ async function renderAgenda() {
     '</div>';
 
   $('#agPick').onclick = openCalendarPicker;
+  $('#agNew').onclick = agendaNewEvent;
   el.querySelectorAll('[data-ev]').forEach((b) => {
     b.onclick = () => {
       const e = calEvents.find((x) => x.id === b.dataset.ev);
@@ -6553,6 +6575,7 @@ function openEventSheet(e) {
       (untilStart > 5 ? '<button class="btn-primary sm" id="esFocus">🎯 Focus ' + untilStart + 'm until this</button>' : '') +
       '<button class="btn-ghost sm" id="esTask">＋ Task</button>' +
       '<button class="btn-ghost sm" id="esDoc">📄 Notes doc</button>' +
+      '<button class="btn-ghost sm" id="esEdit">✎ Edit</button>' +
     '</div>';
   m.classList.remove('hidden');
 
@@ -6570,6 +6593,11 @@ function openEventSheet(e) {
     await createTaskOn(iso(current), e.title, { note: 'From calendar · ' + hhmm(s) });
     render(); flash('📌 Added to today');
   };
+  $('#esEdit').onclick = async () => {
+    closeEventSheet();
+    await loadCalendarList();
+    openEventEditor(e);
+  };
   $('#esDoc').onclick = async () => {
     closeEventSheet();
     const title = e.title;
@@ -6580,6 +6608,156 @@ function openEventSheet(e) {
   };
 }
 function closeEventSheet() { $('#eventSheet').classList.add('hidden'); }
+
+
+// ---- managing events -----------------------------------------------------
+// Writes land in the calendar macOS already syncs, so an event created here
+// shows up in Google Calendar without this app holding any credentials.
+async function saveEvent(payload) {
+  const editing = !!payload.id;
+  try {
+    const res = await fetch('/api/calendar/event', {
+      method: editing ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok || r.error) return { error: r.error || 'save failed' };
+    return { ok: true, id: r.id, calendar: r.calendar };
+  } catch { return { error: 'offline' }; }
+}
+async function removeEvent(id) {
+  try {
+    const res = await fetch('/api/calendar/event?id=' + encodeURIComponent(id), { method: 'DELETE' });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok || r.error) return { error: r.error || 'delete failed' };
+    return { ok: true };
+  } catch { return { error: 'offline' }; }
+}
+
+// Local <input type="datetime-local"> value for a Date, and back again.
+function dtLocal(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+    'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+let editingEventId = null;
+function openEventEditor(existing, seed) {
+  editingEventId = existing ? existing.id : null;
+  const now = new Date();
+  const start = existing ? evStart(existing)
+    : (seed && seed.start) ? seed.start
+    : new Date(Math.ceil(now.getTime() / (15 * 60000)) * 15 * 60000);   // next quarter hour
+  const end = existing ? evEnd(existing) : new Date(start.getTime() + 30 * 60000);
+  const writable = calList.filter((c) => c.allowsModify);
+  const currentCal = existing ? existing.calendarId : (writable[0] || {}).id;
+
+  $('#eeBody').innerHTML =
+    '<h3 class="ee-h">' + (existing ? 'Edit event' : 'New event') + '</h3>' +
+    '<label class="ld-label" for="eeTitle">Title</label>' +
+    '<input class="ld-input" id="eeTitle" value="' + escapeHtml(existing ? existing.title : (seed && seed.title) || '') + '" placeholder="What is it?" />' +
+    '<div class="ld-row">' +
+      '<div><label class="ld-label" for="eeStart">Starts</label><input class="ld-input" type="datetime-local" id="eeStart" value="' + dtLocal(start) + '"></div>' +
+      '<div><label class="ld-label" for="eeEnd">Ends</label><input class="ld-input" type="datetime-local" id="eeEnd" value="' + dtLocal(end) + '"></div>' +
+    '</div>' +
+    '<label class="ld-label" for="eeLoc">Location</label>' +
+    '<input class="ld-input" id="eeLoc" value="' + escapeHtml(existing ? existing.location : '') + '" placeholder="Room, link, anywhere" />' +
+    '<label class="ld-label" for="eeNotes">Notes</label>' +
+    '<textarea class="ld-input" id="eeNotes" rows="3" placeholder="Anything worth remembering">' + escapeHtml(existing ? existing.notes : (seed && seed.notes) || '') + '</textarea>' +
+    (existing
+      ? '<div class="ee-cal">In <b>' + escapeHtml(existing.calendar) + '</b></div>'
+      : '<label class="ld-label" for="eeCal">Calendar</label><select class="ld-input" id="eeCal">' +
+        (writable.length ? writable.map((c) =>
+          '<option value="' + escapeHtml(c.id) + '"' + (c.id === currentCal ? ' selected' : '') + '>' +
+          escapeHtml(c.title) + '</option>').join('')
+          : '<option value="">Default calendar</option>') + '</select>') +
+    '<div class="ee-err" id="eeErr"></div>' +
+    '<div class="ee-acts">' +
+      (existing ? '<button class="btn-danger" id="eeDelete">Delete</button>' : '') +
+      '<button class="btn-ghost" id="eeCancel">Cancel</button>' +
+      '<button class="btn-primary" id="eeSave">' + (existing ? 'Save' : 'Add event') + '</button>' +
+    '</div>';
+  $('#eventEditor').classList.remove('hidden');
+  setTimeout(() => $('#eeTitle').focus(), 30);
+
+  // Moving the start drags the end with it, keeping the duration. Tracking the
+  // duration itself (rather than the previous start) means the two fields can
+  // be edited in any order without the end drifting — deriving it from a stale
+  // "last start" could push the end hours out.
+  let durationMs = Math.max(60000, end - start);
+  const readDuration = () => {
+    const s2 = new Date($('#eeStart').value), e2 = new Date($('#eeEnd').value);
+    if (!isNaN(s2) && !isNaN(e2) && e2 > s2) durationMs = e2 - s2;
+  };
+  $('#eeEnd').onchange = readDuration;          // the user has redefined it
+  $('#eeStart').onchange = () => {
+    const s2 = new Date($('#eeStart').value);
+    if (isNaN(s2)) return;
+    $('#eeEnd').value = dtLocal(new Date(s2.getTime() + durationMs));
+  };
+
+  const err = (m) => { $('#eeErr').textContent = m; $('#eeErr').style.display = m ? 'block' : 'none'; };
+  err('');
+
+  $('#eeCancel').onclick = closeEventEditor;
+  $('#eeSave').onclick = async () => {
+    const title = $('#eeTitle').value.trim();
+    if (!title) return err('Give it a title.');
+    const s = new Date($('#eeStart').value), e = new Date($('#eeEnd').value);
+    if (isNaN(s) || isNaN(e)) return err('Those dates do not look right.');
+    if (e <= s) return err('It has to end after it starts.');
+    $('#eeSave').disabled = true;
+    const payload = {
+      id: editingEventId || undefined, title,
+      start: $('#eeStart').value, end: $('#eeEnd').value,
+      location: $('#eeLoc').value.trim(), notes: $('#eeNotes').value.trim(),
+    };
+    const sel = $('#eeCal');
+    if (!editingEventId && sel && sel.value) payload.calendarId = sel.value;
+    const r = await saveEvent(payload);
+    $('#eeSave').disabled = false;
+    if (r.error) {
+      return err(r.error === 'not-granted'
+        ? 'Calendar access is needed to save. Grant Full Access in System Settings.'
+        : r.error);
+    }
+    closeEventEditor();
+    flash(editingEventId ? '📅 Event updated' : '📅 Added to ' + (r.calendar || 'your calendar'));
+    logActivity('calendar-event', (editingEventId ? 'Updated' : 'Added') + ' “' + title + '” in the calendar', {});
+    calCacheBust();
+    await renderAgenda();
+    if (!$('#calendarModal').classList.contains('hidden')) loadCalendar();
+  };
+  const del = $('#eeDelete');
+  if (del) del.onclick = async () => {
+    if (!confirm('Delete “' + existing.title + '” from your calendar?')) return;
+    const r = await removeEvent(existing.id);
+    if (r.error) return err(r.error === 'not-granted'
+      ? 'Calendar access is needed to delete. Grant Full Access in System Settings.' : r.error);
+    closeEventEditor();
+    flash('Event deleted');
+    calCacheBust();
+    await renderAgenda();
+    if (!$('#calendarModal').classList.contains('hidden')) loadCalendar();
+  };
+}
+function closeEventEditor() { $('#eventEditor').classList.add('hidden'); editingEventId = null; }
+
+// A new event defaults to the day being viewed, at the next quarter hour if
+// that day is today and otherwise at 9am.
+async function agendaNewEvent() {
+  await loadCalendarList();
+  const viewing = new Date(current);
+  let start;
+  if (isToday(viewing)) {
+    const now = new Date();
+    start = new Date(Math.ceil(now.getTime() / (15 * 60000)) * 15 * 60000);
+  } else {
+    start = new Date(viewing.getFullYear(), viewing.getMonth(), viewing.getDate(), 9, 0, 0, 0);
+  }
+  openEventEditor(null, { start });
+}
 
 // ---- calendar picker ----
 async function openCalendarPicker() {
@@ -8237,6 +8415,8 @@ if (window.tn && window.tn.onCapture) {
 
 $('#esClose').onclick = closeEventSheet;
 $('#eventSheet').onclick = (e) => { if (e.target.id === 'eventSheet') closeEventSheet(); };
+$('#eeClose').onclick = closeEventEditor;
+$('#eventEditor').onclick = (e) => { if (e.target.id === 'eventEditor') closeEventEditor(); };
 $('#cpClose').onclick = closeCalendarPicker;
 $('#calPicker').onclick = (e) => { if (e.target.id === 'calPicker') closeCalendarPicker(); };
 
