@@ -1298,6 +1298,12 @@
   @media (max-width: 720px) { .tm-links { grid-template-columns: 1fr; } }
 
   /* ==================== RESPONSIVE ==================== */
+  @media (max-width: 860px) {
+    /* A hidden horizontal scroller is a poor way to reach half the app, so on
+       narrow windows the nav wraps onto as many rows as it needs. */
+    .mainnav { flex-wrap: wrap; overflow-x: visible; }
+    .nav-btn { flex: 1 1 auto; justify-content: center; }
+  }
   @media (max-width: 720px) {
     .page-inner { padding: 26px 16px 100px; }
     .page-head h2 { font-size: 22px; }
@@ -1518,13 +1524,22 @@
   .ws-side, .ws-rail { display: flex; flex-direction: column; min-height: 0;
     background: rgba(255,255,255,.022); border-right: 1px solid var(--line); }
   .ws-rail { border-right: none; border-left: 1px solid var(--line); }
-  .ws.side-hidden { grid-template-columns: 0 minmax(0,1fr) 224px; }
-  .ws.side-hidden .ws-side { display: none; }
-  .ws.rail-hidden { grid-template-columns: 250px minmax(0,1fr) 0; }
-  .ws.rail-hidden .ws-rail { display: none; }
-  .ws.side-hidden.rail-hidden { grid-template-columns: 0 minmax(0,1fr) 0; }
-  .ws.zen { grid-template-columns: 0 minmax(0,1fr) 0; }
-  .ws.zen .ws-side, .ws.zen .ws-rail, .ws.zen .ws-tabs { display: none; }
+  /* These must out-specify `#page-docs .ws` above, hence the id prefix —
+     without it the base three-column template wins and the writing surface
+     gets squeezed into the sidebar's column. A hidden pane leaves the grid
+     entirely, so each template lists only the columns still in flow. */
+  #page-docs .ws.side-hidden { grid-template-columns: minmax(0,1fr) 224px; }
+  #page-docs .ws.side-hidden .ws-side { display: none; }
+  #page-docs .ws.rail-hidden { grid-template-columns: 250px minmax(0,1fr); }
+  #page-docs .ws.rail-hidden .ws-rail { display: none; }
+  #page-docs .ws.side-hidden.rail-hidden { grid-template-columns: minmax(0,1fr); }
+  #page-docs .ws.zen { grid-template-columns: minmax(0,1fr); }
+  #page-docs .ws.zen .ws-side, #page-docs .ws.zen .ws-rail, #page-docs .ws.zen .ws-tabs { display: none; }
+  /* With the tab strip hidden there is nothing holding the bar clear of the
+     frameless window's traffic lights, so the title would sit under them. */
+  #page-docs .ws.zen .ws-bar { padding-top: 34px; -webkit-app-region: drag; }
+  #page-docs .ws.zen .ws-bar > * { -webkit-app-region: no-drag; }
+  #page-docs .ws.zen .ws-editor { padding-top: 12px; }
 
   .ws-side-head { display: flex; align-items: center; gap: 8px; padding: 40px 14px 10px; -webkit-app-region: drag; }
   .ws-side-head > * { -webkit-app-region: no-drag; }
@@ -1599,6 +1614,7 @@
     font-family: inherit; font-size: 12px; padding: 6px 10px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
   .ws-act:hover { color: var(--text); background: var(--panel-2); }
   .ws-act.on { color: #f5c26b; border-color: rgba(245,166,35,.4); }
+  .ws.zen .ws-act-rail { display: none; }
   .ws-status { font-size: 11px; color: var(--muted); flex-shrink: 0; min-width: 78px; text-align: right;
     transition: color var(--t-base); }
   .ws-status.saving { color: #f5c26b; }
@@ -1754,19 +1770,25 @@
      ===================================================================== */
   @media (max-width: 1080px) {
     #page-docs .ws { grid-template-columns: 220px minmax(0,1fr); }
+    /* Closed drawer: pushed off-canvas and taken out of the tab order. */
+    .ws-rail { visibility: hidden; }
+    #page-docs .ws.rail-open .ws-rail { visibility: visible; }
     .ws-rail { position: fixed; top: 0; right: 0; bottom: 0; width: 260px; z-index: 8;
       background: #101219; box-shadow: -12px 0 40px rgba(0,0,0,.5); transform: translateX(100%);
       transition: transform var(--t-base) var(--ease-out); }
-    .ws.rail-open .ws-rail { display: flex; transform: none; }
-    .ws.rail-hidden .ws-rail { display: flex; }
+    #page-docs .ws.rail-open .ws-rail { display: flex; transform: none; }
+    #page-docs .ws.rail-hidden .ws-rail { display: flex; }
   }
   @media (max-width: 760px) {
     #page-docs .ws { grid-template-columns: minmax(0,1fr); }
+    /* Closed drawer: off-canvas and out of the tab order until it is opened. */
+    .ws-side { visibility: hidden; }
+    #page-docs .ws.side-open .ws-side, #page-docs .ws.side-hidden .ws-side { visibility: visible; }
     .ws-side { position: fixed; top: 0; left: 0; bottom: 0; width: 264px; z-index: 9;
       background: #101219; box-shadow: 12px 0 40px rgba(0,0,0,.5); transform: translateX(-100%);
       transition: transform var(--t-base) var(--ease-out); }
-    .ws.side-open .ws-side { display: flex; transform: none; }
-    .ws.side-hidden .ws-side { display: flex; }
+    #page-docs .ws.side-open .ws-side { display: flex; transform: none; }
+    #page-docs .ws.side-hidden .ws-side { display: flex; }
     .ws-side-toggle { display: grid; place-items: center; position: absolute; top: 12px; left: 12px;
       z-index: 7; width: 34px; height: 34px; background: var(--panel); border: 1px solid var(--line);
       color: var(--text); border-radius: 9px; cursor: pointer; }
@@ -2122,7 +2144,6 @@
 
   <div class="resurface" id="resurface" style="display:none"></div>
   <div class="inboxnudge" id="inboxNudge" style="display:none"></div>
-  <div class="contstrip" id="continueStrip" style="display:none"></div>
   <div class="dayhints" id="dayHints" style="display:none"></div>
   <div class="learn-today" id="learnTodayCard"></div>
 
@@ -2783,12 +2804,19 @@ async function load() {
   const data = await (await fetch('/api/tasks?date=' + iso(current))).json();
   tasks = (data.tasks || []).map(normalize);
 
-  // Carry over unfinished tasks from the most recent prior day —
-  // only into a fresh, unopened day that is today or later.
-  const isFresh = !days.includes(iso(current));
+  // Carry over unfinished tasks from the most recent prior day.
+  // An *empty* day file must not block this: one can appear from a stray save,
+  // and then that day would show a blank board forever. So the trigger is "no
+  // tasks on a day that is today or later", not "no file". A day the user
+  // emptied on purpose sets `noCarry` and is left alone.
   const todayMidnight = new Date(new Date().toDateString());
   const curMidnight = new Date(current.toDateString());
-  if (isFresh && tasks.length === 0 && curMidnight >= todayMidnight) {
+  const carryable = tasks.length === 0 && curMidnight >= todayMidnight;
+  let preMeta = null;
+  if (carryable) {
+    try { preMeta = (await (await fetch('/api/meta?date=' + iso(current))).json()).meta || {}; } catch { preMeta = {}; }
+  }
+  if (carryable && !preMeta.noCarry) {
     const carried = await carryForward(days);
     if (carried.length) { tasks = carried; save(); }
   }
@@ -3055,19 +3083,25 @@ if (DESKTOP) {
 
 
 async function carryForward(days) {
-  const prior = days.filter((d) => d < iso(current)).sort();
-  if (!prior.length) return [];
-  const src = prior[prior.length - 1];
-  const r = await (await fetch('/api/tasks?date=' + src)).json();
-  return (r.tasks || [])
-    .map(normalize)
-    .filter((t) => t.status !== 'done')
-    .map((t) => ({
+  const prior = days.filter((d) => d < iso(current)).sort().reverse();
+  // Walk back to the most recent day that actually has unfinished work. An
+  // empty day file in between must not swallow the carry.
+  for (const src of prior.slice(0, 14)) {
+    let arr = [];
+    try { arr = ((await (await fetch('/api/tasks?date=' + src)).json()).tasks || []); } catch { continue; }
+    const open = arr.map(normalize).filter((t) => t.status !== 'done');
+    if (!open.length) continue;
+    return open.map((t) => ({
       id: uid(), text: t.text, status: t.status, people: t.people.slice(), carried: true,
       carryCount: (t.carryCount || 0) + 1,
       estimateMin: t.estimateMin || null, note: t.note || '', pickupDate: t.pickupDate || null,
       createdAt: Date.now(), doneAt: null,
+      // Relationships travel with the task — a carried task is the same work.
+      projectId: t.projectId || null, learningId: t.learningId || null,
+      dependsOn: (t.dependsOn || []).slice(),
     }));
+  }
+  return [];
 }
 
 let saveTimer;
@@ -3539,7 +3573,13 @@ $('#tmEstUnit').onchange = tmCommitEst;
 $('#tmDelete').onclick = () => {
   const t = editingTask(); if (!t) return;
   const card = document.querySelector('.card[data-id="' + t.id + '"]');
-  const removeIt = () => { tasks = tasks.filter((x) => x.id !== t.id); closeTaskModal(); render(); save(); };
+  const removeIt = () => {
+    tasks = tasks.filter((x) => x.id !== t.id);
+    // Clearing the last task is a deliberate "this day is empty" — remember it
+    // so the next load does not helpfully carry everything back in.
+    if (!tasks.length) { meta.noCarry = true; saveMeta(); }
+    closeTaskModal(); render(); save();
+  };
   if (card) leaveThen(card, removeIt); else removeIt();
 };
 document.querySelectorAll('#tmStatus button').forEach((b) => {
@@ -4660,6 +4700,7 @@ function renderDocSurface() {
     '</div>' +
     '<button class="ws-act' + (d.pinned ? ' on' : '') + '" id="docPin" title="Pin">' + (d.pinned ? '📌' : '📍') + '</button>' +
     '<button class="ws-act" id="docImg" title="Insert image">🖼</button>' +
+    '<button class="ws-act ws-act-rail" id="docRailBtn" title="Outline / info / links">▤</button>' +
     '<button class="ws-act" id="docZenBtn" title="Distraction-free writing (⌘.)">⛶</button>' +
     '<button class="ws-act" id="docMore" title="More actions">⋯</button>' +
     '<span class="ws-status" id="docStatus"></span>';
@@ -4679,6 +4720,15 @@ function renderDocSurface() {
     renderDocSurface(); renderDocTree();
   };
   $('#docImg').onclick = () => $('#docImgPicker').click();
+  $('#docRailBtn').onclick = () => {
+    // Under 1080px the panel is an overlay drawer, so it opens rather than
+    // collapsing a column that is no longer in the layout.
+    const drawer = innerWidth <= 1080;
+    wsEl().classList.toggle(drawer ? 'rail-open' : 'rail-hidden');
+    $('#docRailBtn').classList.toggle('on', drawer
+      ? wsEl().classList.contains('rail-open')
+      : !wsEl().classList.contains('rail-hidden'));
+  };
   $('#docZenBtn').onclick = toggleDocZen;
   $('#docMore').onclick = openDocMenu;
 }
@@ -5884,7 +5934,6 @@ function renderInboxPage() {
 // Compact strips, not another dashboard.
 // =====================================================================
 function renderTodayExtras() {
-  renderContinueStrip();
   renderDayHints();
   renderResurfaceCard();
   renderInboxNudge();
