@@ -36,6 +36,16 @@
     padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,.05); margin-bottom: 9px; min-height: 27px; }
   .track.hidden { display: none; }
   .track-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vol { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; -webkit-app-region: no-drag; }
+  .vol.hidden { display: none; }
+  .vol button { min-width: 26px; height: 24px; padding: 0; font-size: 11px; background: none; border: none; }
+  .vol button:hover { background: rgba(255,255,255,.1); }
+  /* The visible track stays thin while the control keeps a grabbable height. */
+  .vol input { -webkit-appearance: none; appearance: none; flex: 1; height: 16px;
+    background: transparent; cursor: pointer; -webkit-app-region: no-drag; }
+  .vol input::-webkit-slider-runnable-track { height: 4px; border-radius: 99px; background: rgba(255,255,255,.22); }
+  .vol input::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%;
+    background: #1db954; margin-top: -3.5px; cursor: pointer; }
   .ctrls { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: auto; -webkit-app-region: no-drag; }
   button { -webkit-app-region: no-drag; background: rgba(255,255,255,.07); border: 1px solid var(--line);
     color: var(--text); font-family: inherit; font-size: 12px; border-radius: 8px; cursor: pointer;
@@ -56,6 +66,10 @@
   <div class="timer" id="timer">00:00</div>
   <div class="task" id="task"></div>
   <div class="track hidden" id="track"><span>🎧</span><span class="track-name" id="trackName"></span></div>
+  <div class="vol hidden" id="volRow">
+    <button id="mute" title="Mute / unmute">🔊</button>
+    <input type="range" id="vol" min="0" max="100" value="70" aria-label="Volume" />
+  </div>
   <div class="ctrls" id="ctrls">
     <button class="primary" id="toggle" title="Pause / Resume">⏸</button>
     <button class="end" id="end" title="End focus">■</button>
@@ -69,7 +83,9 @@
   const $ = (s) => document.querySelector(s);
   // The mini window holds NO session of its own — it renders the timestamps
   // the main window sends and derives elapsed time exactly the same way.
-  let state = { active: false, accumulatedSec: 0, runningSince: null, label: '', track: '', playing: false };
+  let state = { active: false, accumulatedSec: 0, runningSince: null, label: '', track: '', playing: false, volume: null };
+  // While the user is dragging, their value wins over incoming pushes.
+  let volDragging = false;
 
   function elapsed() {
     return (state.accumulatedSec || 0) + (state.runningSince ? (Date.now() - state.runningSince) / 1000 : 0);
@@ -92,6 +108,14 @@
     if (state.track) { t.classList.remove('hidden'); $('#trackName').textContent = state.track; }
     else t.classList.add('hidden');
     $('#play').textContent = state.playing ? '⏸' : '▶';
+
+    // Volume only makes sense when there is something playing to control.
+    const hasVol = !!state.track && typeof state.volume === 'number';
+    $('#volRow').classList.toggle('hidden', !hasVol);
+    if (hasVol && !volDragging) {
+      $('#vol').value = state.volume;
+      $('#mute').textContent = state.volume === 0 ? '🔇' : state.volume < 45 ? '🔉' : '🔊';
+    }
   }
   setInterval(paint, 1000);
 
@@ -104,6 +128,44 @@
     $('#prev').onclick   = () => send('prev');
     $('#play').onclick   = () => send('playpause');
     $('#next').onclick   = () => send('next');
+
+    // Volume is applied by the main window, like every other control here, so
+    // there is still exactly one music player.
+    let volTimer = null;
+    const pushVol = (v) => {
+      clearTimeout(volTimer);
+      volTimer = setTimeout(() => window.tn.control('volume:' + v), 110);
+    };
+    // `volDragging` suppresses incoming pushes while the user is adjusting.
+    // It also expires on its own: a pointerup outside the window or a
+    // keyboard adjustment would otherwise leave the slider stuck, ignoring
+    // every later update.
+    let volRelease = null;
+    const holdVol = () => {
+      volDragging = true;
+      clearTimeout(volRelease);
+      volRelease = setTimeout(() => { volDragging = false; }, 700);
+    };
+    $('#vol').oninput = () => {
+      holdVol();
+      const v = +$('#vol').value;
+      state.volume = v;
+      $('#mute').textContent = v === 0 ? '🔇' : v < 45 ? '🔉' : '🔊';
+      pushVol(v);
+    };
+    const releaseVol = () => { clearTimeout(volRelease); volDragging = false; };
+    $('#vol').onchange = releaseVol;
+    $('#vol').onpointerup = releaseVol;
+    $('#vol').onblur = releaseVol;
+    let lastVol = 70;
+    $('#mute').onclick = () => {
+      const cur = +$('#vol').value;
+      const next = cur === 0 ? (lastVol || 70) : 0;
+      if (cur !== 0) lastVol = cur;
+      $('#vol').value = next; state.volume = next;
+      $('#mute').textContent = next === 0 ? '🔇' : next < 45 ? '🔉' : '🔊';
+      pushVol(next);
+    };
   }
   paint();
 </script>

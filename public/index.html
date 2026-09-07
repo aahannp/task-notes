@@ -3058,6 +3058,7 @@ function focusStatePayload() {
     track: spotState && spotState.running && spotState.name
       ? (spotState.name + (spotState.artist ? ' — ' + spotState.artist : '')) : '',
     playing: !!(spotState && spotState.state === 'playing'),
+    volume: (spotState && typeof spotState.volume === 'number') ? spotState.volume : null,
   };
 }
 // Broadcast the session. The native shell opens the companion when a session
@@ -3077,6 +3078,7 @@ if (DESKTOP) {
     else if (action === 'prev') spotifyControl('previous');
     else if (action === 'next') spotifyControl('next');
     else if (action === 'playpause') spotifyControl('playpause');
+    else if (action.indexOf('volume:') === 0) setSpotifyVolume(parseInt(action.slice(7), 10));
     syncMini();
   });
 }
@@ -7534,7 +7536,10 @@ function renderSpotify() {
   paintSpotProgress();
   $('#fmSpotName').textContent = `${spotState.name || ''} · ${spotState.artist || ''}`;
   $('#fmSpotPlay').textContent = playing ? '⏸' : '▶';
-  if (document.activeElement !== $('#spotVolume') && typeof spotState.volume === 'number') $('#spotVolume').value = spotState.volume;
+  if (document.activeElement !== $('#spotVolume') && typeof spotState.volume === 'number' &&
+      Date.now() - spotVolSetAt > 1500) {
+    $('#spotVolume').value = spotState.volume;
+  }
   if (spotState.uri !== lastLikedUri) { lastLikedUri = spotState.uri; refreshLiked(); }
 }
 function paintSpotProgress() {
@@ -7590,11 +7595,21 @@ $('#spotPrev').onclick = () => spotifyControl('previous');
 $('#spotPlay').onclick = () => spotifyControl('playpause');
 $('#spotNext').onclick = () => spotifyControl('next');
 let spotVolTimer;
-$('#spotVolume').oninput = () => {
-  const v = $('#spotVolume').value;
+// Both the now-playing card and the Focus companion route through here, so
+// volume has a single implementation and both surfaces stay in step.
+let spotVolSetAt = 0;
+async function setSpotifyVolume(v) {
+  v = Math.max(0, Math.min(100, Math.round(v || 0)));
+  spotVolSetAt = Date.now();
+  if (spotState) spotState.volume = v;
+  if ($('#spotVolume') && document.activeElement !== $('#spotVolume')) $('#spotVolume').value = v;
   clearTimeout(spotVolTimer);
-  spotVolTimer = setTimeout(() => { fetch('/api/spotify?action=volume&value=' + v, { method: 'POST' }); }, 120);
-};
+  spotVolTimer = setTimeout(async () => {
+    try { await fetch('/api/spotify?action=volume&value=' + v, { method: 'POST' }); } catch {}
+    if (typeof syncMini === 'function') syncMini();
+  }, 120);
+}
+$('#spotVolume').oninput = () => setSpotifyVolume($('#spotVolume').value);
 // Click the scrubber to seek
 $('#spotProgWrap').onclick = (e) => {
   if (!spotState.durationSec) return;

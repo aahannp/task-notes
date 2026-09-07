@@ -18,7 +18,7 @@ let mini;         // floating Focus companion
 let appPort = 0;
 
 // --- mini window position/size memory -------------------------------------
-const MINI_W = 260, MINI_H = 168;
+const MINI_W = 268, MINI_H = 200;   // 200 leaves room for the volume row
 function miniStateFile() { return path.join(process.env.TASKNOTES_DATA, 'mini-window.json'); }
 function readMiniState() {
   try { return JSON.parse(fs.readFileSync(miniStateFile(), 'utf8')); } catch { return null; }
@@ -62,7 +62,7 @@ function createMini() {
   const opts = {
     width: (saved && saved.width) || MINI_W,
     height: (saved && saved.height) || MINI_H,
-    minWidth: 220, minHeight: 140,
+    minWidth: 230, minHeight: 176,
     maxWidth: 460, maxHeight: 300,
     x: saved ? saved.x : disp.x + disp.width - MINI_W - 28,
     y: saved ? saved.y : disp.y + 42,
@@ -90,9 +90,11 @@ function createMini() {
   if (!nearest) { opts.x = disp.x + disp.width - opts.width - 28; opts.y = disp.y + 42; }
 
   mini = new BrowserWindow(opts);
-  mini.setAlwaysOnTop(true, 'floating');
-  // Visible on every Space, and over full-screen apps.
-  mini.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // 'screen-saver' floats above full-screen apps on its own. The obvious
+  // alternative, setVisibleOnAllWorkspaces(), changes the window's collection
+  // behaviour and makes AppKit re-zoom the *main* window to fill the work area
+  // — which is why the app used to jump out of proportion when this opened.
+  mini.setAlwaysOnTop(true, 'screen-saver');
   mini.loadURL(`http://127.0.0.1:${appPort}/mini.html`);
   mini.on('moved', saveMiniState);
   mini.on('resized', saveMiniState);
@@ -154,8 +156,9 @@ function createCaptureWindow() {
       additionalArguments: ['--tn-capture'],
     },
   });
-  capWin.setAlwaysOnTop(true, 'floating');
-  capWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // Same reasoning as the Focus companion: raise the level rather than touch
+  // collection behaviour, so opening this never resizes the main window.
+  capWin.setAlwaysOnTop(true, 'screen-saver');
   capWin.loadURL(`http://127.0.0.1:${appPort}/capture.html`);
   capWin.once('ready-to-show', () => { capWin.show(); capWin.focus(); });
   // Dismiss on blur: this is a transient prompt, not a window to manage.
