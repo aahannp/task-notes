@@ -144,6 +144,20 @@ It's the *same* session — one timer, one music player. Pause in the mini windo
 
 <br>
 
+## Your real calendar
+
+Task Notes reads the calendars already on your Mac — including a work Google Workspace account added through **System Settings → Internet Accounts**. That route matters: macOS does the OAuth through Apple's own verified client, so it works on managed accounts where a third-party app would be blocked outright.
+
+Today's meetings sit above the board: what's on, what's next, how much of the day is already spoken for. All-day items are separated out, and declined or cancelled invitations don't clutter it.
+
+Open a meeting and it becomes something you can act on — **focus until it starts** (the timer counts down to it), turn it into a task, or spin up a notes document pre-filled with the time, organiser and an actions checklist. The month grid marks days that have meetings, the Weekly Review reports hours spent in them, and a meeting-heavy day quietly changes the day's suggestions from deep work to something that fits between calls.
+
+It is **read-only and local**: the app never writes to a calendar, and event data never leaves the machine. Pick which calendars are included from the ⚙ on the agenda.
+
+Under the hood this is a small compiled EventKit helper (`helpers/tn-calendar`), not AppleScript — driving Calendar.app over Apple events takes about eleven seconds for a single week even when it returns nothing, which is far too slow to sit behind a request. EventKit answers in milliseconds and doesn't need Calendar.app running. macOS will ask for Calendar permission the first time; **Full Access** is required, since "Add Events Only" cannot read.
+
+<br>
+
 ## Calendar & day context
 
 Mark days as working, off, vacation or holiday; track home vs office and login/logout. The rest of the app uses that context — for example, Learning nudges you more gently on days you actually have room to breathe.
@@ -244,6 +258,7 @@ Deliberately small and boring so it stays hackable:
 - **`server.js`** — a zero-dependency Node HTTP server. Serves the frontend and a small JSON API over the files above.
 - **`public/index.html`** — the entire frontend. One file: markup, styles and logic, including a dependency-free markdown parser, sanitiser and highlighter.
 - **`public/mini.html` / `public/capture.html`** — the two small native companion windows.
+- **`helpers/tn-calendar.swift`** — a read-only EventKit helper that prints JSON; built by `npm run build:helper`, which `npm run dist` runs for you.
 - **`main.js` / `preload.js`** — the Electron shell for the macOS app and the Focus companion window, talking over a tiny explicit IPC bridge.
 
 <br>

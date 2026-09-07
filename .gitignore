@@ -8,3 +8,6 @@ dist-app/
 # Logs & OS cruft
 *.log
 .DS_Store
+
+# Compiled calendar helper — rebuilt by `npm run build:helper`
+helpers/tn-calendar

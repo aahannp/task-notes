@@ -383,6 +383,57 @@ function readBody(req, cb, limit) {
   req.on('end', () => { if (!over) cb(null, body); });
 }
 
+// ---------------------------------------------------------------------------
+// CALENDAR — read-only view of the user's real calendars via EventKit.
+//
+// Driving Calendar.app over Apple events takes ~11s for one week even when it
+// returns nothing, so a small compiled helper (helpers/tn-calendar) answers the
+// same query in milliseconds and works whether or not Calendar.app is running.
+// Nothing here writes to a calendar, and no event data leaves the machine.
+// ---------------------------------------------------------------------------
+function calendarHelperPath() {
+  // Packaged, the binary sits in the app bundle's Resources; in development it
+  // is next to the source.
+  const candidates = [
+    process.env.TASKNOTES_CAL_HELPER,
+    process.resourcesPath ? path.join(process.resourcesPath, 'helpers', 'tn-calendar') : null,
+    path.join(__dirname, 'helpers', 'tn-calendar'),
+  ].filter(Boolean);
+  return candidates.find((p) => { try { return fs.existsSync(p); } catch { return false; } }) || null;
+}
+
+const CAL_TIMEOUT_MS = 25000;
+function runCalendarHelper(args, cb) {
+  const bin = calendarHelperPath();
+  if (!bin) return cb(null, { error: 'helper-missing' });
+  execFile(bin, args, { timeout: CAL_TIMEOUT_MS, maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => {
+    let parsed = null;
+    try { parsed = JSON.parse(String(stdout || '').trim()); } catch {}
+    if (parsed) {
+      // Normalise the helper's message into a stable code the UI can branch on.
+      if (parsed.error && /not granted/i.test(parsed.error)) parsed.error = 'not-granted';
+      return cb(null, parsed);
+    }
+    // Exit code 2 is our "not granted" signal; anything else is unexpected.
+    if (err && err.killed) return cb(null, { error: 'timeout' });
+    return cb(null, { error: (err && err.code === 2) ? 'not-granted' : 'helper-failed' });
+  });
+}
+
+// Short-lived cache: the agenda is polled, and a fresh EventKit query per poll
+// is wasteful when meetings change on the order of minutes.
+const calCache = new Map();
+const CAL_CACHE_MS = 60 * 1000;
+function calCacheGet(key) {
+  const hit = calCache.get(key);
+  if (hit && Date.now() - hit.at < CAL_CACHE_MS) return hit.value;
+  return null;
+}
+function calCacheSet(key, value) {
+  calCache.set(key, { at: Date.now(), value });
+  if (calCache.size > 60) calCache.delete(calCache.keys().next().value);
+}
+
 function sendJSON(res, code, obj) {
   res.writeHead(code, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(obj));
@@ -943,6 +994,44 @@ const server = http.createServer((req, res) => {
       return sendJSON(res, 200, { ok: true });
     }
     res.writeHead(405); return res.end('Method not allowed');
+  }
+
+  // API: /api/calendar/status  — authorisation state, without prompting
+  if (u.pathname === '/api/calendar/status' && req.method === 'GET') {
+    runCalendarHelper(['--status'], (_e, r) => {
+      const status = r && r.status ? r.status : (r && r.error) || 'unknown';
+      sendJSON(res, 200, { status, available: status === 'authorized', helper: !!calendarHelperPath() });
+    });
+    return;
+  }
+
+  // API: /api/calendar/calendars — which calendars exist (for the picker)
+  if (u.pathname === '/api/calendar/calendars' && req.method === 'GET') {
+    runCalendarHelper(['--list'], (_e, r) => {
+      if (!r || r.error) return sendJSON(res, 200, { calendars: [], error: (r && r.error) || 'unknown' });
+      sendJSON(res, 200, { calendars: r.calendars || [] });
+    });
+    return;
+  }
+
+  // API: /api/calendar/events?from=&to=&ids=
+  if (u.pathname === '/api/calendar/events' && req.method === 'GET') {
+    const from = safeDate(u.searchParams.get('from'));
+    const to = safeDate(u.searchParams.get('to'));
+    if (!from || !to) return sendJSON(res, 400, { error: 'bad range' });
+    const ids = (u.searchParams.get('ids') || '').split(',').filter((x) => /^[A-Za-z0-9-]+$/.test(x));
+    const key = from + '..' + to + '#' + ids.sort().join(',');
+    const cached = calCacheGet(key);
+    if (cached) return sendJSON(res, 200, Object.assign({ cached: true }, cached));
+    const args = ['--from', from, '--to', to];
+    if (ids.length) { args.push('--ids', ids.join(',')); }
+    runCalendarHelper(args, (_e, r) => {
+      if (!r || r.error) return sendJSON(res, 200, { events: [], error: (r && r.error) || 'unknown' });
+      const payload = { events: r.events || [] };
+      calCacheSet(key, payload);
+      sendJSON(res, 200, payload);
+    });
+    return;
   }
 
   // List which dates have task data (exclude .meta.json sidecar files)

@@ -1986,6 +1986,67 @@
     .sr-acts { flex-wrap: wrap; }
   }
 
+
+  /* ---------- calendar agenda ---------- */
+  .agenda { padding: 12px 15px; margin-bottom: 16px; border-radius: 13px;
+    background: var(--panel); border: 1px solid var(--line);
+    animation: riseIn .25s var(--ease-out) backwards; }
+  .agenda.ask, .agenda.clear { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+  .ag-badge { font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .6px;
+    color: #a8bcff; white-space: nowrap; }
+  .ag-msg { font-size: 13px; color: var(--muted); flex: 1; min-width: 160px; }
+  .ag-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 9px; }
+  .ag-sum { font-size: 12px; color: var(--muted); }
+  .ag-next { font-size: 11.5px; color: #f5c26b; margin-left: auto;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46%; }
+  .ag-head .ws-act { padding: 3px 8px; font-size: 11px; }
+  .ag-allday { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .ag-chip { font-size: 11px; color: var(--text); background: rgba(255,255,255,.05);
+    border: 1px solid var(--line); border-left-width: 3px; padding: 3px 9px; border-radius: 6px; }
+  .ag-list { display: flex; flex-direction: column; gap: 3px; }
+  .ag-ev { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    background: none; border: none; color: var(--text); font-family: inherit; font-size: 13px;
+    padding: 7px 8px; border-radius: 8px; cursor: pointer; transition: background var(--t-fast); }
+  .ag-ev:hover { background: var(--panel-2); }
+  .ag-ev.past { opacity: .45; }
+  .ag-ev.now { background: rgba(63,178,127,.12); box-shadow: inset 0 0 0 1px rgba(63,178,127,.3); }
+  .ag-time { font-size: 11.5px; color: var(--muted); width: 62px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .ag-bar { width: 3px; align-self: stretch; border-radius: 2px; flex-shrink: 0; min-height: 16px; }
+  .ag-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ag-loc { font-size: 11px; color: var(--muted); flex-shrink: 0; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; max-width: 28%; }
+  .ag-dur { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  .ag-live { font-size: 9.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .5px;
+    color: #6fd6a4; background: rgba(63,178,127,.18); padding: 2px 6px; border-radius: 20px; flex-shrink: 0; }
+  .cal-dot.m { background: #a8bcff; }
+
+  /* ---------- event sheet / calendar picker ---------- */
+  .sheet { position: fixed; inset: 0; z-index: 110; background: rgba(6,7,11,.7);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    display: grid; place-items: center; padding: 20px; animation: pageIn .18s var(--ease-out); }
+  .sheet-box { position: relative; width: min(470px, 94vw); max-height: 84vh; overflow-y: auto;
+    background: #101219; border: 1px solid var(--line); border-radius: 17px; padding: 26px 28px;
+    box-shadow: var(--shadow); animation: sheetIn .22s var(--ease-out); }
+  .es-cal { font-size: 11px; font-weight: 700; }
+  .es-title { font-size: 20px; font-weight: 750; letter-spacing: -.4px; margin: 6px 0 4px; padding-right: 30px; }
+  .es-when { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+  .es-row { font-size: 13px; color: var(--muted); padding: 4px 0; }
+  .es-row a { color: #9db4ff; }
+  .es-notes { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin-top: 12px;
+    padding: 10px 12px; background: var(--panel); border-radius: 9px; white-space: pre-wrap;
+    max-height: 160px; overflow-y: auto; }
+  .es-acts { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+  .cp-hint { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
+  .cp-row { display: flex; align-items: center; gap: 9px; padding: 8px 4px; font-size: 13.5px; cursor: pointer; }
+  .cp-row input { accent-color: var(--accent); width: 15px; height: 15px; }
+  .cp-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .cp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cp-src { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  @media (max-width: 720px) {
+    .ag-next { margin-left: 0; max-width: 100%; }
+    .ag-loc { display: none; }
+  }
+
 </style>
 </head>
 <body>
@@ -2142,6 +2203,7 @@
 
   <div class="hints"><kbd>N</kbd> add · <kbd>/</kbd> search · <kbd>F</kbd> focus · <kbd>T</kbd> tasks · <kbd>P</kbd> projects · <kbd>L</kbd> learning · <kbd>I</kbd> ideas · <kbd>W</kbd> review · <kbd>C</kbd> calendar · <kbd>←</kbd> <kbd>→</kbd> day</div>
 
+  <div class="agenda" id="agenda" style="display:none"></div>
   <div class="resurface" id="resurface" style="display:none"></div>
   <div class="inboxnudge" id="inboxNudge" style="display:none"></div>
   <div class="dayhints" id="dayHints" style="display:none"></div>
@@ -2557,6 +2619,21 @@
   </div>
 </div>
 
+<div class="sheet hidden" id="eventSheet">
+  <div class="sheet-box" role="dialog" aria-label="Event">
+    <button class="detail-close" id="esClose" title="Close">✕</button>
+    <div id="esBody"></div>
+  </div>
+</div>
+
+<div class="sheet hidden" id="calPicker">
+  <div class="sheet-box" role="dialog" aria-label="Choose calendars">
+    <button class="detail-close" id="cpClose" title="Close">✕</button>
+    <h3 style="margin:0 0 4px;font-size:16px">Calendars</h3>
+    <div id="cpBody"></div>
+  </div>
+</div>
+
 <canvas id="confetti"></canvas>
 
 <div class="saved" id="saved">Saved</div>
@@ -2875,8 +2952,16 @@ function renderMeta() {
 let fmSelectedTask = null;
 let fmProject = null; // { id, title } when focusing on a project/goal
 
+// When focus was started "until" a meeting, the headline number counts down to
+// it instead of up — the useful question is how long you have left.
+let focusUntil = null;
 function focusTimerText() {
   const s = openSession();
+  if (s && focusUntil) {
+    const left = Math.round((focusUntil - Date.now()) / 1000);
+    if (left > 0) return fmtClock(left);
+    focusUntil = null;   // the meeting has started; go back to elapsed
+  }
   return s ? fmtClock(sessionSeconds(s)) : '00:00';
 }
 
@@ -3485,6 +3570,14 @@ function openCalendar() {
 function closeCalendar() { $('#calendarModal').classList.add('hidden'); }
 
 async function loadCalendar() {
+  // Meeting density for the visible month, so the grid shows how busy a day was.
+  try {
+    if (calStatus.available && calRef) {
+      const first = new Date(calRef.getFullYear(), calRef.getMonth(), 1);
+      const last = new Date(calRef.getFullYear(), calRef.getMonth() + 1, 0);
+      calWeek = await loadMonthEvents(iso(first), iso(last));
+    }
+  } catch { calWeek = {}; }
   const y = calRef.getFullYear(), mo = calRef.getMonth();
   const from = iso(new Date(y, mo, 1)), to = iso(new Date(y, mo + 1, 0));
   $('#calMonth').textContent = calRef.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -3518,6 +3611,7 @@ function renderCalendar() {
     const dots = [];
     if (info.total) dots.push('<span class="cal-dot t"></span>');
     if (info.focusSeconds >= 60) dots.push('<span class="cal-dot f"></span>');
+    if (calWeek[ds] && calWeek[ds].count) dots.push('<span class="cal-dot m" title="' + calWeek[ds].count + ' events"></span>');
     const tag = type === 'off' ? (label || 'Off') : '';
     cell.innerHTML = `<span class="cal-num">${day}</span><div class="cal-dots">${dots.join('')}</div><span class="cal-tag">${tag}</span>`;
     cell.onclick = () => { calSel = ds; renderCalendar(); };
@@ -4694,7 +4788,7 @@ function renderDocSurface() {
 
   const d = docById(docActive) || {};
   $('#docBar').innerHTML =
-    '<input class="ws-title" id="docTitle" value="' + escapeHtml(d.title || '') + '" placeholder="Untitled" aria-label="Document title" />' +
+    '<input class="ws-title" id="docTitle" value="' + escapeHtml(d.title || '') + '" placeholder="Untitled" aria-label="Document title" title="' + escapeHtml(d.title || '') + '" />' +
     '<div class="ws-modes" role="group" aria-label="View mode">' +
       ['edit', 'split', 'read'].map((m) =>
         '<button data-mode="' + m + '" class="' + (m === docMode ? 'active' : '') + '">' +
@@ -5662,6 +5756,16 @@ function dayShape() {
 }
 function daySuggestions() {
   const shape = dayShape();
+  // A day already full of meetings is not the day to suggest deep work.
+  const packed = meetingMinutes(calEvents) >= 240;
+  if (packed) {
+    const quick = tasks.filter((t) => t.status === 'todo' && (!t.estimateMin || t.estimateMin <= 30));
+    return { shape: { key: shape.key, line: 'Meeting-heavy day — keep it light.' },
+      items: [
+        quick.length ? { icon: '✓', text: quick.length + ' quick task' + (quick.length > 1 ? 's' : '') + ' between calls', run: () => closePage() } : null,
+        { icon: '📥', text: 'Clear your inbox', run: () => openPage('inbox') },
+      ].filter(Boolean) };
+  }
   const out = [];
   const push = (icon, text, run) => { if (out.length < 3) out.push({ icon, text, run }); };
 
@@ -6180,6 +6284,7 @@ endFocus = function () {
     openFocusWrap(snapshot);
   }
   fmTarget = null;
+  focusUntil = null;
   if (typeof syncMini === 'function') syncMini();
 };
 
@@ -6257,6 +6362,270 @@ function renderDependencyGraph(el, projectId) {
       escapeHtml(t.text.slice(0, 34)) + '</span>' +
       (i < chain.length - 1 ? '<span class="deparrow">↓</span>' : '')).join('') + '</div>').join('');
   el.querySelectorAll('[data-t]').forEach((n) => { n.onclick = () => jumpToTask(n.dataset.d, n.dataset.t); });
+}
+
+
+// =====================================================================
+// CALENDAR — the real meetings, read from the Mac's own calendars.
+// Read-only: the app never writes an event, and nothing leaves the machine.
+// =====================================================================
+let calStatus = { status: 'unknown', available: false, helper: false };
+let calList = [];                     // available calendars
+let calSelected = null;               // ids to include; null = all
+let calEvents = [];                   // events for the viewed day
+let calWeek = {};                     // date -> count, for the month grid
+let calFetching = false;
+
+function loadCalPrefs() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('tasknotes.calendars') || 'null');
+    calSelected = raw && Array.isArray(raw.ids) ? raw.ids : null;
+  } catch { calSelected = null; }
+}
+function saveCalPrefs() {
+  try { localStorage.setItem('tasknotes.calendars', JSON.stringify({ ids: calSelected })); } catch {}
+}
+const calIdsParam = () => (calSelected && calSelected.length ? '&ids=' + calSelected.join(',') : '');
+
+async function refreshCalStatus() {
+  try { calStatus = await (await fetch('/api/calendar/status')).json(); }
+  catch { calStatus = { status: 'unknown', available: false, helper: false }; }
+  return calStatus;
+}
+async function loadCalendarList() {
+  try {
+    const r = await (await fetch('/api/calendar/calendars')).json();
+    calList = r.calendars || [];
+  } catch { calList = []; }
+  return calList;
+}
+async function fetchEvents(from, to) {
+  try {
+    const r = await (await fetch('/api/calendar/events?from=' + from + '&to=' + to + calIdsParam())).json();
+    if (r.error) return { events: [], error: r.error };
+    return { events: r.events || [] };
+  } catch { return { events: [], error: 'offline' }; }
+}
+
+// ---- helpers ----
+function evStart(e) { return new Date(e.start); }
+function evEnd(e) { return new Date(e.end); }
+function evMinutes(e) { return Math.max(0, (evEnd(e) - evStart(e)) / 60000); }
+function hhmm(d) {
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+// Declined invitations and cancellations are not part of your day.
+function realEvents(list) {
+  return (list || []).filter((e) => !e.declined && e.status !== 'canceled');
+}
+function meetingMinutes(list) {
+  return realEvents(list).filter((e) => !e.allDay).reduce((a, e) => a + evMinutes(e), 0);
+}
+function nextMeeting(list) {
+  const now = Date.now();
+  return realEvents(list).filter((e) => !e.allDay && evStart(e).getTime() > now)
+    .sort((a, b) => evStart(a) - evStart(b))[0] || null;
+}
+function currentMeeting(list) {
+  const now = Date.now();
+  return realEvents(list).find((e) => !e.allDay && evStart(e).getTime() <= now && evEnd(e).getTime() > now) || null;
+}
+
+// ---- today's agenda on the board ----
+async function renderAgenda() {
+  const el = $('#agenda'); if (!el) return;
+  const day = iso(current);
+  await refreshCalStatus();
+
+  if (!calStatus.helper) { el.style.display = 'none'; return; }
+
+  if (calStatus.status === 'notDetermined') {
+    el.style.display = '';
+    el.className = 'agenda ask';
+    el.innerHTML =
+      '<span class="ag-badge">📅 Calendar</span>' +
+      '<span class="ag-msg">Show your meetings next to your tasks?</span>' +
+      '<button class="btn-primary sm" id="agConnect">Connect calendar</button>' +
+      '<button class="btn-ghost sm" id="agSkip">Not now</button>';
+    $('#agConnect').onclick = async () => {
+      el.innerHTML = '<span class="ag-badge">📅 Calendar</span><span class="ag-msg">Waiting for macOS to ask for permission…</span>';
+      // The first real query is what triggers the system prompt.
+      await fetchEvents(day, day);
+      await refreshCalStatus();
+      renderAgenda();
+    };
+    $('#agSkip').onclick = () => { try { localStorage.setItem('tasknotes.calskip', '1'); } catch {} el.style.display = 'none'; };
+    try { if (localStorage.getItem('tasknotes.calskip')) el.style.display = 'none'; } catch {}
+    return;
+  }
+
+  if (calStatus.status === 'denied' || calStatus.status === 'restricted' || calStatus.status === 'writeOnly') {
+    el.style.display = '';
+    el.className = 'agenda ask';
+    el.innerHTML =
+      '<span class="ag-badge">📅 Calendar</span>' +
+      '<span class="ag-msg">' + (calStatus.status === 'writeOnly'
+        ? 'Task Notes can add events but not read them — full access is needed to show your meetings.'
+        : 'Calendar access is turned off for Task Notes.') + '</span>' +
+      '<button class="btn-ghost sm" id="agSettings">Open Settings</button>';
+    $('#agSettings').onclick = () => {
+      // Deep-link straight to the right pane rather than describing where it is.
+      window.open('x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars', '_self');
+    };
+    return;
+  }
+
+  if (calFetching) return;
+  calFetching = true;
+  const r = await fetchEvents(day, day);
+  calFetching = false;
+  calEvents = realEvents(r.events);
+
+  if (r.error) { el.style.display = 'none'; return; }
+  if (!calEvents.length) {
+    el.style.display = '';
+    el.className = 'agenda clear';
+    el.innerHTML = '<span class="ag-badge">📅 ' + (isToday(current) ? 'Today' : fmtShort(day)) +
+      '</span><span class="ag-msg">No meetings. The day is yours.</span>' +
+      '<button class="ws-act" id="agPick" title="Choose calendars">⚙</button>';
+    $('#agPick').onclick = openCalendarPicker;
+    return;
+  }
+
+  const now = Date.now();
+  const cur = currentMeeting(calEvents);
+  const next = nextMeeting(calEvents);
+  const mins = meetingMinutes(calEvents);
+  const allDay = calEvents.filter((e) => e.allDay);
+
+  el.style.display = '';
+  el.className = 'agenda';
+  el.innerHTML =
+    '<div class="ag-head">' +
+      '<span class="ag-badge">📅 ' + (isToday(current) ? 'Today' : fmtShort(day)) + '</span>' +
+      '<span class="ag-sum">' + calEvents.length + ' event' + (calEvents.length > 1 ? 's' : '') +
+        (mins ? ' · ' + fmtDur(mins * 60) + ' in meetings' : '') + '</span>' +
+      (next ? '<span class="ag-next">next: ' + escapeHtml(next.title) + ' at ' + hhmm(evStart(next)) + '</span>' : '') +
+      '<button class="ws-act" id="agPick" title="Choose calendars">⚙</button>' +
+    '</div>' +
+    (allDay.length ? '<div class="ag-allday">' + allDay.map((e) =>
+      '<span class="ag-chip" style="border-color:' + (e.color || 'var(--line)') + '">' + escapeHtml(e.title) + '</span>').join('') + '</div>' : '') +
+    '<div class="ag-list">' +
+      calEvents.filter((e) => !e.allDay).map((e) => {
+        const s = evStart(e), en = evEnd(e);
+        const isNow = cur && cur.id === e.id;
+        const past = en.getTime() < now;
+        return '<button class="ag-ev' + (isNow ? ' now' : '') + (past ? ' past' : '') + '" data-ev="' + escapeHtml(e.id) + '">' +
+          '<span class="ag-time">' + hhmm(s) + '</span>' +
+          '<span class="ag-bar" style="background:' + (e.color || '#7c9bff') + '"></span>' +
+          '<span class="ag-title">' + escapeHtml(e.title) + '</span>' +
+          (e.location ? '<span class="ag-loc">' + escapeHtml(e.location.slice(0, 28)) + '</span>' : '') +
+          '<span class="ag-dur">' + fmtDur(evMinutes(e) * 60) + '</span>' +
+          (isNow ? '<span class="ag-live">now</span>' : '') +
+        '</button>';
+      }).join('') +
+    '</div>';
+
+  $('#agPick').onclick = openCalendarPicker;
+  el.querySelectorAll('[data-ev]').forEach((b) => {
+    b.onclick = () => {
+      const e = calEvents.find((x) => x.id === b.dataset.ev);
+      if (e) openEventSheet(e);
+    };
+  });
+}
+
+// A meeting is a thing you can act on: focus until it starts, or turn it into
+// a task / document without retyping it.
+function openEventSheet(e) {
+  const m = $('#eventSheet');
+  const s = evStart(e), en = evEnd(e);
+  const untilStart = Math.round((s.getTime() - Date.now()) / 60000);
+  $('#esBody').innerHTML =
+    '<div class="es-cal" style="color:' + (e.color || 'var(--muted)') + '">● ' + escapeHtml(e.calendar) + '</div>' +
+    '<div class="es-title">' + escapeHtml(e.title) + '</div>' +
+    '<div class="es-when">' + (e.allDay ? 'All day' : hhmm(s) + ' – ' + hhmm(en) + ' · ' + fmtDur(evMinutes(e) * 60)) + '</div>' +
+    (e.location ? '<div class="es-row">📍 ' + escapeHtml(e.location) + '</div>' : '') +
+    (e.organizer ? '<div class="es-row">👤 ' + escapeHtml(e.organizer) + (e.attendees ? ' · ' + e.attendees + ' invited' : '') + '</div>' : '') +
+    (e.url ? '<div class="es-row"><a href="' + escapeHtml(e.url) + '" target="_blank" rel="noopener noreferrer">Join / open link</a></div>' : '') +
+    (e.notes ? '<div class="es-notes">' + escapeHtml(e.notes) + '</div>' : '') +
+    '<div class="es-acts">' +
+      (untilStart > 5 ? '<button class="btn-primary sm" id="esFocus">🎯 Focus ' + untilStart + 'm until this</button>' : '') +
+      '<button class="btn-ghost sm" id="esTask">＋ Task</button>' +
+      '<button class="btn-ghost sm" id="esDoc">📄 Notes doc</button>' +
+    '</div>';
+  m.classList.remove('hidden');
+
+  const f = $('#esFocus');
+  if (f) f.onclick = () => {
+    closeEventSheet();
+    // A meeting is a deadline, not a target — focus on your own work until it.
+    fmTarget = null; fmProject = null; fmSelectedTask = null;
+    focusUntil = s.getTime();
+    openFocusMode();
+    flash('🎯 Focus until ' + hhmm(s));
+  };
+  $('#esTask').onclick = async () => {
+    closeEventSheet();
+    await createTaskOn(iso(current), e.title, { note: 'From calendar · ' + hhmm(s) });
+    render(); flash('📌 Added to today');
+  };
+  $('#esDoc').onclick = async () => {
+    closeEventSheet();
+    const title = e.title;
+    const body = '# ' + title + '\n\n' + (e.allDay ? '' : hhmm(s) + ' – ' + hhmm(en) + '\n\n') +
+      (e.organizer ? 'Organiser: ' + e.organizer + '\n\n' : '') + '## Notes\n\n\n## Actions\n\n- [ ] \n';
+    const d = await createDoc({ title, content: body, tags: ['meeting'] });
+    if (d) { await openPage('docs'); openDocument(d.id); }
+  };
+}
+function closeEventSheet() { $('#eventSheet').classList.add('hidden'); }
+
+// ---- calendar picker ----
+async function openCalendarPicker() {
+  await loadCalendarList();
+  const m = $('#calPicker');
+  const chosen = (c) => !calSelected || calSelected.includes(c.id);
+  $('#cpBody').innerHTML = calList.length
+    ? '<div class="cp-hint">Which calendars should show up in Task Notes?</div>' +
+      calList.map((c) =>
+        '<label class="cp-row"><input type="checkbox" data-cal="' + escapeHtml(c.id) + '"' + (chosen(c) ? ' checked' : '') + '>' +
+        '<span class="cp-dot" style="background:' + (c.color || '#888') + '"></span>' +
+        '<span class="cp-name">' + escapeHtml(c.title) + '</span>' +
+        '<span class="cp-src">' + escapeHtml(c.source || c.type) + '</span></label>').join('')
+    : '<div class="cp-hint">No calendars found on this Mac.</div>';
+  m.classList.remove('hidden');
+  m.querySelectorAll('[data-cal]').forEach((cb) => {
+    cb.onchange = () => {
+      const on = [...m.querySelectorAll('[data-cal]')].filter((x) => x.checked).map((x) => x.dataset.cal);
+      // "Everything ticked" is stored as null so newly added calendars appear.
+      calSelected = on.length === calList.length ? null : on;
+      saveCalPrefs();
+    };
+  });
+}
+function closeCalendarPicker() {
+  $('#calPicker').classList.add('hidden');
+  calCacheBust();
+  renderAgenda();
+  if (!$('#calendarModal').classList.contains('hidden')) loadCalendar();
+}
+// The server caches for a minute; changing the selection changes the key anyway,
+// but the month grid keeps its own copy.
+function calCacheBust() { calWeek = {}; }
+
+// ---- month grid: how busy each day is ----
+async function loadMonthEvents(fromISO, toISO) {
+  if (!calStatus.available) return {};
+  const r = await fetchEvents(fromISO, toISO);
+  const byDay = {};
+  realEvents(r.events).forEach((e) => {
+    const d = iso(evStart(e));
+    if (!byDay[d]) byDay[d] = { count: 0, minutes: 0 };
+    byDay[d].count++;
+    if (!e.allDay) byDay[d].minutes += evMinutes(e);
+  });
+  return byDay;
 }
 
 // =====================================================================
@@ -7025,15 +7394,33 @@ function weekData(monday) {
   const thisMon = iso(mondayOf(new Date()));
   const isPast = key < thisMon;
   const rec = reviews[key];
-  if (isPast && rec && rec.snapshot) return rec.snapshot;
+  if (isPast && rec && rec.snapshot) {
+    if (rec.snapshot.meetingMinutes != null && !weekMeetingCache.has(rec.snapshot.start)) {
+      weekMeetingCache.set(rec.snapshot.start, rec.snapshot.meetingMinutes);
+    }
+    return rec.snapshot;
+  }
   const computed = computeWeek(monday);
   if (isPast) {
+    if (weekMeetingCache.has(computed.start)) computed.meetingMinutes = weekMeetingCache.get(computed.start);
     reviews[key] = Object.assign({}, rec, { snapshot: computed, snappedAt: Date.now() });
     saveReviews();
   }
   return computed;
 }
 
+// Keyed by week start and kept outside the week object: computeWeek() returns
+// a fresh object on every render, so anything stored on it would be lost and
+// would re-trigger the fetch on each pass.
+const weekMeetingCache = new Map();
+async function loadWeekMeetings(start, end) {
+  if (!calStatus.available) return null;
+  const r = await fetchEvents(start, end);
+  if (r.error) { weekMeetingCache.set(start, 0); return 0; }
+  const mins = Math.round(meetingMinutes(r.events));
+  weekMeetingCache.set(start, mins);
+  return mins;
+}
 function renderReviewPage() {
   if (!reviewWeek) reviewWeek = mondayOf(new Date());
   const key = iso(reviewWeek);
@@ -7071,6 +7458,7 @@ function renderReviewPage() {
              <div class="wr-row ${w.tasksOverdue ? 'warn' : ''}"><span>Overdue</span><b>${w.tasksOverdue}</b></div>
              <div class="wr-row"><span>Completion rate</span><b>${w.completionRate}%</b></div>
              <div class="wr-row"><span>Focus time</span><b>${w.focusSeconds >= 60 ? fmtDur(w.focusSeconds) : '0m'}</b></div>
+             ${weekMeetingCache.get(w.start) ? `<div class="wr-row"><span>In meetings</span><b>${fmtDur(weekMeetingCache.get(w.start) * 60)}</b></div>` : ''}
            </div>
          </section>
 
@@ -7224,6 +7612,11 @@ function renderReviewPage() {
      <textarea class="ld-input" id="wrBad" rows="3" placeholder="Where did it get stuck?">${escapeHtml(r.bad || '')}</textarea>
      <label class="ld-label">What should I focus on next week?</label>
      <textarea class="ld-input" id="wrNextWeek" rows="3" placeholder="One or two things that matter most…">${escapeHtml(r.next || '')}</textarea>`;
+  // Meeting hours come from the calendar, so they arrive a beat later. The
+  // cache also stops this re-fetching (and re-rendering) on every pass.
+  if (!nothing && calStatus.available && !weekMeetingCache.has(w.start)) {
+    loadWeekMeetings(w.start, w.end).then(() => { if (activePage === 'review') renderReviewPage(); });
+  }
   const save = () => { r.well = $('#wrWell').value; r.bad = $('#wrBad').value; r.next = $('#wrNextWeek').value; saveReviews(); };
   $('#wrWell').oninput = save; $('#wrBad').oninput = save; $('#wrNextWeek').oninput = save;
 }
@@ -7842,14 +8235,24 @@ if (window.tn && window.tn.onCapture) {
   });
 }
 
+$('#esClose').onclick = closeEventSheet;
+$('#eventSheet').onclick = (e) => { if (e.target.id === 'eventSheet') closeEventSheet(); };
+$('#cpClose').onclick = closeCalendarPicker;
+$('#calPicker').onclick = (e) => { if (e.target.id === 'calPicker') closeCalendarPicker(); };
+
 // ---- boot the new surfaces ----
+loadCalPrefs();
 loadStaleSnoozes();
 loadRecent();
 loadStores().then(async () => {
   await loadDocs();
   await refreshDays();
   renderTodayExtras();
+  renderAgenda();
 });
+// A meeting starting or ending changes what the strip should say, so re-render
+// on a slow tick rather than polling EventKit hard (the server caches a minute).
+setInterval(() => { if (!activePage) renderAgenda(); }, 60000);
 
 // Restoring an in-progress session also restores the Focus companion.
 load().then(() => loadStores().then(() => { refreshDays(); renderLearnTodayCard(); }));

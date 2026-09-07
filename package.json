@@ -8,7 +8,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --mac dmg"
+    "dist": "npm run build:helper && electron-builder --mac dmg",
+    "build:helper": "swiftc -O -o helpers/tn-calendar helpers/tn-calendar.swift -framework EventKit -framework Foundation"
   },
   "build": {
     "appId": "com.aahan.tasknotes",
@@ -27,11 +28,21 @@
       "target": "dmg",
       "category": "public.app-category.productivity",
       "icon": "build/icon.icns",
-      "identity": null
+      "identity": null,
+      "extendInfo": {
+        "NSCalendarsFullAccessUsageDescription": "Task Notes shows your meetings alongside today's tasks and focus sessions. Your calendar is read on this Mac only and never leaves it.",
+        "NSCalendarsUsageDescription": "Task Notes shows your meetings alongside today's tasks and focus sessions. Your calendar is read on this Mac only and never leaves it."
+      }
     },
     "dmg": {
       "title": "Task Notes ${version}"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "helpers/tn-calendar",
+        "to": "helpers/tn-calendar"
+      }
+    ]
   },
   "devDependencies": {
     "electron": "^44.1.1",
