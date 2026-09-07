@@ -6478,6 +6478,59 @@ async function fetchEvents(from, to) {
   } catch { return { events: [], error: 'offline' }; }
 }
 
+// Days are fetched a week at a time and split per day. One helper call for
+// seven days costs about what one day costs, so this is what makes flipping
+// between days instant instead of a fresh round trip for each one.
+const CAL_WINDOW = 3;                 // days fetched either side of the one asked for
+function calShift(dayISO, delta) {
+  const d = new Date(dayISO + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  return iso(d);
+}
+// An event belongs to every day it touches, not only the day it starts on —
+// otherwise a meeting running past midnight, or a multi-day all-day event,
+// disappears from every day but its first.
+function calSpanDays(e) {
+  const s = evStart(e);
+  let end = evEnd(e);
+  // An end of exactly midnight is the previous day's boundary, not a new day.
+  if (end > s && end.getHours() === 0 && end.getMinutes() === 0) end = new Date(end.getTime() - 1);
+  const last = iso(end);
+  const out = [];
+  const cur = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+  // Bounded so a bad end date cannot spin here.
+  for (let i = 0; i < 400; i++) {
+    const d = iso(cur);
+    out.push(d);
+    if (d >= last) break;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+function calStoreRange(events, fromISO, toISO) {
+  const at = Date.now();
+  const byDay = {};
+  for (let d = fromISO; d <= toISO; d = calShift(d, 1)) byDay[d] = [];
+  realEvents(events).forEach((e) => {
+    calSpanDays(e).forEach((d) => { if (byDay[d]) byDay[d].push(e); });
+  });
+  Object.keys(byDay).forEach((d) => {
+    byDay[d].sort((a, b) => (a.allDay === b.allDay ? evStart(a) - evStart(b) : (a.allDay ? -1 : 1)));
+    calDayCache.set(d, { at, events: byDay[d] });
+  });
+  return byDay;
+}
+// The day's events, fetching the window around it only if they aren't held.
+async function calEventsFor(day) {
+  const hit = calDayCache.get(day);
+  if (hit && Date.now() - hit.at < 60000) return { events: hit.events };
+  const from = calShift(day, -CAL_WINDOW), to = calShift(day, CAL_WINDOW);
+  const r = await fetchEvents(from, to);
+  if (r.error) return { error: r.error };
+  calStoreRange(r.events, from, to);
+  return { events: (calDayCache.get(day) || { events: [] }).events };
+}
+
 // ---- helpers ----
 function evStart(e) { return new Date(e.start); }
 function evEnd(e) { return new Date(e.end); }
@@ -6548,7 +6601,7 @@ async function renderAgenda() {
     return;
   }
 
-  // A cached answer for *this* day paints immediately; anything older than a
+  // A held answer for *this* day paints immediately; anything older than a
   // minute is refetched (the server caches for the same minute anyway).
   const hit = calDayCache.get(day);
   let evs = hit && Date.now() - hit.at < 60000 ? hit.events : null;
@@ -6561,11 +6614,10 @@ async function renderAgenda() {
       el.innerHTML = '<span class="ag-badge">📅 ' + (isToday(current) ? 'Today' : fmtShort(day)) +
         '</span><span class="ag-msg">Checking your calendar…</span>';
     }
-    const r = await fetchEvents(day, day);
+    const r = await calEventsFor(day);
     if (seq !== calRenderSeq) return;
     if (r.error) { el.style.display = 'none'; return; }
-    evs = realEvents(r.events);
-    calDayCache.set(day, { at: Date.now(), events: evs });
+    evs = r.events;
   }
   calEvents = evs;
   if (!calEvents.length) {
@@ -6864,12 +6916,18 @@ function calCacheBust() { calWeek = {}; calDayCache = new Map(); }
 async function loadMonthEvents(fromISO, toISO) {
   if (!calStatus.available) return {};
   const r = await fetchEvents(fromISO, toISO);
+  if (r.error) return {};
+  // The month grid has just paid for a whole month of events, so they are kept
+  // for the board too — after opening it, no day in that month needs a fetch.
+  const perDay = calStoreRange(r.events, fromISO, toISO);
   const byDay = {};
-  realEvents(r.events).forEach((e) => {
-    const d = iso(evStart(e));
-    if (!byDay[d]) byDay[d] = { count: 0, minutes: 0 };
-    byDay[d].count++;
-    if (!e.allDay) byDay[d].minutes += evMinutes(e);
+  Object.keys(perDay).forEach((d) => {
+    const evs = perDay[d];
+    if (!evs.length) return;
+    byDay[d] = {
+      count: evs.length,
+      minutes: evs.filter((e) => !e.allDay).reduce((a, e) => a + evMinutes(e), 0),
+    };
   });
   return byDay;
 }
