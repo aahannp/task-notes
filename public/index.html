@@ -2004,7 +2004,8 @@
   .agenda { padding: 12px 15px; margin-bottom: 16px; border-radius: 13px;
     background: var(--panel); border: 1px solid var(--line);
     animation: riseIn .25s var(--ease-out) backwards; }
-  .agenda.ask, .agenda.clear { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+  .agenda.ask, .agenda.clear, .agenda.loading { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+  .agenda.loading { opacity: .55; }
   .ag-badge { font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .6px;
     color: #a8bcff; white-space: nowrap; }
   .ag-msg { font-size: 13px; color: var(--muted); flex: 1; min-width: 160px; }
@@ -2910,6 +2911,15 @@ async function load() {
   $('#today').style.display = isToday(current) ? 'none' : '';
   $('#newPickup').value = iso(current); // default pick-up date to the viewed day
   $('#pickupPick').classList.remove('missing');
+
+  // The agenda belongs to the day being viewed, so it has to follow a day
+  // change. Nothing was doing that: the only thing refreshing it was the 60s
+  // interval, which is why a new day kept showing the previous day's meetings
+  // for up to a minute. It goes *here*, before the task fetches below, so the
+  // stale day is replaced in the same frame as the date label rather than
+  // three round trips later — and it is deliberately not awaited, because
+  // changing day must not wait on the calendar helper.
+  renderAgenda();
 
   const days = (await (await fetch('/api/days')).json()).days || [];
   const data = await (await fetch('/api/tasks?date=' + iso(current))).json();
@@ -6418,7 +6428,15 @@ let calList = [];                     // available calendars
 let calSelected = null;               // ids to include; null = all
 let calEvents = [];                   // events for the viewed day
 let calWeek = {};                     // date -> count, for the month grid
-let calFetching = false;
+// The agenda is per-day, so what has already been fetched is kept per day —
+// flipping back to yesterday should not go to the helper again.
+let calDayCache = new Map();          // date -> { at, events }
+// Renders are async and a day change can start a second one before the first
+// finishes. Every render takes a token and abandons itself if a newer one has
+// started, so a slow reply for the *previous* day can never paint over the
+// current one.
+let calRenderSeq = 0;
+let calStatusAt = 0;
 
 function loadCalPrefs() {
   try {
@@ -6431,9 +6449,18 @@ function saveCalPrefs() {
 }
 const calIdsParam = () => (calSelected && calSelected.length ? '&ids=' + calSelected.join(',') : '');
 
-async function refreshCalStatus() {
-  try { calStatus = await (await fetch('/api/calendar/status')).json(); }
-  catch { calStatus = { status: 'unknown', available: false, helper: false }; }
+// Permission changes are rare and this sits in front of every agenda render,
+// so the answer is held briefly. `force` is for the moment just after the
+// system prompt, when the old answer is certainly wrong.
+async function refreshCalStatus(force) {
+  if (!force && calStatusAt && Date.now() - calStatusAt < 30000) return calStatus;
+  try {
+    calStatus = await (await fetch('/api/calendar/status')).json();
+    calStatusAt = Date.now();
+  } catch {
+    calStatus = { status: 'unknown', available: false, helper: false };
+    calStatusAt = 0;
+  }
   return calStatus;
 }
 async function loadCalendarList() {
@@ -6479,7 +6506,9 @@ function currentMeeting(list) {
 async function renderAgenda() {
   const el = $('#agenda'); if (!el) return;
   const day = iso(current);
+  const seq = ++calRenderSeq;
   await refreshCalStatus();
+  if (seq !== calRenderSeq) return;
 
   if (!calStatus.helper) { el.style.display = 'none'; return; }
 
@@ -6495,7 +6524,7 @@ async function renderAgenda() {
       el.innerHTML = '<span class="ag-badge">📅 Calendar</span><span class="ag-msg">Waiting for macOS to ask for permission…</span>';
       // The first real query is what triggers the system prompt.
       await fetchEvents(day, day);
-      await refreshCalStatus();
+      await refreshCalStatus(true);
       renderAgenda();
     };
     $('#agSkip').onclick = () => { try { localStorage.setItem('tasknotes.calskip', '1'); } catch {} el.style.display = 'none'; };
@@ -6519,13 +6548,26 @@ async function renderAgenda() {
     return;
   }
 
-  if (calFetching) return;
-  calFetching = true;
-  const r = await fetchEvents(day, day);
-  calFetching = false;
-  calEvents = realEvents(r.events);
-
-  if (r.error) { el.style.display = 'none'; return; }
+  // A cached answer for *this* day paints immediately; anything older than a
+  // minute is refetched (the server caches for the same minute anyway).
+  const hit = calDayCache.get(day);
+  let evs = hit && Date.now() - hit.at < 60000 ? hit.events : null;
+  if (!evs) {
+    if (!hit) {
+      // Nothing at all for this day yet. Say so, rather than leaving the day
+      // you just navigated away from sitting there looking current.
+      el.style.display = '';
+      el.className = 'agenda loading';
+      el.innerHTML = '<span class="ag-badge">📅 ' + (isToday(current) ? 'Today' : fmtShort(day)) +
+        '</span><span class="ag-msg">Checking your calendar…</span>';
+    }
+    const r = await fetchEvents(day, day);
+    if (seq !== calRenderSeq) return;
+    if (r.error) { el.style.display = 'none'; return; }
+    evs = realEvents(r.events);
+    calDayCache.set(day, { at: Date.now(), events: evs });
+  }
+  calEvents = evs;
   if (!calEvents.length) {
     el.style.display = '';
     el.className = 'agenda clear';
@@ -6816,7 +6858,7 @@ function closeCalendarPicker() {
 }
 // The server caches for a minute; changing the selection changes the key anyway,
 // but the month grid keeps its own copy.
-function calCacheBust() { calWeek = {}; }
+function calCacheBust() { calWeek = {}; calDayCache = new Map(); }
 
 // ---- month grid: how busy each day is ----
 async function loadMonthEvents(fromISO, toISO) {
