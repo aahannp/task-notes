@@ -6970,6 +6970,7 @@ async function renderAgenda() {
 
 // A meeting is a thing you can act on: focus until it starts, or turn it into
 // a task / document without retyping it.
+const ES_FOCUS_MAX_MIN = 240;   // past four hours, "focus until this" is not a workflow
 function openEventSheet(e) {
   const m = $('#eventSheet');
   const s = evStart(e), en = evEnd(e);
@@ -6985,7 +6986,13 @@ function openEventSheet(e) {
     (e.url ? '<div class="es-row"><a href="' + escapeHtml(e.url) + '" target="_blank" rel="noopener noreferrer">Join / open link</a></div>' : '') +
     (e.notes ? '<div class="es-notes">' + escapeHtml(e.notes) + '</div>' : '') +
     '<div class="es-acts">' +
-      (untilStart > 5 ? '<button class="btn-primary sm" id="esFocus">🎯 Focus ' + untilStart + 'm until this</button>' : '') +
+      // Raw minutes read as nonsense past an hour ("418m until this"), and
+      // fmtDur is already the app's way of saying a length of time. Beyond a
+      // few hours the offer itself stops making sense — nobody focuses for
+      // twenty-five hours because a meeting is on tomorrow — so it is only
+      // offered while the meeting is plausibly the next thing.
+      (untilStart > 5 && untilStart <= ES_FOCUS_MAX_MIN
+        ? '<button class="btn-primary sm" id="esFocus">🎯 Focus ' + fmtDur(untilStart * 60) + ' until this</button>' : '') +
       '<button class="btn-ghost sm" id="esTask">＋ Task</button>' +
       '<button class="btn-ghost sm" id="esDoc">📄 Notes doc</button>' +
       '<button class="btn-ghost sm" id="esEdit">✎ Edit</button>' +
