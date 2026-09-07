@@ -9,27 +9,40 @@
     /* Learning is purple. Amber stays the app's "in progress" colour, so the
        two are not confusable on the board or in project status. */
     --lrn: #a78bfa; --lrn-2: #c4b5fd; --lrn-line: rgba(167,139,250,.55);
-    --bg: #07080e;
-    /* Liquid-glass surfaces: translucent, blurred, with a specular top edge */
-    --panel: rgba(255,255,255,0.055);
-    --panel-2: rgba(255,255,255,0.10);
-    --line: rgba(255,255,255,0.12);
+    /* The ground is flat and still — no gradients anywhere in this app. Depth
+       comes from stacked translucency, hairline edges and shadow instead of
+       from painted light. A ground a shade off black is deliberate: glass over
+       pure black reads as flat grey card, because there is nothing to refract. */
+    --bg: #0a0b11;
+    /* Three surface tiers. Each is a flat white wash over whatever is behind
+       it, so overlapping panels tint and blur each other rather than needing a
+       fade painted into them. */
+    --panel: rgba(255,255,255,0.048);      /* resting surface */
+    --panel-2: rgba(255,255,255,0.085);    /* raised: hover, active, inputs */
+    --panel-3: rgba(255,255,255,0.125);    /* popovers and sheets */
+    --line: rgba(255,255,255,0.10);
+    --line-2: rgba(255,255,255,0.16);      /* edges that need to be found */
     --text: #eef0f7;
     --muted: #a6adbf;
     --accent: #7c9bff;
     --done: #6b7285;
     --danger: #ff6b81;
-    --shadow: 0 12px 40px rgba(0,0,0,.45);
-    --glass-blur: saturate(160%) blur(22px);
-    --glass-hi: inset 0 1px 0 rgba(255,255,255,0.16), inset 0 0 0 1px rgba(255,255,255,0.02);
+    /* Ambient spread plus a tight contact shadow — two layers read as a pane
+       sitting above the page, one layer reads as a drop shadow. */
+    --shadow: 0 1px 2px rgba(0,0,0,.30), 0 16px 44px rgba(0,0,0,.46);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.26), 0 6px 18px rgba(0,0,0,.30);
+    --glass-blur: saturate(185%) blur(26px);
+    /* The specular top edge is what makes a translucent panel read as glass
+       rather than as a tinted rectangle. */
+    --glass-hi: inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.14);
+    --glass-hi-strong: inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.18);
   }
   * { box-sizing: border-box; }
   html { background: #08090d; }
   body {
     margin: 0; padding: 0;
-    /* Gradient painted on the page (not a fixed layer) — avoids backdrop-filter ghosting. */
-    background: radial-gradient(130% 70% at 50% 0%, #15171e 0%, #0b0c11 50%, #08090d 100%) no-repeat;
-    background-color: #08090d;
+    background: var(--bg);
+    background-color: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -37,6 +50,23 @@
   }
 
   #aurora { display: none; }
+  /* Behind everything. A z-index of 0 here would have painted this layer over
+     the page's ordinary in-flow content, and lifting that content to compete
+     meant overriding `position` on the fixed overlays — which knocked the
+     pages and modals out of their own layer entirely. Negative is the whole
+     fix: it sits above the body background and below all content, and
+     backdrop-filter still refracts it. */
+  .ambient { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .ambient i { position: absolute; display: block; border-radius: 50%; filter: blur(130px); opacity: .34; }
+  .ambient i:nth-child(1) { width: 46vw; height: 46vw; top: -14vw; left: -8vw;  background: #2a3a7a; }
+  .ambient i:nth-child(2) { width: 38vw; height: 38vw; top: 8vw;   right: -10vw; background: #4a2f6e; }
+  .ambient i:nth-child(3) { width: 40vw; height: 40vw; bottom: -16vw; left: 26vw; background: #17415c; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ambient i { animation: drift 34s var(--ease-in-out) infinite alternate; }
+    .ambient i:nth-child(2) { animation-duration: 44s; animation-delay: -8s; }
+    .ambient i:nth-child(3) { animation-duration: 52s; animation-delay: -18s; }
+  }
+  @keyframes drift { to { transform: translate3d(4vw, 3vw, 0) scale(1.12); } }
   .wrap { max-width: 1060px; margin: 0 auto; padding: 44px 28px 120px; animation: fadeIn .4s ease; }
   /* Maximised, the board and cards deserve the room rather than leaving half
      the window empty. */
@@ -160,11 +190,11 @@
   .chart .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
   .chart .bwrap { width: 100%; flex: 1; display: flex; align-items: flex-end; }
   .chart .b {
-    width: 100%; background: linear-gradient(180deg, var(--accent), #57d9a3);
+    width: 100%; background: var(--accent);
     border-radius: 6px 6px 0 0; min-height: 3px; transition: height .5s cubic-bezier(.22,.61,.36,1);
     position: relative;
   }
-  .chart .b[data-office="1"] { background: linear-gradient(180deg, #f5a623, #f5a623cc); }
+  .chart .b[data-office="1"] { background: #f5a623; }
   .chart .cval { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .chart .cday { font-size: 10.5px; color: var(--muted); font-weight: 600; }
   .chart .cday.today { color: var(--accent); }
@@ -225,7 +255,7 @@
     background: var(--muted); transition: background .25s;
   }
   .focus-cell.active-focus .focus-timer {
-    background: linear-gradient(90deg, #57d9a3, #6c8cff); -webkit-background-clip: text;
+    color: #8fe3c4; -webkit-background-clip: border-box;
     background-clip: text; color: transparent;
   }
   .focus-cell.active-focus .focus-timer::before {
@@ -271,7 +301,7 @@
   /* Full-screen focus mode */
   .focusmode {
     position: fixed; inset: 0; z-index: 800;
-    background: radial-gradient(circle at 50% 28%, #16212c 0%, #0b0d12 68%);
+    background: #0b0d12;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     animation: fadeIn .3s ease;
   }
@@ -289,7 +319,7 @@
     font-variant-numeric: tabular-nums; color: var(--text);
   }
   .focusmode.running .fm-timer {
-    background: linear-gradient(90deg, #57d9a3, #6c8cff); -webkit-background-clip: text;
+    color: #8fe3c4; -webkit-background-clip: border-box;
     background-clip: text; color: transparent;
   }
   .fm-task { font-size: 21px; font-weight: 600; color: var(--text); max-width: 640px; word-break: break-word; }
@@ -525,7 +555,7 @@
 
   .progress {
     position: fixed; bottom: 0; left: 0; right: 0;
-    background: rgba(15,17,21,.9); backdrop-filter: blur(8px);
+    background: var(--panel-3); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
     border-top: 1px solid var(--line); padding: 14px 20px;
   }
   .progress-inner { max-width: 1060px; margin: 0 auto; }
@@ -533,7 +563,7 @@
   .progress-label { font-size: 13px; color: var(--muted); font-weight: 500; }
   .progress-pct { font-size: 13px; color: var(--text); font-weight: 700; }
   .bar { height: 8px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
-  .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #57d9a3);
+  .bar-fill { height: 100%; width: 0%; background: var(--accent);
     border-radius: 99px; transition: width .35s ease; }
 
   /* Day-type toggle + encouraging line */
@@ -556,7 +586,7 @@
   .learn-today {
     position: relative;
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
-    background: linear-gradient(135deg, rgba(167,139,250,.10), rgba(199,125,255,.06));
+    background: rgba(167,139,250,.085);
     border: 1px solid rgba(167,139,250,.30); border-radius: 14px; padding: 11px 15px;
     -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   }
@@ -577,7 +607,7 @@
   .learn-pick:hover { border-color: #c77dff; color: #c77dff; }
   .learn-menu {
     position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60; display: none;
-    background: rgba(18,20,26,.95); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    background: var(--panel-3); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
     border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); max-height: 300px; overflow-y: auto;
   }
   .learn-menu.show { display: block; }
@@ -598,7 +628,7 @@
   .spotcard {
     position: relative; display: flex; gap: 18px; margin-bottom: 20px; padding: 16px;
     border-radius: 18px; border: 1px solid rgba(255,255,255,0.08);
-    background: linear-gradient(135deg, rgba(30,50,80,0.55), rgba(20,24,32,0.5));
+    background: rgba(26,38,58,0.52);
     -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
     box-shadow: var(--shadow), var(--glass-hi); animation: fadeIn .4s ease;
   }
@@ -660,7 +690,7 @@
   }
   .spot-results {
     position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60; display: none;
-    background: rgba(18,20,26,.94); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    background: var(--panel-3); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
     border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; max-height: 320px; overflow-y: auto;
   }
   .spot-results.show { display: block; }
@@ -699,7 +729,7 @@
   .offbanner { display: none; margin-bottom: 20px; }
   body.offday .offbanner { display: block; animation: fadeIn .5s ease; }
   .offbanner {
-    background: linear-gradient(135deg, rgba(87,217,163,.14), rgba(108,140,255,.10));
+    background: rgba(87,217,163,.12);
     border: 1px solid rgba(87,217,163,.32); border-radius: 16px; padding: 20px 22px;
   }
   .offbanner-main { display: flex; align-items: center; gap: 16px; }
@@ -829,7 +859,7 @@
 
   /* Learning bag */
   .bag-zone { display: flex; align-items: center; gap: 22px; margin-bottom: 22px; padding: 18px 24px;
-    background: linear-gradient(135deg, rgba(167,139,250,.12), rgba(199,125,255,.07));
+    background: rgba(167,139,250,.10);
     border: 1px solid rgba(167,139,250,.3); border-radius: 18px; }
   .bag { position: relative; background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 4px; }
   .bag-emoji { font-size: 60px; display: block; transition: transform .2s; }
@@ -878,7 +908,7 @@
   .proj.open .proj-caret { transform: rotate(90deg); }
   .proj-meta { display: flex; align-items: center; gap: 14px; margin-top: 12px; font-size: 12px; color: var(--muted); }
   .proj-bar { flex: 1; height: 6px; background: var(--panel-2); border-radius: 99px; overflow: hidden; min-width: 60px; }
-  .proj-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #57d9a3); border-radius: 99px; transition: width .4s ease; }
+  .proj-bar-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease; }
   .proj-body { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
   .proj.open .proj-body { display: block; animation: fadeIn .25s ease; }
   .proj-note { width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); font-family: inherit; font-size: 13px; padding: 9px 12px; border-radius: 10px; outline: none; resize: vertical; margin-bottom: 14px; line-height: 1.45; }
@@ -966,7 +996,11 @@
 
   /* ==================== PAGE SURFACES ==================== */
   .page { position: fixed; inset: 0; z-index: 60; overflow-y: auto;
-    background: radial-gradient(120% 60% at 50% 0%, #15171e 0%, #0b0c11 55%, #08090d 100%);
+    /* Translucent, so the ambient layer stays visible under a page the way it
+       is under the board — an opaque ground here would make every page look
+       like a different app. */
+    background: rgba(10,11,17,.72);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
     animation: pageIn .22s ease; }
   @keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   .page-inner { max-width: 960px; margin: 0 auto; padding: 40px 28px 120px; position: relative; }
@@ -1048,7 +1082,7 @@
   .pcard-desc { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.45;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .pbar { height: 7px; background: rgba(255,255,255,.07); border-radius: 20px; overflow: hidden; margin-bottom: 10px; }
-  .pbar-fill { height: 100%; background: linear-gradient(90deg, #7c9bff, #a78bfa); border-radius: 20px; transition: width .45s cubic-bezier(.4,0,.2,1); }
+  .pbar-fill { height: 100%; background: var(--accent); border-radius: 20px; transition: width .45s cubic-bezier(.4,0,.2,1); }
   .pcard-stats { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); }
   .pstat b { color: var(--text); font-size: 13.5px; }
   .pstat.over { color: var(--danger); }
@@ -1062,7 +1096,8 @@
   .detail { position: fixed; inset: 0; z-index: 80; overflow-y: auto; background: rgba(6,7,11,.72);
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: pageIn .2s ease; }
   .detail-inner { max-width: 780px; margin: 40px auto; padding: 28px 30px 44px; position: relative;
-    background: #101219; border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+    background: var(--panel-3); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line-2); border-radius: 18px; box-shadow: var(--shadow), var(--glass-hi-strong); }
   .detail-inner.narrow { max-width: 620px; }
   .detail-close { position: absolute; top: 18px; right: 18px; background: var(--panel); border: 1px solid var(--line);
     color: var(--muted); width: 32px; height: 32px; border-radius: 9px; cursor: pointer; transition: .15s; }
@@ -1085,7 +1120,7 @@
   .pd-section h3 { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase;
     letter-spacing: .6px; margin: 0 0 12px; display: flex; align-items: center; }
   .pd-bar { height: 10px; background: rgba(255,255,255,.07); border-radius: 20px; overflow: hidden; margin-bottom: 15px; }
-  .pd-bar-fill { height: 100%; background: linear-gradient(90deg, #7c9bff, #a78bfa); border-radius: 20px; transition: width .5s cubic-bezier(.4,0,.2,1); }
+  .pd-bar-fill { height: 100%; background: var(--accent); border-radius: 20px; transition: width .5s cubic-bezier(.4,0,.2,1); }
   .pd-nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 10px; }
   .pd-num { background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 12px 10px; text-align: center; }
   .pd-num b { display: block; font-size: 19px; font-weight: 750; letter-spacing: -.4px; }
@@ -1106,10 +1141,15 @@
   .pd-task-text:hover { color: var(--accent); }
   .pd-task-text.done { color: var(--done); text-decoration: line-through; }
   .pd-task-date { font-size: 11px; color: var(--muted); flex-shrink: 0; }
-  .pd-task-detach { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px;
-    opacity: 0; padding: 2px 4px; transition: .13s; }
-  .pd-task:hover .pd-task-detach { opacity: .6; }
-  .pd-task-detach:hover { opacity: 1; color: var(--danger); }
+  .pd-task-unlink, .pd-task-del { background: none; border: none; color: var(--muted); cursor: pointer;
+    font-family: inherit; opacity: 0; transition: opacity .15s, color .15s; flex-shrink: 0; }
+  .pd-task-unlink { font-size: 11px; font-weight: 600; letter-spacing: .2px; padding: 2px 6px;
+    border-radius: 6px; }
+  .pd-task-del { font-size: 12px; padding: 2px 4px; }
+  .pd-task:hover .pd-task-unlink, .pd-task:hover .pd-task-del,
+  .pd-task-unlink:focus-visible, .pd-task-del:focus-visible { opacity: .7; }
+  .pd-task-unlink:hover { opacity: 1; color: var(--text); background: var(--panel-2); }
+  .pd-task-del:hover { opacity: 1; color: var(--danger); }
   .pd-hint { font-size: 13px; color: var(--muted); font-style: italic; padding: 6px 0; }
   .danger-zone { padding-top: 18px; border-top: 1px solid var(--line); }
   .menu { display: none; position: absolute; z-index: 5; background: #161922; border: 1px solid var(--line);
@@ -1136,7 +1176,7 @@
 
   /* ==================== LEARNING BAG ==================== */
   .bagzone { display: flex; align-items: center; gap: 24px; padding: 22px 26px; margin-bottom: 18px;
-    background: linear-gradient(135deg, rgba(167,139,250,.13), rgba(167,139,250,.08));
+    background: rgba(167,139,250,.11);
     border: 1px solid rgba(167,139,250,.28); border-radius: 18px; }
   .bag-visual { position: relative; flex-shrink: 0; }
   .bag-emoji { font-size: 62px; display: block; transition: transform .25s; }
@@ -1151,7 +1191,7 @@
   .pull-copy { flex: 1; min-width: 180px; }
   .pull-title { font-size: 18px; font-weight: 750; letter-spacing: -.3px; }
   .pull-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
-  .pull-btn { background: linear-gradient(135deg, var(--lrn), var(--lrn-2)); border: none; color: #1b1030; font-family: inherit;
+  .pull-btn { background: var(--lrn); border: none; color: #1b1030; font-family: inherit;
     font-size: 14px; font-weight: 750; padding: 13px 24px; border-radius: 12px; cursor: pointer; transition: .16s;
     box-shadow: 0 6px 20px rgba(167,139,250,.28); white-space: nowrap; }
   .pull-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 26px rgba(167,139,250,.36); }
@@ -1215,7 +1255,8 @@
   .lsession { position: fixed; inset: 0; z-index: 90; overflow-y: auto; background: rgba(6,7,11,.86);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); animation: pageIn .2s ease; }
   .ls-inner { max-width: 560px; margin: 60px auto; padding: 34px 34px 30px; position: relative;
-    background: #101219; border: 1px solid rgba(167,139,250,.3); border-radius: 20px; box-shadow: var(--shadow); }
+    background: var(--panel-3); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--lrn-line); border-radius: 20px; box-shadow: var(--shadow), var(--glass-hi-strong); }
   .ls-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .7px; color: var(--lrn-2); font-weight: 750; }
   .ls-name { font-size: 25px; font-weight: 750; letter-spacing: -.5px; margin-top: 6px; }
   .ls-want { font-size: 13.5px; color: var(--muted); margin-top: 7px; line-height: 1.5; }
@@ -1254,7 +1295,7 @@
   .wr-frozen { font-size: 11px; color: var(--muted); background: var(--panel); border: 1px solid var(--line);
     padding: 5px 10px; border-radius: 20px; }
   .wr-hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .wr-hero-n { background: linear-gradient(135deg, rgba(124,155,255,.13), rgba(167,139,250,.07));
+  .wr-hero-n { background: rgba(124,155,255,.10);
     border: 1px solid rgba(124,155,255,.24); border-radius: 15px; padding: 19px 16px; }
   .wr-hero-n b { display: block; font-size: 27px; font-weight: 750; letter-spacing: -.9px; }
   .wr-hero-n span { font-size: 12px; color: var(--muted); }
@@ -1272,7 +1313,7 @@
   .wr-bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
   .wr-bar-track { flex: 1; width: 100%; background: rgba(255,255,255,.05); border-radius: 6px;
     display: flex; align-items: flex-end; overflow: hidden; }
-  .wr-bar-fill { width: 100%; background: linear-gradient(180deg, #7c9bff, #6a7fd6); border-radius: 6px;
+  .wr-bar-fill { width: 100%; background: var(--accent); border-radius: 6px;
     min-height: 2px; transition: height .5s cubic-bezier(.4,0,.2,1); }
   .wr-bar span { font-size: 10.5px; color: var(--muted); font-weight: 650; }
   .wr-split { display: flex; gap: 12px; padding-top: 13px; border-top: 1px solid var(--line); }
@@ -1295,10 +1336,10 @@
 
   /* ==================== LEARN TODAY (board card) ==================== */
   .learn-today { display: flex; align-items: center; gap: 13px; flex-wrap: wrap; padding: 14px 18px; margin-bottom: 18px;
-    background: linear-gradient(135deg, rgba(167,139,250,.10), rgba(167,139,250,.05));
+    background: rgba(167,139,250,.08);
     border: 1px solid rgba(167,139,250,.24); border-radius: 14px; }
-  .learn-today.roomy { border-color: rgba(167,139,250,.45); background: linear-gradient(135deg, rgba(167,139,250,.16), rgba(167,139,250,.08)); }
-  .learn-today.done { border-color: rgba(63,178,127,.35); background: linear-gradient(135deg, rgba(63,178,127,.12), rgba(63,178,127,.04)); }
+  .learn-today.roomy { border-color: rgba(167,139,250,.45); background: rgba(167,139,250,.13); }
+  .learn-today.done { border-color: rgba(63,178,127,.35); background: rgba(63,178,127,.09); }
   .learn-badge { font-size: 11px; font-weight: 750; color: var(--lrn-2); text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
   .learn-today.done .learn-badge { color: #6fd6a4; }
   .lt-name { font-size: 15px; font-weight: 650; }
@@ -1374,8 +1415,7 @@
   /* The bag body: a stylised backpack drawn with gradients, not an emoji. */
   .bagbody { position: relative; height: 380px; border-radius: 30px 30px 38px 38px;
     background:
-      radial-gradient(120% 70% at 50% 0%, rgba(167,139,250,.12), transparent 60%),
-      linear-gradient(178deg, rgba(38,32,24,.92) 0%, rgba(26,24,22,.95) 42%, rgba(18,17,20,.97) 100%);
+      rgba(167,139,250,.055);
     border: 1px solid rgba(167,139,250,.26);
     box-shadow: 0 26px 70px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.09),
       inset 0 -40px 70px rgba(0,0,0,.35);
@@ -1387,18 +1427,26 @@
     52% { transform: translateY(3px) rotate(.5deg); } 78% { transform: translateY(-1px); } }
   /* Flap + strap details */
   .bagflap { position: absolute; top: 0; left: 0; right: 0; height: 76px; border-radius: 30px 30px 24px 24px;
-    background: linear-gradient(180deg, rgba(167,139,250,.16), rgba(167,139,250,.04) 70%, transparent);
+    background: rgba(167,139,250,.10);
     border-bottom: 1px solid rgba(167,139,250,.2); pointer-events: none; z-index: 3; }
   .bagzip { position: absolute; top: 74px; left: 8%; right: 8%; height: 2px; z-index: 3; pointer-events: none;
-    background: repeating-linear-gradient(90deg, rgba(167,139,250,.5) 0 5px, transparent 5px 10px); opacity: .5; }
+    background: rgba(167,139,250,.32); opacity: .5; }
   .bagstrap { position: absolute; width: 15px; top: -8px; height: 62px; border-radius: 9px; z-index: 4; pointer-events: none;
-    background: linear-gradient(180deg, rgba(167,139,250,.4), rgba(167,139,250,.13)); }
+    background: rgba(167,139,250,.26); }
   .bagstrap.l { left: 20%; } .bagstrap.r { right: 20%; }
   .bagpocket { position: absolute; left: 12%; right: 12%; bottom: -1px; height: 92px; z-index: 3; pointer-events: none;
     border-radius: 22px 22px 34px 34px; border: 1px solid rgba(167,139,250,.16); border-bottom: none;
-    background: linear-gradient(180deg, transparent, rgba(0,0,0,.28)); }
+    background: rgba(0,0,0,.16); }
   .bagshine { position: absolute; inset: 0; pointer-events: none; z-index: 5; border-radius: inherit;
-    background: radial-gradient(60% 40% at 30% 8%, rgba(255,255,255,.06), transparent 70%); }
+    background: rgba(255,255,255,.03); }
+
+  /* Reading and dense-grid surfaces damp the ambient colour behind them: a
+     wash of blue under 11px event labels or a page of prose costs legibility
+     for no benefit. Same glass, just less transparent. */
+  .cw-grid, .cw-month { background: rgba(14,15,21,.72) !important;
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-sm), var(--glass-hi); }
+  #page-docs .ws-main, #page-docs .doc-body, .md-body { background: rgba(12,13,18,.66); }
 
   /* ---- Calendar page: day / week / month / year over the real calendar ---- */
   .cw-top { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -1450,8 +1498,10 @@
   .cw-col.weekend { background: rgba(255,255,255,.014); }
   .cw-ev { position: absolute; left: 2px; right: 2px; border-radius: 6px; padding: 3px 6px;
     font-size: 11.5px; line-height: 1.25; overflow: hidden; cursor: pointer; text-align: left;
-    background: color-mix(in srgb, var(--evc,#7c9bff) 26%, var(--panel));
-    border: 1px solid color-mix(in srgb, var(--evc,#7c9bff) 55%, transparent);
+    /* Mixed against a solid, not against the panel token — the panel is mostly
+       transparent, so mixing into it produced washed-out grey blocks. */
+    background: color-mix(in srgb, var(--evc,#7c9bff) 30%, #14161d);
+    border: 1px solid color-mix(in srgb, var(--evc,#7c9bff) 62%, transparent);
     border-left: 3px solid var(--evc,#7c9bff); color: var(--text);
     font-family: inherit; transition: filter .15s; }
   .cw-ev:hover { filter: brightness(1.25); z-index: 5; }
@@ -1482,7 +1532,7 @@
   .cw-mev:hover { background: var(--panel-2); }
   .cw-mev .d { width: 5px; height: 5px; border-radius: 50%; background: var(--evc,#7c9bff); flex-shrink: 0; }
   .cw-mev .t { color: var(--muted); font-size: 10px; margin-left: auto; padding-left: 4px; }
-  .cw-mev.allday { background: color-mix(in srgb, var(--evc,#7c9bff) 24%, transparent); }
+  .cw-mev.allday { background: color-mix(in srgb, var(--evc,#7c9bff) 30%, #14161d); }
   .cw-more { font-size: 10.5px; color: var(--muted); background: none; border: none; cursor: pointer;
     font-family: inherit; text-align: left; padding: 0 5px; }
   .cw-more:hover { color: var(--text); }
@@ -1510,7 +1560,7 @@
   .bagfield { position: absolute; inset: 60px 14px 22px; z-index: 2; }
   .bagitem { position: absolute; display: inline-flex; align-items: center; gap: 7px;
     padding: 8px 14px; border-radius: 26px; cursor: pointer; white-space: nowrap;
-    background: linear-gradient(165deg, rgba(50,45,66,.96), rgba(33,30,44,.96));
+    background: rgba(42,38,56,.92);
     border: 1px solid rgba(255,255,255,.14); color: var(--text);
     font-family: inherit; font-size: 13px; font-weight: 600;
     box-shadow: 0 5px 16px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.09);
@@ -1526,7 +1576,7 @@
   .bagitem:hover, .bagitem:focus-visible {
     z-index: 40 !important; outline: none;
     border-color: rgba(167,139,250,.75);
-    background: linear-gradient(165deg, rgba(56,46,84,.99), rgba(38,32,58,.99));
+    background: rgba(50,42,74,.96);
     box-shadow: 0 14px 34px rgba(0,0,0,.55), 0 0 0 1px rgba(167,139,250,.35), inset 0 1px 0 rgba(255,255,255,.15);
     transition: transform .18s var(--ease-spring), box-shadow .18s, border-color .18s, background .18s; }
   .bagfield.rummaging .bagitem { transition: opacity var(--t-base), box-shadow var(--t-base),
@@ -1572,7 +1622,7 @@
 
   /* Today's learning — the reward for rummaging */
   .todaycard { position: relative; overflow: hidden; margin-bottom: 20px; padding: 22px 24px; border-radius: 18px;
-    background: linear-gradient(140deg, rgba(167,139,250,.16), rgba(167,139,250,.07));
+    background: rgba(167,139,250,.12);
     border: 1px solid rgba(167,139,250,.36); animation: popIn .5s var(--ease-spring) backwards; }
   .todaycard.arriving { animation: todayLand .6s var(--ease-spring) backwards; }
   @keyframes todayLand { 0% { opacity: 0; transform: translateY(-34px) scale(.86); } 100% { opacity: 1; transform: none; } }
@@ -1906,7 +1956,8 @@
     .ws-rail { visibility: hidden; }
     #page-docs .ws.rail-open .ws-rail { visibility: visible; }
     .ws-rail { position: fixed; top: 0; right: 0; bottom: 0; width: 260px; z-index: 8;
-      background: #101219; box-shadow: -12px 0 40px rgba(0,0,0,.5); transform: translateX(100%);
+      background: var(--panel-3); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+      box-shadow: -12px 0 44px rgba(0,0,0,.5); transform: translateX(100%);
       transition: transform var(--t-base) var(--ease-out); }
     #page-docs .ws.rail-open .ws-rail { display: flex; transform: none; }
     #page-docs .ws.rail-hidden .ws-rail { display: flex; }
@@ -1917,7 +1968,8 @@
     .ws-side { visibility: hidden; }
     #page-docs .ws.side-open .ws-side, #page-docs .ws.side-hidden .ws-side { visibility: visible; }
     .ws-side { position: fixed; top: 0; left: 0; bottom: 0; width: 264px; z-index: 9;
-      background: #101219; box-shadow: 12px 0 40px rgba(0,0,0,.5); transform: translateX(-100%);
+      background: var(--panel-3); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+      box-shadow: 12px 0 44px rgba(0,0,0,.5); transform: translateX(-100%);
       transition: transform var(--t-base) var(--ease-out); }
     #page-docs .ws.side-open .ws-side { display: flex; transform: none; }
     #page-docs .ws.side-hidden .ws-side { display: flex; }
@@ -1992,8 +2044,8 @@
   .dayhints { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 11px 15px;
     margin-bottom: 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel);
     animation: riseIn .25s var(--ease-out) backwards; }
-  .dayhints.off { border-color: rgba(245,166,35,.3); background: linear-gradient(135deg, rgba(245,166,35,.09), transparent); }
-  .dayhints.wfh { border-color: rgba(124,155,255,.28); background: linear-gradient(135deg, rgba(124,155,255,.08), transparent); }
+  .dayhints.off { border-color: rgba(245,166,35,.3); background: rgba(245,166,35,.06); }
+  .dayhints.wfh { border-color: rgba(124,155,255,.28); background: rgba(124,155,255,.055); }
   .dh-line { font-size: 13px; color: var(--text); font-weight: 600; }
   .dh-items { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
   .dh-items button { background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
@@ -2001,7 +2053,7 @@
   .dh-items button:hover { color: var(--text); border-color: var(--accent); }
 
   .resurface { padding: 14px 16px; margin-bottom: 16px; border-radius: 13px;
-    background: linear-gradient(135deg, rgba(199,146,234,.13), rgba(124,155,255,.06));
+    background: rgba(199,146,234,.10);
     border: 1px solid rgba(199,146,234,.32); animation: riseIn .3s var(--ease-out) backwards; }
   .rs-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .rs-badge { font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .6px; color: #d3b0f5; }
@@ -2031,7 +2083,7 @@
   .health-r { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
   .pcard-health { font-size: 11px; margin-left: 6px; }
   .momentum { display: flex; align-items: flex-end; gap: 4px; height: 34px; margin-top: 4px; }
-  .mo-bar { flex: 1; background: linear-gradient(180deg, #7c9bff, #6a7fd6); border-radius: 3px; min-height: 2px;
+  .mo-bar { flex: 1; background: var(--accent); border-radius: 3px; min-height: 2px;
     transition: height .6s var(--ease-out); }
   .mo-bar.dim { background: rgba(255,255,255,.12); }
   .momentum-l { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 4px; }
@@ -2084,7 +2136,8 @@
   .fwrap { position: fixed; inset: 0; z-index: 95; background: rgba(6,7,11,.8);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: grid; place-items: center;
     padding: 20px; animation: pageIn .2s var(--ease-out); }
-  .fwrap-box { width: min(480px, 94vw); background: #101219; border: 1px solid var(--line);
+  .fwrap-box { width: min(480px, 94vw); background: var(--panel-3);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); border: 1px solid var(--line-2);
     border-radius: 18px; padding: 26px 28px; box-shadow: var(--shadow); animation: sheetIn .24s var(--ease-out); }
   .fw-l { font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .7px; color: #6fd6a4; }
   .fw-time { font-size: 34px; font-weight: 300; letter-spacing: -1.2px; margin: 6px 0 2px; }
@@ -2158,7 +2211,8 @@
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     display: grid; place-items: center; padding: 20px; animation: pageIn .18s var(--ease-out); }
   .sheet-box { position: relative; width: min(470px, 94vw); max-height: 84vh; overflow-y: auto;
-    background: #101219; border: 1px solid var(--line); border-radius: 17px; padding: 26px 28px;
+    background: var(--panel-3); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line-2); border-radius: 17px; padding: 26px 28px;
     box-shadow: var(--shadow); animation: sheetIn .22s var(--ease-out); }
   .es-cal { font-size: 11px; font-weight: 700; }
   .es-title { font-size: 20px; font-weight: 750; letter-spacing: -.4px; margin: 6px 0 4px; padding-right: 30px; }
@@ -2212,6 +2266,7 @@
     </div>
   </header>
 
+  <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
   <nav class="mainnav">
     <button class="nav-btn active" data-page="today"><span>🌤</span>Today</button>
     <button class="nav-btn" data-page="tasks"><span>✓</span>Tasks</button>
@@ -4204,15 +4259,39 @@ function renderProjectDetail() {
              <span class="pd-task-dot" style="background:${COL_COLOR[t.status]}"></span>
              <span class="pd-task-text ${t.status === 'done' ? 'done' : ''}">${escapeHtml(t.text)}</span>
              <span class="pd-task-date">${fmtShort(t._date)}</span>
-             <button class="pd-task-detach" title="Remove from project">✕</button>
+             <button class="pd-task-unlink" title="Keep the task, remove it from this project">Unlink</button>
+             <button class="pd-task-del" title="Delete this task everywhere">🗑</button>
            </div>`).join('') + '</div>').join('')
     : `<div class="empty small"><div class="empty-t">No tasks yet.</div><div class="empty-s">Add the first thing that moves this forward.</div></div>`;
   $('#pdTasks').querySelectorAll('.pd-task').forEach((row) => {
     row.querySelector('.pd-task-text').onclick = () => jumpToTask(row.dataset.date, row.dataset.tid);
-    row.querySelector('.pd-task-detach').onclick = async (e) => {
+    // A bare ✕ here used to read as "delete" while only unlinking, which left
+    // people hunting for tasks that had quietly become loose ones.
+    row.querySelector('.pd-task-unlink').onclick = async (e) => {
       e.stopPropagation();
       await mutateTask(row.dataset.date, row.dataset.tid, (t) => { t.projectId = null; });
-      renderProjectDetail();
+      renderProjectDetail(); render();
+      flash('Unlinked — the task is still on ' + fmtShort(row.dataset.date));
+    };
+    row.querySelector('.pd-task-del').onclick = async (e) => {
+      e.stopPropagation();
+      const label = row.querySelector('.pd-task-text').textContent;
+      if (!confirm('Delete “' + label + '”?\n\nThis removes the task itself, not just its link to the project.')) return;
+      const date = row.dataset.date, tid = row.dataset.tid;
+      if (date === iso(current)) {
+        tasks = tasks.filter((t) => t.id !== tid);
+        if (!tasks.length) { meta.noCarry = true; saveMeta(); }
+        save();
+      } else {
+        try {
+          const arr = ((await (await fetch('/api/tasks?date=' + date)).json()).tasks || []);
+          await fetch('/api/tasks?date=' + date, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(arr.filter((t) => t.id !== tid)) });
+        } catch {}
+      }
+      await refreshDays();
+      renderProjectDetail(); render();
+      flash('🗑 Task deleted');
     };
   });
 
@@ -8718,10 +8797,43 @@ document.addEventListener('click', (e) => {
   const m = $('#pdLearnMenu');
   if (m && m.classList.contains('open') && !m.contains(e.target) && e.target.id !== 'pdAddLearn') m.classList.remove('open');
 });
-$('#pdDelete').onclick = () => {
+$('#pdDelete').onclick = async () => {
   const p = projectById(detailProjectId); if (!p) return;
+  // Its tasks are day records living across many days, so they have to be
+  // removed day by day. Left alone they used to survive as loose tasks still
+  // pointing at a project that no longer existed.
+  const mine = allTasks().filter((t) => t.projectId === p.id);
+  const msg = mine.length
+    ? 'Delete “' + p.title + '” and its ' + mine.length + ' task' + (mine.length > 1 ? 's' : '') + '?\n\nThis cannot be undone.'
+    : 'Delete “' + p.title + '”?\n\nThis cannot be undone.';
+  if (!confirm(msg)) return;
+
+  const byDay = {};
+  mine.forEach((t) => { (byDay[t._date] = byDay[t._date] || []).push(t.id); });
+  for (const date of Object.keys(byDay)) {
+    const ids = new Set(byDay[date]);
+    if (date === iso(current)) {
+      tasks = tasks.filter((t) => !ids.has(t.id));
+      // An emptied day is a deliberate empty day, not one to refill tomorrow.
+      if (!tasks.length) { meta.noCarry = true; saveMeta(); }
+      save();
+    } else {
+      try {
+        const arr = ((await (await fetch('/api/tasks?date=' + date)).json()).tasks || []);
+        const left = arr.filter((t) => !ids.has(t.id));
+        await fetch('/api/tasks?date=' + date, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(left),
+        });
+      } catch {}
+    }
+  }
   projects = projects.filter((x) => x.id !== p.id); saveProjects();
-  closeProjectDetail(); renderProjectsPage();
+  logActivity('project-deleted', 'Deleted project “' + p.title + '”' +
+    (mine.length ? ' and ' + mine.length + ' task' + (mine.length > 1 ? 's' : '') : ''), {});
+  await refreshDays();
+  closeProjectDetail(); renderProjectsPage(); render();
+  flash(mine.length ? '🗑 Project and ' + mine.length + ' task' + (mine.length > 1 ? 's' : '') + ' deleted'
+                    : '🗑 Project deleted');
 };
 
 // Weekly review navigation
@@ -8860,7 +8972,7 @@ function renderSummary(s) {
     <div class="chart-title">Focus by day</div>
     <div class="chart">${bars}</div>
     <div class="chart-legend">
-      <span><span class="dot" style="background:linear-gradient(180deg,var(--accent),#57d9a3)"></span>Home / unset</span>
+      <span><span class="dot" style="background:var(--accent)"></span>Home / unset</span>
       <span><span class="dot" style="background:#f5a623"></span>Office day</span>
     </div>
     ${accuracyBlock(s)}`;
