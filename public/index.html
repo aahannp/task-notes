@@ -255,8 +255,7 @@
     background: var(--muted); transition: background .25s;
   }
   .focus-cell.active-focus .focus-timer {
-    color: #8fe3c4; -webkit-background-clip: border-box;
-    background-clip: text; color: transparent;
+    color: #8fe3c4;
   }
   .focus-cell.active-focus .focus-timer::before {
     background: #57d9a3; animation: recPulse 1.5s ease-out infinite;
@@ -319,8 +318,7 @@
     font-variant-numeric: tabular-nums; color: var(--text);
   }
   .focusmode.running .fm-timer {
-    color: #8fe3c4; -webkit-background-clip: border-box;
-    background-clip: text; color: transparent;
+    color: #8fe3c4;
   }
   .fm-task { font-size: 21px; font-weight: 600; color: var(--text); max-width: 640px; word-break: break-word; }
   .fm-pickwrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
@@ -526,6 +524,9 @@
     font-family: inherit;
   }
   .hidden { display: none !important; }
+  /* With an overlay open the page behind it must not scroll. Each overlay is
+     its own scroll container, so locking the document does not trap content. */
+  html.scroll-locked, body.scroll-locked { overflow: hidden !important; }
 
   .carried-tag {
     display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px;
@@ -6083,6 +6084,31 @@ function daySuggestions() {
 // SHARED PICKER — one lightweight chooser used everywhere something has
 // to be linked to something else.
 // =====================================================================
+// Popovers sit above every overlay in the app; overlays themselves top out at
+// 500 (.modal-overlay).
+const Z_POPOVER = 900;
+
+// ---- scroll lock ----
+// Anything covering the page has to stop the page moving underneath it. The
+// overlays are declared in markup and toggled with `.hidden`, so rather than
+// touching every open/close site this watches their class attribute.
+const OVERLAY_SEL = '.modal-overlay, .page, .detail, .lsession, .cmdk, .sheet, .fwrap, .capbar';
+function anyOverlayOpen() {
+  return [...document.querySelectorAll(OVERLAY_SEL)].some((el) => !el.classList.contains('hidden'))
+    || !!document.querySelector('.pickpop');
+}
+function syncScrollLock() {
+  const lock = anyOverlayOpen();
+  document.documentElement.classList.toggle('scroll-locked', lock);
+  document.body.classList.toggle('scroll-locked', lock);
+}
+function watchOverlays() {
+  const obs = new MutationObserver(syncScrollLock);
+  document.querySelectorAll(OVERLAY_SEL).forEach((el) =>
+    obs.observe(el, { attributes: true, attributeFilter: ['class', 'style'] }));
+  syncScrollLock();
+}
+
 function openPicker(anchorEl, title, options, onPick) {
   document.querySelectorAll('.pickpop').forEach((n) => n.remove());
   const pop = document.createElement('div');
@@ -6094,11 +6120,23 @@ function openPicker(anchorEl, title, options, onPick) {
           '<button data-i="' + i + '">' + (o.icon ? o.icon + ' ' : '') + escapeHtml(o.label) + '</button>').join('') + '</div>'
       : '<div class="menu-empty">Nothing available.</div>');
   document.body.appendChild(pop);
+  syncScrollLock();
   const r = anchorEl.getBoundingClientRect();
   pop.style.position = 'fixed';
-  pop.style.zIndex = '200';
+  // Above every overlay. At 200 this sat *behind* .modal-overlay (500), so
+  // "Depends on…" opened underneath the task modal and could not be used.
+  pop.style.zIndex = String(Z_POPOVER);
   pop.style.left = Math.max(8, Math.min(innerWidth - pop.offsetWidth - 8, r.left)) + 'px';
-  pop.style.top = Math.min(innerHeight - pop.offsetHeight - 8, r.bottom + 6) + 'px';
+  // Clamped at both ends, like `left`. With only a lower bound, a tall list in
+  // a short window was pushed to a negative top — off the screen and
+  // unusable. Preferring below the anchor, flipping above when there is more
+  // room there, and never leaving the viewport.
+  const gap = 6, margin = 8;
+  const below = r.bottom + gap, above = r.top - gap - pop.offsetHeight;
+  const fitsBelow = below + pop.offsetHeight + margin <= innerHeight;
+  let top = fitsBelow ? below : (above >= margin ? above : below);
+  top = Math.max(margin, Math.min(innerHeight - pop.offsetHeight - margin, top));
+  pop.style.top = Math.max(margin, top) + 'px';
   const filter = pop.querySelector('.pick-filter');
   if (filter) {
     filter.focus();
@@ -6110,10 +6148,10 @@ function openPicker(anchorEl, title, options, onPick) {
     };
   }
   pop.querySelectorAll('[data-i]').forEach((b) => {
-    b.onclick = () => { const o = options[+b.dataset.i]; pop.remove(); onPick(o); };
+    b.onclick = () => { const o = options[+b.dataset.i]; pop.remove(); syncScrollLock(); onPick(o); };
   });
   setTimeout(() => {
-    const off = (e) => { if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('mousedown', off); } };
+    const off = (e) => { if (!pop.contains(e.target)) { pop.remove(); syncScrollLock(); document.removeEventListener('mousedown', off); } };
     document.addEventListener('mousedown', off);
   }, 0);
 }
@@ -6624,7 +6662,11 @@ function renderTaskDeps(t) {
   $('#tmAddDep').onclick = (e) => {
     const options = allTasks()
       .filter((x) => x.id !== t.id && !(t.dependsOn || []).includes(x.id) && !dependentsOf(t.id).some((d) => d.id === x.id))
-      .map((x) => ({ icon: x.status === 'done' ? '✓' : '○', label: x.text, id: x.id }));
+      // The list spans every day, and carry-forward means the same wording can
+      // exist on several of them as separate tasks. Without the day they are
+      // indistinguishable and you cannot tell which one you are picking.
+      .map((x) => ({ icon: x.status === 'done' ? '✓' : '○',
+        label: x.text + '  · ' + (x._date === iso(new Date()) ? 'today' : fmtShort(x._date)), id: x.id }));
     openPicker(e.currentTarget, 'This task depends on…', options, (o) => {
       t.dependsOn = (t.dependsOn || []).concat(o.id);
       save();
@@ -8735,6 +8777,7 @@ document.querySelectorAll('.nav-btn').forEach((b) => {
 });
 document.querySelectorAll('.page-close').forEach((b) => { b.onclick = closePage; });
 bindCalendarPage();
+watchOverlays();
 $('#pdClose').onclick = closeProjectDetail;
 $('#ldClose').onclick = closeLearnDetail;
 $('#lsClose').onclick = closeLearnSession;
