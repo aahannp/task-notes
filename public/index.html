@@ -1509,6 +1509,20 @@
   .be-codehint { font-size: 10.5px; color: var(--muted); opacity: 0; transition: opacity var(--t-fast); }
   .be-block:focus-within .be-codehint { opacity: .6; }
   .be-code { margin: 4px 0 0; }
+  .be-mermtoggle { background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+    font-family: inherit; font-size: 11px; padding: 2px 9px; border-radius: 7px; cursor: pointer; }
+  .be-mermtoggle:hover { color: var(--text); border-color: var(--accent); }
+  /* A diagram is a figure, not a code listing: it gets room and sits centred. */
+  .be-merm { margin: 6px 0 0; padding: 18px 14px; border: 1px solid var(--line); border-radius: 12px;
+    background: rgba(255,255,255,.02); display: flex; justify-content: center; overflow-x: auto; }
+  .be-merm svg { max-width: 100%; height: auto; }
+  .be-merm.loading { min-height: 90px; }
+  .be-merm.loading::after { content: 'Drawing…'; color: var(--muted); font-size: 12px; }
+  .be-merm.failed { border-color: rgba(255,107,129,.4); }
+  .be-merm-err { color: var(--danger); font-size: 12px; font-family: ui-monospace, Menlo, monospace;
+    white-space: pre-wrap; text-align: left; }
+  .be-merm-empty { color: var(--muted); font-size: 12.5px; }
+  .doc-merm { margin: 16px 0; }
   .be-table { border-collapse: collapse; width: 100%; margin: 6px 0 0; font-size: 14px; }
   .be-cell { border: 1px solid var(--line); padding: 7px 10px; outline: none; min-width: 60px; }
   .be-table th.be-cell { background: var(--panel); font-weight: 700; text-align: left; }
@@ -2773,6 +2787,7 @@
   </div>
 </div>
 
+<datalist id="beLangs"></datalist>
 <div class="hidden" id="beMenu"></div>
 <div class="hidden" id="beBar">
   <button data-cmd="bold" title="Bold (⌘B)"><b>B</b></button>
@@ -5231,6 +5246,7 @@ function renderDocPreview() {
   const html = renderMarkdown(content, { resolve: (name) => docByTitle(name) });
   const target = $('#docRender');
   target.innerHTML = html;
+  renderMermaidIn(target);
   // Wiki links are real relationships: existing docs open, missing ones offer
   // to be created with that title.
   target.querySelectorAll('a.wikilink').forEach((a) => {
@@ -7756,6 +7772,95 @@ function beCodeText(el) {
   return out.replace(/\u00a0/g, ' ').replace(/\n$/, '');
 }
 
+// ---- mermaid ----------------------------------------------------------
+// Vendored in public/vendor, never a CDN: the app has to work offline and
+// nothing about a document should leave the machine. Loaded on demand, so a
+// document without a diagram never pays for 2.5MB of parser.
+let beMermReady = null;
+function beLoadMermaid() {
+  if (beMermReady) return beMermReady;
+  beMermReady = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'vendor/mermaid.min.js';
+    s.onload = () => {
+      try {
+        const css = getComputedStyle(document.body);
+        const tok = (n, fb) => (css.getPropertyValue(n) || '').trim() || fb;
+        window.mermaid.initialize({
+          startOnLoad: false,
+          theme: 'base',
+          // Matched to the app rather than left on mermaid's own dark theme,
+          // which fills nodes near-white and fights everything around it.
+          themeVariables: {
+            background: 'transparent',
+            primaryColor: 'rgba(124,155,255,.16)',
+            primaryBorderColor: tok('--accent', '#7c9bff'),
+            primaryTextColor: tok('--text', '#eef0f7'),
+            secondaryColor: 'rgba(167,139,250,.16)',
+            tertiaryColor: 'rgba(255,255,255,.05)',
+            lineColor: tok('--muted', '#a6adbf'),
+            textColor: tok('--text', '#eef0f7'),
+            mainBkg: 'rgba(124,155,255,.14)',
+            nodeBorder: tok('--accent', '#7c9bff'),
+            clusterBkg: 'rgba(255,255,255,.03)',
+            clusterBorder: tok('--line', 'rgba(255,255,255,.12)'),
+            edgeLabelBackground: 'rgba(16,18,25,.92)',
+            fontSize: '14px',
+          },
+          // The hand-drawn look, which is the point of asking for diagrams
+          // rather than a picture of a flowchart.
+          look: 'handDrawn',
+          fontFamily: getComputedStyle(document.body).fontFamily,
+          // Labels are treated as text, and click directives are ignored: a
+          // document can arrive by paste from anywhere.
+          securityLevel: 'strict',
+        });
+        res(window.mermaid);
+      } catch (e) { rej(e); }
+    };
+    s.onerror = () => rej(new Error('mermaid failed to load'));
+    document.head.appendChild(s);
+  });
+  return beMermReady;
+}
+
+let beMermSeq = 0;
+// Renders one diagram into `host`. Errors are shown in place rather than
+// thrown, because a half-typed diagram is the normal state while writing.
+async function beRenderMermaid(host, code) {
+  if (!code || !code.trim()) {
+    host.innerHTML = '<div class="be-merm-empty">Empty diagram — switch to Source and describe one.</div>';
+    return;
+  }
+  host.classList.add('loading');
+  try {
+    const m = await beLoadMermaid();
+    const { svg } = await m.render('merm' + (++beMermSeq), code);
+    host.innerHTML = svg;
+    host.classList.remove('loading', 'failed');
+  } catch (e) {
+    host.classList.remove('loading');
+    host.classList.add('failed');
+    host.innerHTML = '<div class="be-merm-err">' + escapeHtml(String(e && e.message ? e.message : e).slice(0, 300)) + '</div>';
+  }
+}
+// The reading and split views render markdown to HTML, so diagrams are swapped
+// in afterwards wherever a mermaid fence landed.
+function renderMermaidIn(root) {
+  if (!root) return;
+  root.querySelectorAll('pre.doc-code[data-lang="mermaid"]').forEach((pre) => {
+    const code = pre.textContent;
+    const host = document.createElement('div');
+    host.className = 'be-merm doc-merm';
+    pre.replaceWith(host);
+    beRenderMermaid(host, code);
+  });
+}
+
+const BE_LANGS = ['mermaid', 'bash', 'c', 'cpp', 'css', 'diff', 'go', 'graphql', 'html', 'java',
+  'javascript', 'json', 'kotlin', 'markdown', 'php', 'python', 'ruby', 'rust', 'sql', 'swift',
+  'toml', 'tsx', 'typescript', 'xml', 'yaml'];
+
 // ---- state ----
 let beBlocks = [];
 let beDragFrom = null;
@@ -7770,6 +7875,7 @@ const BE_MENU = [
   { key: 'task', icon: '☑', label: 'To-do list' },
   { key: 'quote', icon: '❝', label: 'Quote' },
   { key: 'code', icon: '‹›', label: 'Code block' },
+  { key: 'mermaid', icon: '◈', label: 'Diagram', hint: 'Mermaid' },
   { key: 'table', icon: '▦', label: 'Table' },
   { key: 'hr', icon: '—', label: 'Divider' },
 ];
@@ -7783,6 +7889,8 @@ function beApplyType(b, key) {
   else if (key === 'task') Object.assign(b, { type: 'li', ordered: false, checked: false, indent: b.indent || 0 });
   else if (key === 'quote') Object.assign(b, { type: 'quote' });
   else if (key === 'code') Object.assign(b, { type: 'code', lang: '', code: b.text || '' });
+  else if (key === 'mermaid') Object.assign(b, { type: 'code', lang: 'mermaid', showSrc: true,
+    code: b.text || 'flowchart LR\n  A[Start] --> B{Decide}\n  B -- yes --> C[Do it]\n  B -- no --> D[Stop]' });
   else if (key === 'hr') Object.assign(b, { type: 'hr' });
   else if (key === 'table') Object.assign(b, { type: 'table', rows: [['', ''], ['', '']], align: ['', ''] });
   return b;
@@ -7798,10 +7906,17 @@ function beBlockHtml(b, i) {
   else if (b.type === 'quote') body = '<blockquote class="be-quote">' + inner('div') + '</blockquote>';
   else if (b.type === 'hr') body = '<hr class="be-hr">';
   else if (b.type === 'code') {
-    body = '<div class="be-codehead"><input class="be-lang" data-i="' + i + '" value="' +
-      escapeHtml(b.lang || '') + '" placeholder="language" /><span class="be-codehint">⏎⏎ or Esc to leave</span></div>' +
-      '<pre class="be-code"><code class="be-codetext" contenteditable="plaintext-only" data-i="' + i + '">' +
-      escapeHtml(b.code || '') + '</code></pre>';
+    const isMerm = (b.lang || '').toLowerCase() === 'mermaid';
+    const showSrc = !isMerm || b.showSrc;
+    body = '<div class="be-codehead">' +
+      '<input class="be-lang" list="beLangs" data-i="' + i + '" value="' + escapeHtml(b.lang || '') +
+        '" placeholder="language" spellcheck="false" />' +
+      (isMerm ? '<button class="be-mermtoggle" data-merm="' + i + '">' +
+        (showSrc ? '◈ Diagram' : '‹› Source') + '</button>' : '') +
+      '<span class="be-codehint">' + (showSrc ? '⏎⏎ or Esc to leave' : '') + '</span></div>' +
+      (isMerm && !showSrc ? '<div class="be-merm" data-merm-host="' + i + '"></div>' : '') +
+      (showSrc ? '<pre class="be-code"><code class="be-codetext" contenteditable="plaintext-only" data-i="' + i + '">' +
+        escapeHtml(b.code || '') + '</code></pre>' : '');
   } else if (b.type === 'raw') {
     body = '<pre class="be-raw"><code class="be-codetext" contenteditable="plaintext-only" data-i="' + i + '">' +
       escapeHtml(b.text || '') + '</code></pre>';
@@ -7868,6 +7983,10 @@ function beRender(focusIndex, atEnd) {
   if (!root) return;
   root.innerHTML = beBlocks.map(beBlockHtml).join('');
   beBind();
+  root.querySelectorAll('[data-merm-host]').forEach((host) => {
+    const b = beBlocks[+host.dataset.mermHost];
+    if (b) beRenderMermaid(host, b.code);
+  });
   if (focusIndex != null) beFocusBlock(focusIndex, atEnd);
 }
 
@@ -7952,7 +8071,12 @@ function beKeydown(e) {
   }
 
   if (el.classList.contains('be-codetext')) {
-    if (e.key === 'Escape') { e.preventDefault(); beHarvest(); beSync(); el.blur(); return; }
+    if (e.key === 'Escape') {
+      e.preventDefault(); beHarvest();
+      if ((b.lang || '').toLowerCase() === 'mermaid') { b.showSrc = false; beRender(); }
+      beSync(); el.blur();
+      return;
+    }
     if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '  '); return; }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -8180,7 +8304,18 @@ function beBind() {
     };
   });
   root.querySelectorAll('.be-lang').forEach((inp) => {
-    inp.onchange = () => { beHarvest(); beSync(); };
+    // Changing the language can change the whole block (mermaid gets a
+    // diagram), so this re-renders rather than only re-serialising.
+    inp.onchange = () => { beHarvest(); beRender(); beSync(); };
+  });
+  root.querySelectorAll('[data-merm]').forEach((btn) => {
+    btn.onclick = () => {
+      const b = beBlocks[+btn.dataset.merm];
+      beHarvest();
+      b.showSrc = !b.showSrc;
+      beRender();
+      beSync();
+    };
   });
 
   // drag to reorder
@@ -8239,7 +8374,14 @@ function beBindChrome() {
 }
 
 // ---- entry point ----
+function beFillLangs() {
+  const dl = $('#beLangs');
+  if (!dl || dl.children.length) return;
+  dl.innerHTML = BE_LANGS.map((l) => '<option value="' + l + '"></option>').join('');
+}
+
 function renderWriteSurface() {
+  beFillLangs();
   const ta = $('#docEditor');
   if (!ta) return;
   beBlocks = mdToBlocks(ta.value);

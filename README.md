@@ -6,7 +6,7 @@
 
 Runs entirely on your machine. Plain JSON files. No account, no cloud, no telemetry.
 
-macOS desktop app · zero runtime dependencies · single-file frontend
+macOS desktop app · zero server dependencies · single-file frontend
 
 </div>
 
@@ -65,7 +65,9 @@ Documents are a first-class entity with their own workspace: a sidebar (pinned, 
 
 ![Documents](docs/screenshots/documents.png)
 
-**Writing is block-based, not markdown-typing.** A heading looks like a heading as you write it, `**` never appears on screen, `/` opens a block menu, selecting text raises a formatting bar, and blocks drag to reorder. Lists indent with Tab, Enter on an empty list item ends the list, and Backspace at the start of a block merges it into the one above.
+**Writing is block-based, not markdown-typing.** A heading looks like a heading as you write it, `**` never appears on screen, `/` opens a block menu, selecting text raises a formatting bar, and blocks drag to reorder. Lists indent with Tab, Enter on an empty list item ends the list, and Backspace at the start of a block merges it into the one above. Code blocks pick a language from a list, and a blank line then Enter leaves the block.
+
+**Diagrams render where you write them.** Set a code block's language to `mermaid` and it becomes the drawing — flowcharts, sequence diagrams, the rest — in a hand-drawn style, themed to match the app rather than dropped in as a foreign white rectangle. Toggle to **Source** to edit it, Escape to go back. The fence stays an ordinary ```mermaid block in the markdown, so the diagram is still just text in your file, and GitHub renders it too.
 
 The file on disk is still a plain `.md`. The block editor is a *view* over the markdown rather than a separate format: every edit is serialised straight back to markdown, which then goes through the same autosave, draft and conflict handling as before. Anything the editor does not model — an HTML block, an indented code block, a footnote — is carried through untouched instead of being reformatted, and the round trip is idempotent, so opening a document never rewrites it. Prefer the source? **Edit** and **Split** are still there.
 
@@ -224,7 +226,7 @@ Glass needs something behind it or it reads as pale grey card, so a layer of fla
 
 ## Running it
 
-Requires Node.js. There are no dependencies to install for the server.
+Requires Node.js. There are no dependencies to install — the server uses only Node's standard library.
 
 ```bash
 node server.js
@@ -293,6 +295,7 @@ Nothing leaves your machine. The only outbound calls are the ones Spotify makes 
 Deliberately small and boring so it stays hackable:
 
 - **`server.js`** — a zero-dependency Node HTTP server. Serves the frontend and a small JSON API over the files above.
+- **`public/vendor/`** — the one piece of third-party code in the app: `mermaid.min.js`, pinned, vendored rather than fetched from a CDN so diagrams work offline and nothing about a document leaves the machine. It is loaded lazily, so a document without a diagram never pays for it.
 - **`public/index.html`** — the entire frontend. One file: markup, styles and logic, including a dependency-free markdown parser, sanitiser and highlighter.
 - **`public/mini.html` / `public/capture.html`** — the two small native companion windows.
 - **`helpers/tn-calendar.swift`** — an EventKit helper that prints JSON: reads your agenda, and creates, edits and deletes events. It takes the occurrence's start date alongside the event id, because every occurrence of a recurring series shares one identifier and looking one up by id alone returns the first. Built by `npm run build:helper`, which `npm run dist` runs for you.
