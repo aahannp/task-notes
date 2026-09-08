@@ -270,7 +270,16 @@ function writeCollection(name, value) {
 function migrateStores() {
   const marker = path.join(DATA_DIR, '.migrated-v2');
   if (fs.existsSync(marker)) return;
-  const legacy = readCollection('projects');
+  const all = readCollection('projects');
+  // The marker alone is not enough to decide this. A data directory can easily
+  // arrive without it — restored from a backup, copied by hand, or pointed at
+  // by TASKNOTES_DATA — and rewriting an already-migrated store through the v1
+  // mapping below reads `desc` out of `note` and `due` out of `deadline`, which
+  // for a v2 record means blanking the real ones. So the shape decides, and a
+  // store with nothing legacy in it is only marked, never rewritten.
+  const isLegacy = (p) => p && (p.type !== undefined || p.note !== undefined || p.deadline !== undefined)
+    && p.desc === undefined && p.learningIds === undefined;
+  const legacy = all.filter(isLegacy).length ? all : [];
   if (legacy.length) {
     const projects = [], learning = [], ideas = [];
     legacy.forEach((p) => {
@@ -290,11 +299,14 @@ function migrateStores() {
           convertedProjectId: null, sparks: Array.isArray(p.subs) ? p.subs : [],
         });
       } else {
+        // A mixed store can hold records that are already v2; those keep what
+        // they have rather than being mapped through the v1 field names.
         projects.push({
-          id: p.id, title: p.title || '', desc: p.note || '',
+          id: p.id, title: p.title || '', desc: p.desc || p.note || '',
           status: p.status === 'backlog' ? 'planned' : (p.status || 'planned'),
-          start: '', due: p.deadline || '', notes: p.note || '',
-          learningIds: [], createdAt: p.createdAt || Date.now(), updatedAt: Date.now(),
+          start: p.start || '', due: p.due || p.deadline || '', notes: p.notes || p.note || '',
+          learningIds: Array.isArray(p.learningIds) ? p.learningIds : [],
+          createdAt: p.createdAt || Date.now(), updatedAt: p.updatedAt || Date.now(),
           focusSeconds: p.focusSeconds || 0, subs: Array.isArray(p.subs) ? p.subs : [],
         });
       }
