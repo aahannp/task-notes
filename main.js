@@ -115,15 +115,24 @@ function destroyMini() {
 let miniDismissed = false;
 ipcMain.on('mini:open', () => { miniDismissed = false; createMini(); });
 ipcMain.on('mini:close', () => destroyMini());
-ipcMain.on('mini:dismiss', () => { miniDismissed = true; destroyMini(); });
+ipcMain.on('mini:dismiss', (_e, key) => {
+  miniDismissed = true;
+  miniDismissedFor = key || miniDismissedFor;
+  destroyMini();
+});
 
 // Main window broadcasts focus/music state. The SHELL owns the companion's
 // lifecycle from that state, so a reload of the main window can never orphan
 // the window or lose track of whether it is open.
+let miniDismissedFor = null;   // the session the dismissal belongs to
 ipcMain.on('focus:state', (_e, state) => {
   const active = !!(state && state.active);
-  // A session ending clears the dismissal, so the next one pops out again.
-  if (!active) miniDismissed = false;
+  const key = (state && state.sessionKey) || '';
+  // Dismissal is keyed to the session, not to "is anything active right now".
+  // The renderer reports the session on the *viewed* day, so simply changing
+  // day looks like the session stopping — and clearing the flag there meant a
+  // companion you had closed reappeared as soon as you navigated.
+  if (active && key && key !== miniDismissedFor) miniDismissed = false;
   if (active && !miniDismissed && (!mini || mini.isDestroyed())) createMini();
   else if (!active && mini && !mini.isDestroyed()) destroyMini();
   if (mini && !mini.isDestroyed()) mini.webContents.send('focus:state', state);

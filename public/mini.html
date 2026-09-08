@@ -141,7 +141,7 @@
 
     // Dismissing is not ending: the session keeps running and this window just
     // goes away, reachable again from the app's pop-out control.
-    const dismiss = () => { if (window.tn.dismissMini) window.tn.dismissMini(); };
+    const dismiss = () => { if (window.tn.dismissMini) window.tn.dismissMini(state && state.sessionKey); };
     $('#close').onclick = dismiss;
     addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { e.preventDefault(); dismiss(); }

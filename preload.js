@@ -12,7 +12,9 @@ contextBridge.exposeInMainWorld('tn', {
   openMini: () => ipcRenderer.send('mini:open'),
   closeMini: () => ipcRenderer.send('mini:close'),
   // Dismiss = hide the companion but keep the session running.
-  dismissMini: () => ipcRenderer.send('mini:dismiss'),
+  // The session key travels with the dismissal so the shell knows which
+  // session it applies to, and a later one still pops out.
+  dismissMini: (sessionKey) => ipcRenderer.send('mini:dismiss', sessionKey),
   miniIsOpen: () => ipcRenderer.invoke('mini:isOpen'),
   pushState: (state) => ipcRenderer.send('focus:state', state),
 

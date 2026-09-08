@@ -2404,7 +2404,7 @@
   </div>
   <input id="newNote" class="noteinput" placeholder="Add a note for this task (optional)…" autocomplete="off" />
 
-  <div class="hints"><kbd>N</kbd> add · <kbd>/</kbd> search · <kbd>F</kbd> focus · <kbd>T</kbd> tasks · <kbd>P</kbd> projects · <kbd>L</kbd> learning · <kbd>I</kbd> ideas · <kbd>W</kbd> review · <kbd>C</kbd> calendar · <kbd>←</kbd> <kbd>→</kbd> day</div>
+  <div class="hints"><kbd>N</kbd> add · <kbd>/</kbd> search · <kbd>F</kbd> focus · <kbd>T</kbd> tasks · <kbd>P</kbd> projects · <kbd>L</kbd> learning · <kbd>I</kbd> ideas · <kbd>W</kbd> review · <kbd>C</kbd> capture · <kbd>D</kbd> planner · <kbd>←</kbd> <kbd>→</kbd> day</div>
 
   <div class="agenda" id="agenda" style="display:none"></div>
   <div class="resurface" id="resurface" style="display:none"></div>
@@ -3395,6 +3395,9 @@ function focusStatePayload() {
   const s = openSession();
   return {
     active: !!s,
+    // Identifies *which* session this is. The shell keys a dismissal to it, so
+    // hiding the companion sticks for this session but a new one pops out.
+    sessionKey: s ? String(s.start || '') : '',
     accumulatedSec: s ? (s.accumulatedSec || 0) : 0,
     runningSince: s ? s.runningSince : null,
     label: s ? (s.taskText || 'Free focus') : '',
@@ -9073,7 +9076,7 @@ addEventListener('keydown', (e) => {
   else if (e.key === '/') { e.preventDefault(); $('#searchInput').focus(); }
   else if (e.key === 'f') { e.preventDefault(); $('#focusMode').classList.contains('hidden') ? openFocusMode() : closeFocusMode(); }
   else if (e.key === 's') { e.preventDefault(); overlayOpen || openSummary(); }
-  else if (e.key === 'c') { e.preventDefault(); overlayOpen || openCalendar(); }
+  else if (e.key === 'd') { e.preventDefault(); overlayOpen || openCalendar(); }
   else if (e.key === 'p') { e.preventDefault(); overlayOpen || openPage('projects'); }
   else if (e.key === 'l') { e.preventDefault(); overlayOpen || openPage('learning'); }
   else if (e.key === 'i') { e.preventDefault(); overlayOpen || openPage('ideas'); }
@@ -9404,6 +9407,9 @@ document.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const tag = (e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+  // `c` used to be bound twice — here and in the main chain — so one press
+  // opened the capture bar *and* the day planner. Capture keeps `c`; the day
+  // planner moved to `d`.
   if (e.key === 'c' && !activePage) { e.preventDefault(); openCaptureBar('today'); }
 });
 

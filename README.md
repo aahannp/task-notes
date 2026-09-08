@@ -273,6 +273,8 @@ Nothing leaves your machine. The only outbound calls are the ones Spotify makes 
 | `F` | focus mode |
 | `T` `P` `L` `I` `W` | Tasks · Projects · Learning · Ideas · Weekly Review |
 | `C` | capture a thought |
+| `D` | day planner (day types, jump to a day) |
+| `S` | summary |
 | `⌘K` | command palette |
 | `⌘⇧Space` | global quick capture (anywhere on macOS) |
 | `←` `→` | previous / next day |
