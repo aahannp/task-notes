@@ -42,6 +42,17 @@
     padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,.05); margin-bottom: 9px; min-height: 27px; }
   .track.hidden { display: none; }
   .track-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Says something is playing. It is not analysing audio — Spotify plays in
+     its own app and nothing reaches this window. */
+  .eq { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 9px; flex-shrink: 0; }
+  .eq i { width: 2px; border-radius: 1px; background: #1ed760; height: 30%; }
+  .eq.on i { animation: eqBar .9s ease-in-out infinite alternate; }
+  .eq i:nth-child(1) { animation-duration: .74s; animation-delay: -.15s; }
+  .eq i:nth-child(2) { animation-duration: 1.02s; animation-delay: -.42s; }
+  .eq i:nth-child(3) { animation-duration: .62s; animation-delay: -.05s; }
+  .eq.paused i { animation-play-state: paused; }
+  @keyframes eqBar { from { height: 20%; } to { height: 100%; } }
+  @media (prefers-reduced-motion: reduce) { .eq.on i { animation: none; height: 60%; } }
   .vol { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; -webkit-app-region: no-drag; }
   .vol.hidden { display: none; }
   .vol button { min-width: 26px; height: 24px; padding: 0; font-size: 11px; background: none; border: none; }
@@ -75,7 +86,7 @@
   </div>
   <div class="timer" id="timer">00:00</div>
   <div class="task" id="task"></div>
-  <div class="track hidden" id="track"><span>🎧</span><span class="track-name" id="trackName"></span></div>
+  <div class="track hidden" id="track"><span class="eq" id="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="track-name" id="trackName"></span></div>
   <div class="vol hidden" id="volRow">
     <button id="mute" title="Mute / unmute">🔊</button>
     <input type="range" id="vol" min="0" max="100" value="70" aria-label="Volume" />
@@ -115,7 +126,13 @@
     $('#toggle').title = running ? 'Pause focus' : 'Resume focus';
     $('#task').textContent = state.label || 'Free focus';
     const t = $('#track');
-    if (state.track) { t.classList.remove('hidden'); $('#trackName').textContent = state.track; }
+    if (state.track) {
+      t.classList.remove('hidden');
+      $('#trackName').textContent = state.track;
+      const eq = $('#eq');
+      eq.classList.add('on');
+      eq.classList.toggle('paused', !state.playing);
+    }
     else t.classList.add('hidden');
     $('#play').textContent = state.playing ? '⏸' : '▶';
 

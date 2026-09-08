@@ -639,6 +639,32 @@
   .spot-art { width: 104px; height: 104px; flex-shrink: 0; border-radius: 12px; overflow: hidden;
     background: rgba(255,255,255,0.06); box-shadow: 0 8px 26px rgba(0,0,0,.4); }
   .spot-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Playing indicator. These bars are not analysing anything — Spotify plays
+     through its own app, so no audio ever reaches this page. They say
+     "something is playing", which is the only honest thing they can say, and
+     they stop dead when it pauses. */
+  .eq { position: absolute; left: 8px; bottom: 8px; display: flex; align-items: flex-end;
+    gap: 2px; height: 16px; padding: 3px 5px; border-radius: 6px;
+    background: rgba(6,8,12,.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    opacity: 0; transition: opacity var(--t-base); pointer-events: none; }
+  .spot-art { position: relative; }
+  .eq.on { opacity: 1; }
+  .eq i { display: block; width: 2.5px; border-radius: 2px; background: #1ed760; height: 30%;
+    transform-origin: bottom; }
+  .eq.on i { animation: eqBar .9s ease-in-out infinite alternate; }
+  /* Each bar gets its own duration and offset, or five bars move as one. */
+  .eq i:nth-child(1) { animation-duration: .74s; animation-delay: -.15s; }
+  .eq i:nth-child(2) { animation-duration: 1.02s; animation-delay: -.42s; }
+  .eq i:nth-child(3) { animation-duration: .62s; animation-delay: -.05s; }
+  .eq i:nth-child(4) { animation-duration: .88s; animation-delay: -.31s; }
+  .eq i:nth-child(5) { animation-duration: 1.14s; animation-delay: -.58s; }
+  @keyframes eqBar { from { height: 18%; } to { height: 100%; } }
+  /* Paused keeps the bars where they are rather than snapping them flat. */
+  .eq.paused i { animation-play-state: paused; }
+  @media (prefers-reduced-motion: reduce) {
+    .eq.on i { animation: none; }
+    .eq i:nth-child(odd) { height: 65%; }
+  }
   .spot-body { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
   .spot-top { display: flex; align-items: flex-start; gap: 10px; }
   .spot-name { font-size: 19px; font-weight: 800; letter-spacing: -.3px; line-height: 1.15;
@@ -1516,7 +1542,10 @@
   .be-surface { font-family: var(--serif); }
   .be-text { outline: none; line-height: 1.72; font-size: 17px; padding: 3px 4px;
     border-radius: 6px; letter-spacing: .1px; }
-  .be-surface { max-width: 44rem; }
+  /* The *measure* is what should be 68ch, not the container. Capping the
+     container at 44rem squeezed every table into four ribbons of one word per
+     line. Wide things get the whole column; paragraphs stay narrow. */
+  .be-surface { max-width: 60rem; }
   .be-block[data-type="p"] .be-text, .be-block[data-type="quote"] .be-text,
   .be-block[data-type="li"] .be-text { max-width: 68ch; }
   /* Chrome inside the editor stays in the interface font — a serif button is
@@ -1590,7 +1619,10 @@
     white-space: pre-wrap; text-align: left; }
   .be-merm-empty { color: var(--muted); font-size: 12.5px; }
   .doc-merm { margin: 16px 0; }
-  .be-table { border-collapse: collapse; width: 100%; margin: 6px 0 0; font-size: 14px; }
+  .be-tablewrap { overflow-x: auto; margin: 6px 0 0; max-width: 100%; }
+  .be-table { border-collapse: collapse; width: max-content; min-width: 100%;
+    font-family: var(--ui); font-size: 14px; }
+  .be-cell { overflow-wrap: normal; hyphens: none; }
   .be-cell { border: 1px solid var(--line); padding: 7px 10px; outline: none; min-width: 60px; }
   .be-table th.be-cell { background: var(--panel); font-weight: 700; text-align: left; }
   .be-cell:focus { box-shadow: inset 0 0 0 1px rgba(124,155,255,.5); }
@@ -1989,7 +2021,7 @@
   .ws-editor::placeholder { color: #5d6478; }
   .ws-readwrap { padding: 28px 38px 40vh; }
   .ws-panes.mode-read .ws-readwrap { padding: 34px 0 40vh; }
-  .ws-panes.mode-read .doc-render { max-width: 44rem; margin: 0 auto; padding: 0 34px; }
+  .ws-panes.mode-read .doc-render { max-width: 60rem; margin: 0 auto; padding: 0 34px; }
 
   /* rendered markdown typography */
   /* The reading view is the same prose as the writing view, so it is set the
@@ -1998,7 +2030,12 @@
     overflow-wrap: break-word; letter-spacing: .1px; }
   .doc-render p, .doc-render li, .doc-render blockquote { max-width: 68ch; }
   .doc-render code, .doc-render pre { font-family: var(--mono); letter-spacing: 0; }
-  .doc-render table { font-family: var(--ui); letter-spacing: 0; }
+  /* A table sized to its content and allowed to scroll beats a table folded
+     into one word per line. */
+  .doc-tablewrap { overflow-x: auto; margin: 1.2em 0; max-width: 100%; }
+  .doc-render table { font-family: var(--ui); letter-spacing: 0;
+    width: max-content; min-width: 100%; }
+  .doc-render td, .doc-render th { overflow-wrap: normal; hyphens: none; }
   .doc-render > *:first-child { margin-top: 0; }
   .doc-render h1, .doc-render h2, .doc-render h3, .doc-render h4, .doc-render h5, .doc-render h6 {
     line-height: 1.25; font-weight: 600; letter-spacing: -.4px; scroll-margin-top: 20px; color: #f2f4fa; }
@@ -2495,7 +2532,9 @@
 
   <div class="toprow">
   <div class="spotcard" id="spotBar" style="display:none">
-    <div class="spot-art" id="spotArtWrap"><img id="spotArt" alt="" /></div>
+    <div class="spot-art" id="spotArtWrap"><img id="spotArt" alt="" />
+      <div class="eq" id="spotEq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
     <div class="spot-body" id="spotMeta">
       <div class="spot-top">
         <span class="spot-name" id="spotName">—</span>
@@ -5347,6 +5386,15 @@ function renderDocPreview() {
   const target = $('#docRender');
   target.innerHTML = html;
   renderMermaidIn(target);
+  // Tables get a scroll container so a wide one is scrollable rather than
+  // crushed into the prose measure.
+  target.querySelectorAll('table').forEach((t) => {
+    if (t.parentElement && t.parentElement.classList.contains('doc-tablewrap')) return;
+    const w = document.createElement('div');
+    w.className = 'doc-tablewrap';
+    t.replaceWith(w);
+    w.appendChild(t);
+  });
   // Wiki links are real relationships: existing docs open, missing ones offer
   // to be created with that title.
   target.querySelectorAll('a.wikilink').forEach((a) => {
@@ -8060,11 +8108,11 @@ function beBlockHtml(b, i) {
     body = '<pre class="be-raw"><code class="be-codetext" contenteditable="plaintext-only" data-i="' + i + '">' +
       escapeHtml(b.text || '') + '</code></pre>';
   } else if (b.type === 'table') {
-    body = '<table class="be-table"><tbody>' + (b.rows || []).map((r, ri) =>
+    body = '<div class="be-tablewrap"><table class="be-table"><tbody>' + (b.rows || []).map((r, ri) =>
       '<tr>' + r.map((c, ci) =>
         '<' + (ri ? 'td' : 'th') + ' class="be-cell" contenteditable="true" data-i="' + i +
         '" data-r="' + ri + '" data-c="' + ci + '">' + (c ? mdInline(c, docCtx()) : '') +
-        '</' + (ri ? 'td' : 'th') + '>').join('') + '</tr>').join('') + '</tbody></table>' +
+        '</' + (ri ? 'td' : 'th') + '>').join('') + '</tr>').join('') + '</tbody></table></div>' +
       '<div class="be-tacts"><button data-trow="' + i + '">＋ row</button><button data-tcol="' + i + '">＋ column</button></div>';
   } else if (b.type === 'li') {
     const marker = b.checked === null || b.checked === undefined
@@ -10363,6 +10411,8 @@ function renderSpotify() {
   $('#spotName').textContent = spotState.name || '';
   $('#spotArtist').textContent = [spotState.artist, spotState.album].filter(Boolean).join('  ·  ');
   $('#spotPlay').textContent = playing ? '⏸' : '▶';
+  const eq = $('#spotEq');
+  if (eq) { eq.classList.add('on'); eq.classList.toggle('paused', !playing); }
   const art = spotState.artworkUrl || '';
   const img = $('#spotArt');
   if (art && img.getAttribute('src') !== art) img.src = art;
