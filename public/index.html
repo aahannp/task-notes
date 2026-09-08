@@ -44,8 +44,10 @@
     background: var(--bg);
     background-color: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--ui);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "kern" 1, "liga" 1;
     min-height: 100vh;
   }
 
@@ -57,7 +59,7 @@
      fix: it sits above the body background and below all content, and
      backdrop-filter still refracts it. */
   .ambient { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-  .ambient i { position: absolute; display: block; border-radius: 50%; filter: blur(130px); opacity: .34; }
+  .ambient i { position: absolute; display: block; border-radius: 50%; filter: blur(150px); opacity: .2; }
   .ambient i:nth-child(1) { width: 46vw; height: 46vw; top: -14vw; left: -8vw;  background: #2a3a7a; }
   .ambient i:nth-child(2) { width: 38vw; height: 38vw; top: 8vw;   right: -10vw; background: #4a2f6e; }
   .ambient i:nth-child(3) { width: 40vw; height: 40vw; bottom: -16vw; left: 26vw; background: #17415c; }
@@ -87,7 +89,8 @@
      always somewhere to grab even when the header is crowded. */
   .titlebar-grab { position: fixed; top: 0; left: 0; right: 0; height: 26px; z-index: 5;
     -webkit-app-region: drag; pointer-events: none; }
-  header h1 { font-size: 15px; font-weight: 600; letter-spacing: .3px; color: var(--muted); margin: 0; text-transform: uppercase; }
+  header h1 { font-size: 11.5px; font-weight: 650; letter-spacing: 1.4px; color: var(--muted);
+    margin: 0; text-transform: uppercase; opacity: .85; }
   .count { font-size: 13px; color: var(--muted); }
 
   .datebar {
@@ -95,8 +98,8 @@
     margin: 14px 0 22px;
   }
   .datebar .date {
-    flex: 1; font-size: 26px; font-weight: 700; letter-spacing: -.4px;
-  }
+    flex: 1; font-family: var(--serif); font-weight: 600; letter-spacing: -.7px;
+    font-size: clamp(26px, 2.4vw, 34px); line-height: 1.1; color: var(--text); }
   .datebar .sub { font-size: 13px; color: var(--muted); font-weight: 500; margin-top: 2px; }
   .navbtn {
     background: var(--panel); border: 1px solid var(--line); color: var(--text);
@@ -991,9 +994,16 @@
   .nav-btn { display: flex; align-items: center; gap: 7px; white-space: nowrap;
     background: transparent; border: none; color: var(--muted); font-family: inherit;
     font-size: 13px; font-weight: 600; padding: 9px 14px; border-radius: 9px; cursor: pointer; transition: .15s; }
-  .nav-btn span { font-size: 14px; }
+  .nav-btn { letter-spacing: .1px; }
+  .nav-btn .ico { width: 15px; height: 15px; flex-shrink: 0; opacity: .75; }
   .nav-btn:hover { color: var(--text); background: var(--panel-2); }
-  .nav-btn.active { background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(124,155,255,.28); }
+  .nav-btn:hover .ico { opacity: 1; }
+  /* The active tab used to be a filled blue slab, which shouted over
+     everything else on the page. It is a quiet raised pill now, with the
+     accent reduced to a hairline. */
+  .nav-btn.active { background: var(--panel-2); color: var(--text);
+    box-shadow: var(--glass-hi), inset 0 0 0 1px rgba(124,155,255,.22); }
+  .nav-btn.active .ico { opacity: 1; color: var(--accent); }
 
   /* ==================== PAGE SURFACES ==================== */
   .page { position: fixed; inset: 0; z-index: 60; overflow-y: auto;
@@ -1007,7 +1017,12 @@
   .page-inner { max-width: 960px; margin: 0 auto; padding: 40px 28px 120px; position: relative; }
   .page-inner.wide { max-width: 1120px; }
   .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-  .page-head h2 { margin: 0; font-size: 27px; font-weight: 750; letter-spacing: -.6px; }
+  .page-head h2 { margin: 0; font-family: var(--serif); font-size: 29px; font-weight: 600;
+    letter-spacing: -.6px; line-height: 1.15; }
+  /* The emoji that lead these titles are part of the writing, not the type, so
+     they keep the interface font — a serif does nothing for them. */
+  .page-head h2 { font-variant-emoji: text; }
+  .page-sub { font-size: 13.5px; }
   .page-sub { margin: 5px 0 0; font-size: 13.5px; color: var(--muted); }
   .page-close { background: var(--panel); border: 1px solid var(--line); color: var(--muted);
     width: 36px; height: 36px; border-radius: 10px; cursor: pointer; font-size: 15px; flex-shrink: 0; transition: .15s; }
@@ -1296,6 +1311,7 @@
   .wr-frozen { font-size: 11px; color: var(--muted); background: var(--panel); border: 1px solid var(--line);
     padding: 5px 10px; border-radius: 20px; }
   .wr-hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .wr-reflect textarea, .wr-note { font-family: var(--serif); font-size: 15px; line-height: 1.7; }
   .wr-hero-n { background: rgba(124,155,255,.10);
     border: 1px solid rgba(124,155,255,.24); border-radius: 15px; padding: 19px 16px; }
   .wr-hero-n b { display: block; font-size: 27px; font-weight: 750; letter-spacing: -.9px; }
@@ -1383,6 +1399,14 @@
      Short, spring-ish, transform/opacity only.
      ===================================================================== */
   :root {
+    /* Two families, each doing one job: the interface stays in the system
+       sans, and anything that is *prose* — a document, a page title — is set in
+       New York, which macOS ships. A writing surface in a serif reads as
+       something you compose in rather than something you configure. */
+    --ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --serif: ui-serif, "New York", "Iowan Old Style", Charter, Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 20px;
     --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
     --ease-out: cubic-bezier(.22, 1, .36, 1);
     --ease-in-out: cubic-bezier(.65, 0, .35, 1);
@@ -1472,7 +1496,19 @@
   .be-gutter button:hover { background: var(--panel-2); color: var(--text); }
   .be-handle { cursor: grab; letter-spacing: -2px; }
   .be-body { flex: 1; min-width: 0; }
-  .be-text { outline: none; line-height: 1.62; font-size: 15.5px; padding: 3px 4px; border-radius: 6px; }
+  /* The writing surface is prose, so it is set like prose: serif, a measure
+     that stops around 68 characters, and a line height that leaves room to
+     read rather than to fit. */
+  .be-surface { font-family: var(--serif); }
+  .be-text { outline: none; line-height: 1.72; font-size: 17px; padding: 3px 4px;
+    border-radius: 6px; letter-spacing: .1px; }
+  .be-surface { max-width: 44rem; }
+  .be-block[data-type="p"] .be-text, .be-block[data-type="quote"] .be-text,
+  .be-block[data-type="li"] .be-text { max-width: 68ch; }
+  /* Chrome inside the editor stays in the interface font — a serif button is
+     fancy dress, not typography. */
+  .be-gutter, .be-codehead, .be-tacts, .be-check, .be-lang, .be-langpill,
+  .be-mermtoggle, .be-codebtn, .be-merm, #beMenu, #beBar { font-family: var(--ui); }
   /* Only the block you are actually in offers the hint. Shown on every empty
      block it turned a page of blank lines into a wall of "Press / for
      blocks". The very first block still shows it, so an empty document is not
@@ -1484,24 +1520,30 @@
   .be-block:first-child .be-text:empty::before {
     content: "Press / for blocks"; color: var(--muted); opacity: .45; pointer-events: none; }
   .be-block:first-child .be-text:empty::before { content: "Write, or press / for blocks"; }
-  h1.be-text { font-size: 30px; font-weight: 800; letter-spacing: -.6px; margin: 22px 0 4px; line-height: 1.2; }
-  h2.be-text { font-size: 23px; font-weight: 750; letter-spacing: -.3px; margin: 18px 0 3px; line-height: 1.25; }
-  h3.be-text { font-size: 18.5px; font-weight: 700; margin: 14px 0 2px; }
-  h4.be-text, h5.be-text, h6.be-text { font-size: 16px; font-weight: 700; margin: 12px 0 2px; }
+  h1.be-text { font-size: 34px; font-weight: 600; letter-spacing: -.7px; margin: 26px 0 6px; line-height: 1.16; }
+  h2.be-text { font-size: 25px; font-weight: 600; letter-spacing: -.4px; margin: 26px 0 4px; line-height: 1.22; }
+  h3.be-text { font-size: 20px; font-weight: 600; letter-spacing: -.2px; margin: 20px 0 2px; }
+  h4.be-text, h5.be-text, h6.be-text { font-size: 17px; font-weight: 650; margin: 16px 0 2px; }
+  .be-block:first-child h1.be-text { margin-top: 0; }
+  .be-quote .be-text { font-style: italic; }
   .be-quote { border-left: 3px solid var(--accent); margin: 6px 0; padding: 2px 0 2px 14px; color: var(--muted); }
   .be-hr { border: none; border-top: 1px solid var(--line); margin: 20px 0; }
   .be-li { display: flex; align-items: flex-start; gap: 9px; }
-  .be-dot, .be-num { color: var(--muted); flex-shrink: 0; padding-top: 3px; font-size: 15px;
-    min-width: 15px; text-align: right; user-select: none; }
+  /* Markers sit on the text's own baseline: the serif is 17px/1.72, so a
+     marker aligned for 15px sans floated above every line. */
+  .be-dot, .be-num { color: var(--muted); flex-shrink: 0; font-size: 16px;
+    line-height: 1.72; min-width: 16px; text-align: right; user-select: none;
+    font-family: var(--ui); font-variant-numeric: tabular-nums; }
+  .be-dot { font-size: 19px; line-height: 1.5; }
   .be-litext { flex: 1; min-width: 0; }
-  .be-check { width: 17px; height: 17px; margin-top: 5px; flex-shrink: 0; cursor: pointer;
+  .be-check { width: 17px; height: 17px; margin-top: 6px; flex-shrink: 0; cursor: pointer;
     border-radius: 5px; border: 1.5px solid var(--line-2); background: none; color: #06210f;
     font-size: 11px; line-height: 1; display: grid; place-items: center; padding: 0; }
   .be-check.on { background: #3fb27f; border-color: #3fb27f; }
   .be-code, .be-raw { background: rgba(0,0,0,.28); border: 1px solid var(--line); border-radius: 10px;
     padding: 12px 14px; margin: 6px 0 0; overflow-x: auto; }
-  .be-codetext { outline: none; display: block; white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 13px; line-height: 1.55; color: #d7dbe6; }
+  .be-codetext { outline: none; display: block; white-space: pre; font-family: var(--mono);
+    font-size: 13px; line-height: 1.6; color: #d7dbe6; tab-size: 2; }
   /* A code block reads as one object: a quiet header carrying the language and
      its actions, then the code, joined rather than stacked. */
   .be-codeblock { margin: 10px 0 2px; border: 1px solid var(--line); border-radius: 12px;
@@ -1933,13 +1975,19 @@
   .ws-editor::placeholder { color: #5d6478; }
   .ws-readwrap { padding: 28px 38px 40vh; }
   .ws-panes.mode-read .ws-readwrap { padding: 34px 0 40vh; }
-  .ws-panes.mode-read .doc-render { max-width: 760px; margin: 0 auto; padding: 0 34px; }
+  .ws-panes.mode-read .doc-render { max-width: 44rem; margin: 0 auto; padding: 0 34px; }
 
   /* rendered markdown typography */
-  .doc-render { font-size: 15px; line-height: 1.75; color: #dfe3ee; overflow-wrap: break-word; }
+  /* The reading view is the same prose as the writing view, so it is set the
+     same way — otherwise switching modes changes the document. */
+  .doc-render { font-family: var(--serif); font-size: 17px; line-height: 1.75; color: #dfe3ee;
+    overflow-wrap: break-word; letter-spacing: .1px; }
+  .doc-render p, .doc-render li, .doc-render blockquote { max-width: 68ch; }
+  .doc-render code, .doc-render pre { font-family: var(--mono); letter-spacing: 0; }
+  .doc-render table { font-family: var(--ui); letter-spacing: 0; }
   .doc-render > *:first-child { margin-top: 0; }
   .doc-render h1, .doc-render h2, .doc-render h3, .doc-render h4, .doc-render h5, .doc-render h6 {
-    line-height: 1.3; font-weight: 700; letter-spacing: -.3px; scroll-margin-top: 20px; color: #f2f4fa; }
+    line-height: 1.25; font-weight: 600; letter-spacing: -.4px; scroll-margin-top: 20px; color: #f2f4fa; }
   .doc-render h1 { font-size: 1.9em; margin: 1.5em 0 .6em; letter-spacing: -.8px; }
   .doc-render h2 { font-size: 1.42em; margin: 1.7em 0 .55em; padding-bottom: .3em; border-bottom: 1px solid var(--line); }
   .doc-render h3 { font-size: 1.17em; margin: 1.5em 0 .5em; }
@@ -2379,17 +2427,43 @@
     </div>
   </header>
 
-  <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+  <!-- Icon set. Emoji in the navigation read as decoration and render
+     differently on every machine; these are one stroke weight, inherit
+     currentColor, and sit on the text baseline. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="i-base" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></g>
+</defs>
+<symbol id="i-today" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></symbol>
+<symbol id="i-tasks" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 7l2.5 2.5L11 5"/><path d="M4 17l2.5 2.5L11 15"/><path d="M14 7h6M14 17h6"/></symbol>
+<symbol id="i-projects" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></symbol>
+<symbol id="i-learning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 5.5A1.5 1.5 0 015.5 4H19v16H5.5A1.5 1.5 0 014 18.5v-13z"/><path d="M8 4v16M11 9h5M11 13h5"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M3 13l2.6-7.2A2 2 0 017.5 4.5h9a2 2 0 011.9 1.3L21 13"/><path d="M3 13h5l1.2 2.2h5.6L16 13h5v4.5a2 2 0 01-2 2H5a2 2 0 01-2-2V13z"/></symbol>
+<symbol id="i-docs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+<symbol id="i-ideas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M9.5 17h5M10 20.5h4"/><path d="M12 3a6 6 0 00-3.5 10.9c.6.4.9 1 .9 1.7V17h5.2v-1.4c0-.7.3-1.3.9-1.7A6 6 0 0012 3z"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-review" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 20V4M4 20h16"/><path d="M7.5 16.5l3.5-4.5 3 2.5L20 7"/></symbol>
+</svg>
+
+<div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
   <nav class="mainnav">
-    <button class="nav-btn active" data-page="today"><span>🌤</span>Today</button>
-    <button class="nav-btn" data-page="tasks"><span>✓</span>Tasks</button>
-    <button class="nav-btn" data-page="projects"><span>📦</span>Projects</button>
-    <button class="nav-btn" data-page="learning"><span>🎒</span>Learning</button>
-    <button class="nav-btn" data-page="inbox"><span>📥</span>Inbox</button>
-    <button class="nav-btn" data-page="docs"><span>📄</span>Documents</button>
-    <button class="nav-btn" data-page="ideas"><span>💡</span>Ideas</button>
-    <button class="nav-btn" data-page="calendar"><span>📅</span>Calendar</button>
-    <button class="nav-btn" data-page="review"><span>📈</span>Weekly Review</button>
+    <button class="nav-btn active" data-page="today"><svg class="ico" viewBox="0 0 24 24"><use href="#i-today"/></svg>Today</button>
+    <button class="nav-btn" data-page="tasks"><svg class="ico" viewBox="0 0 24 24"><use href="#i-tasks"/></svg>Tasks</button>
+    <button class="nav-btn" data-page="projects"><svg class="ico" viewBox="0 0 24 24"><use href="#i-projects"/></svg>Projects</button>
+    <button class="nav-btn" data-page="learning"><svg class="ico" viewBox="0 0 24 24"><use href="#i-learning"/></svg>Learning</button>
+    <button class="nav-btn" data-page="inbox"><svg class="ico" viewBox="0 0 24 24"><use href="#i-inbox"/></svg>Inbox</button>
+    <button class="nav-btn" data-page="docs"><svg class="ico" viewBox="0 0 24 24"><use href="#i-docs"/></svg>Documents</button>
+    <button class="nav-btn" data-page="ideas"><svg class="ico" viewBox="0 0 24 24"><use href="#i-ideas"/></svg>Ideas</button>
+    <button class="nav-btn" data-page="calendar"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendar"/></svg>Calendar</button>
+    <button class="nav-btn" data-page="review"><svg class="ico" viewBox="0 0 24 24"><use href="#i-review"/></svg>Weekly Review</button>
   </nav>
 
   <div class="datebar">

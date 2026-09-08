@@ -218,6 +218,8 @@ The board is where you work a single day. The Tasks page is every task you have,
 
 Flat liquid glass, and **no gradients anywhere** — not one, in about nine thousand lines of markup, styles and logic.
 
+Two typefaces, each with one job. The interface is the system sans. Anything that is *prose* — a document, a page title, the day's date, a weekly reflection — is set in New York, the serif macOS already ships, at a measure that stops around 68 characters. A writing surface in a serif reads as something you compose in rather than something you configure. Navigation is drawn icons rather than emoji, which render differently on every machine and read as decoration where you want structure.
+
 Depth comes from stacked translucency instead of painted light: three surface tiers over one still ground, hairline edges, a specular top edge, and a two-layer shadow (ambient spread plus a tight contact shadow) so a panel reads as a pane above the page rather than a rectangle with a drop shadow.
 
 Glass needs something behind it or it reads as pale grey card, so a layer of flat colour blocks — softened by the compositor, still not a gradient — sits under everything for the panels above to refract. Dense grids and long-form reading damp it deliberately: a wash of colour under 11px event labels costs legibility and buys nothing.
