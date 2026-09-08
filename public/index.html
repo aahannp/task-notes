@@ -1495,14 +1495,19 @@
     opacity: 0; transition: opacity var(--t-fast); padding-top: 6px; justify-content: flex-end; }
   .be-block:hover .be-gutter, .be-block:focus-within .be-gutter { opacity: 1; }
   .be-gutter:focus-within { opacity: 1; }
-  /* One visible focus ring for everything in the editor. */
-  #beSurface :focus-visible, #beMenu :focus-visible, #beBar :focus-visible,
-  .ws-bar :focus-visible, .ws-side :focus-visible {
+  /* A focus ring belongs on controls, not on prose. Ringing the paragraph you
+     are writing in draws a text-field box around your own sentence; the caret
+     is what indicates focus in a writing surface, which is both the
+     convention and what a screen reader reports. */
+  #beSurface button:focus-visible, #beSurface input:focus-visible,
+  #beMenu button:focus-visible, #beBar button:focus-visible,
+  .ws-bar button:focus-visible, .ws-side button:focus-visible {
     outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
-  .be-text:focus-visible { outline-offset: 3px; }
+  .be-text:focus, .be-text:focus-visible, .be-cell:focus-visible { outline: none; }
   .be-gutter button { background: none; border: none; color: var(--muted); cursor: pointer;
-    font-family: inherit; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: 5px; }
-  .be-gutter button:hover { background: var(--panel-2); color: var(--text); }
+    font-family: inherit; font-size: 12.5px; line-height: 1; padding: 3px 3px; border-radius: 5px;
+    opacity: .45; transition: opacity var(--t-fast), color var(--t-fast); }
+  .be-gutter button:hover { opacity: 1; color: var(--text); background: none; }
   .be-handle { cursor: grab; letter-spacing: -2px; }
   .be-body { flex: 1; min-width: 0; }
   /* The writing surface is prose, so it is set like prose: serif, a measure
@@ -1588,7 +1593,7 @@
   .be-table { border-collapse: collapse; width: 100%; margin: 6px 0 0; font-size: 14px; }
   .be-cell { border: 1px solid var(--line); padding: 7px 10px; outline: none; min-width: 60px; }
   .be-table th.be-cell { background: var(--panel); font-weight: 700; text-align: left; }
-  .be-cell:focus { box-shadow: inset 0 0 0 2px var(--accent); }
+  .be-cell:focus { box-shadow: inset 0 0 0 1px rgba(124,155,255,.5); }
   .be-tacts { display: flex; gap: 6px; margin-top: 6px; }
   .be-tacts button { background: var(--panel); border: 1px solid var(--line); color: var(--muted);
     font-family: inherit; font-size: 11.5px; padding: 3px 9px; border-radius: 7px; cursor: pointer; }
