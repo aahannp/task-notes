@@ -1449,6 +1449,92 @@
     box-shadow: var(--shadow-sm), var(--glass-hi); }
   #page-docs .ws-main, #page-docs .doc-body, .md-body { background: rgba(12,13,18,.66); }
 
+  /* ---- Block editor (write mode) ---------------------------------------
+     Formatting is real: a heading looks like a heading while you type it, and
+     the markdown markers are never on screen. The .md on disk is unchanged. */
+  /* The panes are a flex row; in write mode the block editor is the only one
+     in it. The source textarea stays in the DOM as the model of record, just
+     out of flow. */
+  .ws-panes.mode-write #beWrap { display: block; flex: 1; min-width: 0; }
+  .ws-panes.mode-write .ws-editwrap,
+  .ws-panes.mode-write .ws-split-handle,
+  .ws-panes.mode-write .ws-readwrap { display: none; }
+  #beWrap { display: none; overflow-y: auto; padding: 40px 8px 45vh; }
+  .be-surface { max-width: 760px; margin: 0 auto; }
+  .be-block { position: relative; display: flex; align-items: flex-start; gap: 4px;
+    border-radius: 8px; transition: background var(--t-fast); }
+  .be-block.drop { box-shadow: 0 -2px 0 0 var(--accent); }
+  .be-gutter { display: flex; align-items: center; gap: 1px; width: 44px; flex-shrink: 0;
+    opacity: 0; transition: opacity var(--t-fast); padding-top: 4px; justify-content: flex-end; }
+  .be-block:hover .be-gutter, .be-block:focus-within .be-gutter { opacity: 1; }
+  .be-gutter button { background: none; border: none; color: var(--muted); cursor: pointer;
+    font-family: inherit; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: 5px; }
+  .be-gutter button:hover { background: var(--panel-2); color: var(--text); }
+  .be-handle { cursor: grab; letter-spacing: -2px; }
+  .be-body { flex: 1; min-width: 0; }
+  .be-text { outline: none; line-height: 1.62; font-size: 15.5px; padding: 3px 4px; border-radius: 6px; }
+  /* Only the block you are actually in offers the hint. Shown on every empty
+     block it turned a page of blank lines into a wall of "Press / for
+     blocks". The very first block still shows it, so an empty document is not
+     a blank screen with no way in. */
+  /* `.be-here` is set on the block holding the caret. A CSS :focus rule would
+     have done, except it stops applying the moment the window loses focus,
+     and the hint should follow the caret regardless. */
+  .be-text.be-here:empty::before,
+  .be-block:first-child .be-text:empty::before {
+    content: "Press / for blocks"; color: var(--muted); opacity: .45; pointer-events: none; }
+  .be-block:first-child .be-text:empty::before { content: "Write, or press / for blocks"; }
+  h1.be-text { font-size: 30px; font-weight: 800; letter-spacing: -.6px; margin: 22px 0 4px; line-height: 1.2; }
+  h2.be-text { font-size: 23px; font-weight: 750; letter-spacing: -.3px; margin: 18px 0 3px; line-height: 1.25; }
+  h3.be-text { font-size: 18.5px; font-weight: 700; margin: 14px 0 2px; }
+  h4.be-text, h5.be-text, h6.be-text { font-size: 16px; font-weight: 700; margin: 12px 0 2px; }
+  .be-quote { border-left: 3px solid var(--accent); margin: 6px 0; padding: 2px 0 2px 14px; color: var(--muted); }
+  .be-hr { border: none; border-top: 1px solid var(--line); margin: 20px 0; }
+  .be-li { display: flex; align-items: flex-start; gap: 9px; }
+  .be-dot, .be-num { color: var(--muted); flex-shrink: 0; padding-top: 3px; font-size: 15px;
+    min-width: 15px; text-align: right; user-select: none; }
+  .be-litext { flex: 1; min-width: 0; }
+  .be-check { width: 17px; height: 17px; margin-top: 5px; flex-shrink: 0; cursor: pointer;
+    border-radius: 5px; border: 1.5px solid var(--line-2); background: none; color: #06210f;
+    font-size: 11px; line-height: 1; display: grid; place-items: center; padding: 0; }
+  .be-check.on { background: #3fb27f; border-color: #3fb27f; }
+  .be-code, .be-raw { background: rgba(0,0,0,.28); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; margin: 6px 0 0; overflow-x: auto; }
+  .be-codetext { outline: none; display: block; white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px; line-height: 1.55; color: #d7dbe6; }
+  .be-codehead { display: flex; align-items: center; gap: 10px; margin: 8px 0 0; }
+  .be-lang { background: none; border: none; color: var(--muted); font-family: inherit; font-size: 11px;
+    padding: 2px 4px; outline: none; width: 110px; }
+  .be-lang:focus { color: var(--text); }
+  .be-codehint { font-size: 10.5px; color: var(--muted); opacity: 0; transition: opacity var(--t-fast); }
+  .be-block:focus-within .be-codehint { opacity: .6; }
+  .be-code { margin: 4px 0 0; }
+  .be-table { border-collapse: collapse; width: 100%; margin: 6px 0 0; font-size: 14px; }
+  .be-cell { border: 1px solid var(--line); padding: 7px 10px; outline: none; min-width: 60px; }
+  .be-table th.be-cell { background: var(--panel); font-weight: 700; text-align: left; }
+  .be-cell:focus { box-shadow: inset 0 0 0 2px var(--accent); }
+  .be-tacts { display: flex; gap: 6px; margin-top: 6px; }
+  .be-tacts button { background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+    font-family: inherit; font-size: 11.5px; padding: 3px 9px; border-radius: 7px; cursor: pointer; }
+  .be-tacts button:hover { color: var(--text); border-color: var(--accent); }
+
+  /* slash menu and selection toolbar */
+  #beMenu, #beBar { position: fixed; z-index: 900; background: var(--panel-3);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line-2); border-radius: 11px; box-shadow: var(--shadow), var(--glass-hi); }
+  #beMenu { width: 232px; padding: 6px; max-height: 320px; overflow-y: auto; }
+  #beMenu button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    background: none; border: none; color: var(--text); font-family: inherit; font-size: 13px;
+    padding: 7px 9px; border-radius: 7px; cursor: pointer; }
+  #beMenu button:hover, #beMenu button.sel { background: var(--panel-2); }
+  .be-mi { width: 22px; text-align: center; color: var(--muted); font-size: 12px; flex-shrink: 0; }
+  #beBar { display: flex; gap: 1px; padding: 4px; }
+  #beBar button { background: none; border: none; color: var(--muted); font-family: inherit;
+    font-size: 13px; min-width: 30px; height: 28px; border-radius: 7px; cursor: pointer; }
+  #beBar button:hover { background: var(--panel-2); color: var(--text); }
+  #beBar b { font-weight: 800; }
+  #beBar i { font-style: italic; }
+
   /* ---- Calendar page: day / week / month / year over the real calendar ---- */
   .cw-top { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
   .cw-title h2 { font-size: 27px; font-weight: 800; letter-spacing: -.5px; margin: 0; }
@@ -1980,6 +2066,7 @@
     .ws-tabs { padding-left: 56px; }
     .ws-panes { flex-direction: column; }
     .ws-panes:not(.mode-edit):not(.mode-read) .ws-readwrap { display: none; }
+    .ws-panes.mode-write #beWrap { flex: 1 1 auto; }
     .ws-split-handle { display: none !important; }
     .ws-editor, .ws-readwrap { padding: 20px 18px 40vh; }
     .ws-panes.mode-read .doc-render { padding: 0 18px; }
@@ -2686,6 +2773,15 @@
   </div>
 </div>
 
+<div class="hidden" id="beMenu"></div>
+<div class="hidden" id="beBar">
+  <button data-cmd="bold" title="Bold (⌘B)"><b>B</b></button>
+  <button data-cmd="italic" title="Italic (⌘I)"><i>I</i></button>
+  <button data-cmd="strikeThrough" title="Strikethrough">S&#822;</button>
+  <button data-cmd="code" title="Inline code">‹›</button>
+  <button data-cmd="link" title="Link (⌘K)">🔗</button>
+</div>
+
 <!-- ============ CALENDAR (day / week / month / year) ============ -->
 <div class="page hidden" id="page-calendar">
   <div class="page-inner wide">
@@ -2765,6 +2861,8 @@
           <button class="btn-primary" id="docEmptyNew" style="margin-top:16px">＋ New document</button>
         </div>
         <div class="ws-panes hidden" id="docPanes">
+          <!-- The block editor. #docEditor below stays the model of record. -->
+          <div id="beWrap"><div class="be-surface" id="beSurface"></div></div>
           <div class="ws-editwrap" id="docEditWrap">
             <textarea id="docEditor" class="ws-editor" spellcheck="true"
               placeholder="# Start writing…&#10;&#10;Markdown works: **bold**, `code`, ```fences```, tables, - [ ] tasks, and [[links to other documents]]."
@@ -4901,7 +4999,11 @@ function clearDraft(id) { try { localStorage.removeItem(draftKey(id)); } catch {
 // =====================================================================
 let docTabs = [];              // open document ids
 let docActive = null;          // focused document id
-let docMode = 'split';         // 'edit' | 'split' | 'read'
+// 'write' is the block editor, 'edit' the raw markdown, 'split' both, 'read'
+// the rendered document. Write is the default: the split view is for when you
+// want to see the source, not the way to compose.
+let docMode = 'write';
+try { docMode = localStorage.getItem('tasknotes.docMode') || 'write'; } catch {}
 let docQuery = '';
 let docTagFilter = '';
 let docShowArchived = false;
@@ -5076,9 +5178,9 @@ function renderDocSurface() {
   $('#docBar').innerHTML =
     '<input class="ws-title" id="docTitle" value="' + escapeHtml(d.title || '') + '" placeholder="Untitled" aria-label="Document title" title="' + escapeHtml(d.title || '') + '" />' +
     '<div class="ws-modes" role="group" aria-label="View mode">' +
-      ['edit', 'split', 'read'].map((m) =>
+      ['write', 'edit', 'split', 'read'].map((m) =>
         '<button data-mode="' + m + '" class="' + (m === docMode ? 'active' : '') + '">' +
-        (m === 'edit' ? 'Edit' : m === 'split' ? 'Split' : 'Read') + '</button>').join('') +
+        (m === 'write' ? 'Write' : m === 'edit' ? 'Edit' : m === 'split' ? 'Split' : 'Read') + '</button>').join('') +
     '</div>' +
     '<button class="ws-act' + (d.pinned ? ' on' : '') + '" id="docPin" title="Pin">' + (d.pinned ? '📌' : '📍') + '</button>' +
     '<button class="ws-act" id="docImg" title="Insert image">🖼</button>' +
@@ -5088,13 +5190,21 @@ function renderDocSurface() {
     '<span class="ws-status" id="docStatus"></span>';
 
   $('#docPanes').className = 'ws-panes mode-' + docMode;
+  if (docMode === 'write') renderWriteSurface();
   renderDocPreview();
   renderRail();
   updateDocStatus();
 
   $('#docTitle').oninput = () => { docDirty = true; scheduleDocSave(); renderDocTabs(); };
   document.querySelectorAll('#docBar [data-mode]').forEach((b) => {
-    b.onclick = () => { docMode = b.dataset.mode; renderDocSurface(); };
+    b.onclick = () => {
+      // Leaving the block editor flushes it, so switching to Edit shows the
+      // markdown you just wrote rather than the last saved copy.
+      if (docMode === 'write') { beHarvest(); beSync(); }
+      docMode = b.dataset.mode;
+      try { localStorage.setItem('tasknotes.docMode', docMode); } catch {}
+      renderDocSurface();
+    };
   });
   $('#docPin').onclick = async () => {
     const doc = docById(docActive); if (!doc) return;
@@ -5630,7 +5740,8 @@ function docCommands() {
   return [
     { ic: '📄', t: 'New document', k: '⌘N', run: () => newBlankDocument() },
     { ic: '🗂', t: 'Open Documents', run: () => openPage('docs') },
-    has && { ic: '📝', t: 'Edit mode', run: () => { docMode = 'edit'; renderDocSurface(); } },
+    has && { ic: '✍️', t: 'Write mode (block editor)', run: () => { docMode = 'write'; renderDocSurface(); } },
+    has && { ic: '📝', t: 'Edit mode (markdown source)', run: () => { docMode = 'edit'; renderDocSurface(); } },
     has && { ic: '⫿', t: 'Split editor / preview', run: () => { docMode = 'split'; renderDocSurface(); } },
     has && { ic: '📖', t: 'Reading mode', run: () => { docMode = 'read'; renderDocSurface(); } },
     has && { ic: '⛶', t: 'Distraction-free writing', k: '⌘.', run: toggleDocZen },
@@ -7405,6 +7516,735 @@ if (DESKTOP && window.tn && window.tn.onNotifyOpen) {
     current = new Date(p.day + 'T00:00:00');
     openPage('calendar');
   });
+}
+
+// =====================================================================
+// BLOCK EDITOR — the "write" mode
+// =====================================================================
+// A block editor over the *same* markdown. #docEditor (the textarea) stays the
+// model of record: every change here is serialised straight back into it and
+// then goes through the existing autosave, draft and conflict machinery, so
+// the file on disk is still a plain .md anyone can read outside the app.
+//
+// Blocks are re-rendered only on structural change (Enter, Backspace-merge, a
+// slash command, a drag). Typing never re-renders, because rebuilding the DOM
+// under a live caret is how contenteditable editors become unusable.
+
+function mdToBlocks(src) {
+  const lines = String(src == null ? '' : src).replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  let i = 0;
+  const isBlank = (s) => !s.trim();
+
+  while (i < lines.length) {
+    const line = lines[i];
+    if (isBlank(line)) { i++; continue; }
+
+    const fence = /^(\s*)(```|~~~)\s*([\w+#.-]*)\s*$/.exec(line);
+    if (fence) {
+      const marker = fence[2], lang = fence[3] || '';
+      const body = [];
+      i++;
+      while (i < lines.length && !new RegExp('^\\s*' + marker + '\\s*$').test(lines[i])) { body.push(lines[i]); i++; }
+      const closed = i < lines.length;
+      i++;
+      out.push({ type: 'code', lang, code: body.join('\n'), unclosed: !closed });
+      continue;
+    }
+
+    const h = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
+    if (h) { out.push({ type: 'h', level: h[1].length, text: h[2] }); i++; continue; }
+
+    if (/^\s*([-*_])\s*(\1\s*){2,}$/.test(line)) { out.push({ type: 'hr' }); i++; continue; }
+
+    if (/^\s*>/.test(line)) {
+      const body = [];
+      while (i < lines.length && /^\s*>/.test(lines[i])) { body.push(lines[i].replace(/^\s*>\s?/, '')); i++; }
+      out.push({ type: 'quote', text: body.join('\n') });
+      continue;
+    }
+
+    if (line.includes('|') && i + 1 < lines.length && /^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(lines[i + 1])
+        && /-/.test(lines[i + 1])) {
+      const cells = (s) => {
+        let t = s.trim();
+        if (t.startsWith('|')) t = t.slice(1);
+        if (t.endsWith('|')) t = t.slice(0, -1);
+        return t.split('|').map((c) => c.trim());
+      };
+      const head = cells(lines[i]);
+      const align = cells(lines[i + 1]).map((c) =>
+        /^:-+:$/.test(c) ? 'center' : /-+:$/.test(c) ? 'right' : /^:-+/.test(c) ? 'left' : '');
+      i += 2;
+      const rows = [head];
+      while (i < lines.length && lines[i].includes('|') && !isBlank(lines[i])) { rows.push(cells(lines[i])); i++; }
+      out.push({ type: 'table', rows, align });
+      continue;
+    }
+
+    const li = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/.exec(line);
+    if (li) {
+      const indent = Math.floor(li[1].replace(/\t/g, '  ').length / 2);
+      const ordered = /\d/.test(li[2]);
+      // The author's own numbering and delimiter are kept: markdown renders
+      // "1. 1. 1." the same as "1. 2. 3.", and rewriting someone's file for no
+      // reason is not the editor's business.
+      const num = ordered ? parseInt(li[2], 10) : null;
+      const delim = ordered ? (li[2].includes(')') ? ')' : '.') : null;
+      let text = li[3];
+      let checked = null;
+      const box = /^\[( |x|X)\]\s+(.*)$/.exec(text);
+      if (box) { checked = box[1].toLowerCase() === 'x'; text = box[2]; }
+      i++;
+      while (i < lines.length && !isBlank(lines[i]) && /^\s{2,}\S/.test(lines[i])
+             && !/^(\s*)([-*+]|\d+[.)])\s+/.test(lines[i]) && !/^\s*>/.test(lines[i])
+             && !/^(\s*)(```|~~~)/.test(lines[i])) {
+        text += '\n' + lines[i].trim(); i++;
+      }
+      out.push({ type: 'li', ordered, checked, indent, text, num, delim });
+      continue;
+    }
+
+    // An indented code block is not modelled as editable structure, so it is
+    // kept verbatim rather than reflowed into a paragraph.
+    if (/^(\t| {4})/.test(line)) {
+      const body = [];
+      while (i < lines.length && (/^(\t| {4})/.test(lines[i]) || isBlank(lines[i]))) {
+        if (isBlank(lines[i]) && !(i + 1 < lines.length && /^(\t| {4})/.test(lines[i + 1]))) break;
+        body.push(lines[i]); i++;
+      }
+      out.push({ type: 'raw', text: body.join('\n') });
+      continue;
+    }
+
+    const para = [];
+    while (i < lines.length && !isBlank(lines[i])
+           && !/^(#{1,6})\s+/.test(lines[i]) && !/^\s*>/.test(lines[i])
+           && !/^(\s*)([-*+]|\d+[.)])\s+/.test(lines[i]) && !/^(\s*)(```|~~~)/.test(lines[i])
+           && !/^\s*([-*_])\s*(\1\s*){2,}$/.test(lines[i])) {
+      para.push(lines[i]); i++;
+    }
+    out.push({ type: 'p', text: para.join('\n') });
+  }
+
+  if (!out.length) out.push({ type: 'p', text: '' });
+  return out;
+}
+
+function blocksToMd(blocks) {
+  const parts = [];
+  (blocks || []).forEach((b, idx) => {
+    const prev = blocks[idx - 1];
+    const tight = b.type === 'li' && prev && prev.type === 'li';
+    if (idx && !tight) parts.push('');
+    switch (b.type) {
+      case 'h': parts.push('#'.repeat(b.level || 1) + ' ' + (b.text || '')); break;
+      case 'hr': parts.push('---'); break;
+      case 'code':
+        parts.push('```' + (b.lang || ''));
+        if (b.code) parts.push(...String(b.code).split('\n'));
+        if (!b.unclosed) parts.push('```');
+        break;
+      case 'quote':
+        parts.push(...String(b.text || '').split('\n').map((l) => (l ? '> ' + l : '>')));
+        break;
+      case 'li': {
+        const pad = '  '.repeat(b.indent || 0);
+        const bullet = b.ordered ? ((b.num == null ? 1 : b.num) + (b.delim || '.') + ' ') : '- ';
+        const box = b.checked === null || b.checked === undefined ? '' : (b.checked ? '[x] ' : '[ ] ');
+        const [first, ...rest] = String(b.text || '').split('\n');
+        parts.push(pad + bullet + box + first);
+        rest.forEach((l) => parts.push(pad + '  ' + l));
+        break;
+      }
+      case 'table': {
+        const rows = b.rows || [];
+        if (!rows.length) break;
+        const width = Math.max(...rows.map((r) => r.length));
+        const pad = (r) => { const c = r.slice(); while (c.length < width) c.push(''); return c; };
+        parts.push('| ' + pad(rows[0]).join(' | ') + ' |');
+        parts.push('| ' + pad(rows[0]).map((_, c) => {
+          const a = (b.align || [])[c];
+          return a === 'center' ? ':---:' : a === 'right' ? '---:' : a === 'left' ? ':---' : '---';
+        }).join(' | ') + ' |');
+        rows.slice(1).forEach((r) => parts.push('| ' + pad(r).join(' | ') + ' |'));
+        break;
+      }
+      case 'raw': parts.push(...String(b.text || '').split('\n')); break;
+      default: parts.push(String(b.text || ''));
+    }
+  });
+  return parts.join('\n').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '') + '\n';
+}
+
+// The same wiki-link resolution the preview uses, so [[links]] behave
+// identically in the block editor.
+function docCtx() { return { resolve: (name) => docByTitle(name) }; }
+
+// ---- inline: DOM back to markdown ----
+// Escaping is deliberately narrow, so the .md stays pleasant to read outside
+// the app. `_` inside a word is left alone because mdInline does not treat it
+// as emphasis either; anything this gets wrong is caught by the verify pass in
+// beInline().
+function beEscape(t) {
+  return String(t)
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/\*/g, '\\*')
+    .replace(/(^|\W)_/g, '$1\\_')
+    .replace(/\[/g, '\\[')
+    .replace(/~~/g, '\\~\\~');
+}
+function beInlineRaw(root, escapeText) {
+  let out = '';
+  const walk = (node) => {
+    node.childNodes.forEach((n) => {
+      if (n.nodeType === 3) { out += escapeText ? beEscape(n.nodeValue) : n.nodeValue; return; }
+      if (n.nodeType !== 1) return;
+      const tag = n.tagName.toLowerCase();
+      if (tag === 'br') { out += '  \n'; return; }
+      if (tag === 'strong' || tag === 'b') { out += '**'; walk(n); out += '**'; return; }
+      if (tag === 'em' || tag === 'i') { out += '_'; walk(n); out += '_'; return; }
+      if (tag === 'del' || tag === 's' || tag === 'strike') { out += '~~'; walk(n); out += '~~'; return; }
+      if (tag === 'mark') { out += '=='; walk(n); out += '=='; return; }
+      if (tag === 'code') { out += '`' + n.textContent + '`'; return; }
+      if (tag === 'img') {
+        out += '![' + (n.getAttribute('alt') || '') + '](' + (n.getAttribute('src') || '') + ')';
+        return;
+      }
+      if (tag === 'a') {
+        if (n.classList.contains('wikilink')) { out += '[[' + n.textContent + ']]'; return; }
+        const href = n.getAttribute('href') || '';
+        const text = n.textContent;
+        out += text === href ? href : '[' + text + '](' + href + ')';
+        return;
+      }
+      walk(n);        // an unknown wrapper contributes its text, never nothing
+    });
+  };
+  walk(root);
+  return out.replace(/ /g, ' ');
+}
+// Serialise, then check the result parses back to the same visible text. If it
+// does not, the text contained something that reads as markup and it is
+// escaped instead. Cheap, because this only runs on structural change.
+function beInline(root) {
+  const plain = beInlineRaw(root, false);
+  const probe = document.createElement('div');
+  probe.innerHTML = mdInline(plain, docCtx());
+  if (probe.textContent === root.textContent) return plain;
+  return beInlineRaw(root, true);
+}
+
+// A code block's newlines live in the DOM as <br> or <div> boundaries, and
+// textContent drops both — which welded every line of a code block into one.
+function beCodeText(el) {
+  let out = '';
+  const walk = (node) => {
+    node.childNodes.forEach((n) => {
+      if (n.nodeType === 3) { out += n.nodeValue; return; }
+      if (n.nodeType !== 1) return;
+      const tag = n.tagName.toLowerCase();
+      if (tag === 'br') { out += '\n'; return; }
+      const block = tag === 'div' || tag === 'p';
+      if (block && out && !out.endsWith('\n')) out += '\n';
+      walk(n);
+      if (block && !out.endsWith('\n')) out += '\n';
+    });
+  };
+  walk(el);
+  return out.replace(/\u00a0/g, ' ').replace(/\n$/, '');
+}
+
+// ---- state ----
+let beBlocks = [];
+let beDragFrom = null;
+
+const BE_MENU = [
+  { key: 'p', icon: '¶', label: 'Text', hint: 'Plain paragraph' },
+  { key: 'h1', icon: 'H1', label: 'Heading 1' },
+  { key: 'h2', icon: 'H2', label: 'Heading 2' },
+  { key: 'h3', icon: 'H3', label: 'Heading 3' },
+  { key: 'ul', icon: '•', label: 'Bulleted list' },
+  { key: 'ol', icon: '1.', label: 'Numbered list' },
+  { key: 'task', icon: '☑', label: 'To-do list' },
+  { key: 'quote', icon: '❝', label: 'Quote' },
+  { key: 'code', icon: '‹›', label: 'Code block' },
+  { key: 'table', icon: '▦', label: 'Table' },
+  { key: 'hr', icon: '—', label: 'Divider' },
+];
+
+function beApplyType(b, key) {
+  delete b.unclosed;
+  if (key === 'p') { Object.assign(b, { type: 'p' }); }
+  else if (/^h[1-6]$/.test(key)) Object.assign(b, { type: 'h', level: +key[1] });
+  else if (key === 'ul') Object.assign(b, { type: 'li', ordered: false, checked: null, indent: b.indent || 0 });
+  else if (key === 'ol') Object.assign(b, { type: 'li', ordered: true, checked: null, num: 1, delim: '.', indent: b.indent || 0 });
+  else if (key === 'task') Object.assign(b, { type: 'li', ordered: false, checked: false, indent: b.indent || 0 });
+  else if (key === 'quote') Object.assign(b, { type: 'quote' });
+  else if (key === 'code') Object.assign(b, { type: 'code', lang: '', code: b.text || '' });
+  else if (key === 'hr') Object.assign(b, { type: 'hr' });
+  else if (key === 'table') Object.assign(b, { type: 'table', rows: [['', ''], ['', '']], align: ['', ''] });
+  return b;
+}
+
+// ---- rendering ----
+function beBlockHtml(b, i) {
+  const inner = (tag, cls) =>
+    '<' + tag + ' class="be-text ' + (cls || '') + '" contenteditable="true" data-i="' + i + '">' +
+    (b.text ? mdInline(b.text, docCtx()) : '') + '</' + tag + '>';
+  let body;
+  if (b.type === 'h') body = inner('h' + Math.min(6, b.level || 1), 'be-h');
+  else if (b.type === 'quote') body = '<blockquote class="be-quote">' + inner('div') + '</blockquote>';
+  else if (b.type === 'hr') body = '<hr class="be-hr">';
+  else if (b.type === 'code') {
+    body = '<div class="be-codehead"><input class="be-lang" data-i="' + i + '" value="' +
+      escapeHtml(b.lang || '') + '" placeholder="language" /><span class="be-codehint">⏎⏎ or Esc to leave</span></div>' +
+      '<pre class="be-code"><code class="be-codetext" contenteditable="plaintext-only" data-i="' + i + '">' +
+      escapeHtml(b.code || '') + '</code></pre>';
+  } else if (b.type === 'raw') {
+    body = '<pre class="be-raw"><code class="be-codetext" contenteditable="plaintext-only" data-i="' + i + '">' +
+      escapeHtml(b.text || '') + '</code></pre>';
+  } else if (b.type === 'table') {
+    body = '<table class="be-table"><tbody>' + (b.rows || []).map((r, ri) =>
+      '<tr>' + r.map((c, ci) =>
+        '<' + (ri ? 'td' : 'th') + ' class="be-cell" contenteditable="true" data-i="' + i +
+        '" data-r="' + ri + '" data-c="' + ci + '">' + (c ? mdInline(c, docCtx()) : '') +
+        '</' + (ri ? 'td' : 'th') + '>').join('') + '</tr>').join('') + '</tbody></table>' +
+      '<div class="be-tacts"><button data-trow="' + i + '">＋ row</button><button data-tcol="' + i + '">＋ column</button></div>';
+  } else if (b.type === 'li') {
+    const marker = b.checked === null || b.checked === undefined
+      ? (b.ordered ? '<span class="be-num">' + (b.num == null ? 1 : b.num) + '.</span>' : '<span class="be-dot">•</span>')
+      : '<button class="be-check' + (b.checked ? ' on' : '') + '" data-check="' + i + '">' + (b.checked ? '✓' : '') + '</button>';
+    body = '<div class="be-li" style="padding-left:' + (b.indent || 0) * 22 + 'px">' + marker + inner('div', 'be-litext') + '</div>';
+  } else body = inner('div');
+
+  return '<div class="be-block" data-block="' + i + '" data-type="' + b.type + '">' +
+    '<div class="be-gutter"><button class="be-add" data-add="' + i + '" title="Insert below">＋</button>' +
+    '<button class="be-handle" data-handle="' + i + '" draggable="true" title="Drag to move">⋮⋮</button></div>' +
+    '<div class="be-body">' + body + '</div></div>';
+}
+
+function beSync() {
+  const ta = $('#docEditor');
+  if (!ta) return;
+  const md = blocksToMd(beBlocks);
+  if (ta.value === md) return;
+  ta.value = md;
+  docDirty = true;
+  scheduleDocSave();
+  renderDocPreview();
+  renderRail();
+}
+
+// Reads the DOM back into the block model. Called before any structural change
+// and on a debounce while typing, so the model never trails the screen.
+function beHarvest() {
+  const root = $('#beSurface');
+  if (!root) return;
+  root.querySelectorAll('.be-text').forEach((el) => {
+    const b = beBlocks[+el.dataset.i];
+    if (b) b.text = beInline(el);
+  });
+  root.querySelectorAll('.be-codetext').forEach((el) => {
+    const b = beBlocks[+el.dataset.i];
+    if (!b) return;
+    const text = beCodeText(el);
+    if (b.type === 'code') b.code = text;
+    else b.text = text;
+  });
+  root.querySelectorAll('.be-lang').forEach((el) => {
+    const b = beBlocks[+el.dataset.i];
+    if (b) b.lang = el.value.trim();
+  });
+  root.querySelectorAll('.be-cell').forEach((el) => {
+    const b = beBlocks[+el.dataset.i];
+    if (b && b.rows && b.rows[+el.dataset.r]) b.rows[+el.dataset.r][+el.dataset.c] = beInline(el);
+  });
+}
+
+function beRender(focusIndex, atEnd) {
+  const root = $('#beSurface');
+  if (!root) return;
+  root.innerHTML = beBlocks.map(beBlockHtml).join('');
+  beBind();
+  if (focusIndex != null) beFocusBlock(focusIndex, atEnd);
+}
+
+function beFocusBlock(i, atEnd) {
+  const root = $('#beSurface');
+  if (!root) return;
+  const el = root.querySelector('[data-block="' + i + '"] .be-text, [data-block="' + i + '"] .be-codetext, [data-block="' + i + '"] .be-cell');
+  if (!el) return;
+  el.focus();
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  r.collapse(!atEnd);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+}
+
+// ---- caret helpers ----
+function beCaretAtStart(el) {
+  const s = window.getSelection();
+  if (!s.rangeCount) return false;
+  const r = s.getRangeAt(0).cloneRange();
+  if (!r.collapsed) return false;
+  const probe = document.createRange();
+  probe.selectNodeContents(el);
+  probe.setEnd(r.startContainer, r.startOffset);
+  return probe.toString().length === 0;
+}
+function beCaretAtEnd(el) {
+  const s = window.getSelection();
+  if (!s.rangeCount) return false;
+  const r = s.getRangeAt(0).cloneRange();
+  if (!r.collapsed) return false;
+  const probe = document.createRange();
+  probe.selectNodeContents(el);
+  probe.setStart(r.startContainer, r.startOffset);
+  return probe.toString().length === 0;
+}
+// Splits a block at the caret, returning [before, after] as markdown.
+function beSplitAt(el) {
+  const s = window.getSelection();
+  const before = document.createRange();
+  before.selectNodeContents(el);
+  const after = before.cloneRange();
+  if (s.rangeCount) {
+    const r = s.getRangeAt(0);
+    before.setEnd(r.startContainer, r.startOffset);
+    after.setStart(r.endContainer, r.endOffset);
+  }
+  const wrap = (frag) => { const d = document.createElement('div'); d.appendChild(frag); return beInline(d); };
+  // The space you split on belongs to neither half — leaving it makes every
+  // Enter start the next block with a stray leading space.
+  return [wrap(before.cloneContents()).replace(/\s+$/, ''), wrap(after.cloneContents()).replace(/^\s+/, '')];
+}
+
+// ---- keyboard ----
+function beKeydown(e) {
+  const el = e.target.closest('.be-text, .be-codetext, .be-cell');
+  if (!el) return;
+  const i = +el.dataset.i;
+  const b = beBlocks[i];
+  if (!b) return;
+  const mod = e.metaKey || e.ctrlKey;
+
+  if (mod && !e.shiftKey && (e.key === 'b' || e.key === 'i')) {
+    e.preventDefault();
+    document.execCommand(e.key === 'b' ? 'bold' : 'italic');
+    beHarvest(); beSync();
+    return;
+  }
+  if (mod && e.key === 'k') {
+    e.preventDefault();
+    const url = prompt('Link to:');
+    if (url) document.execCommand('createLink', false, url);
+    beHarvest(); beSync();
+    return;
+  }
+  if (mod && e.key === 'Enter' && b.type === 'li' && b.checked !== null && b.checked !== undefined) {
+    e.preventDefault();
+    beHarvest(); b.checked = !b.checked; beRender(i, true); beSync();
+    return;
+  }
+
+  if (el.classList.contains('be-codetext')) {
+    if (e.key === 'Escape') { e.preventDefault(); beHarvest(); beSync(); el.blur(); return; }
+    if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '  '); return; }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const text = beCodeText(el);
+      // Enter on a blank last line leaves the block, the way it does in every
+      // editor that has code blocks. Escape works too, but nobody guesses it.
+      if (/\n\s*$/.test(text) && beCaretAtEnd(el)) {
+        beHarvest();
+        b.code = text.replace(/\n\s*$/, '');
+        beBlocks.splice(i + 1, 0, { type: 'p', text: '' });
+        beRender(i + 1, false);
+        beSync();
+        return;
+      }
+      // Insert a real newline rather than letting contenteditable build a
+      // <div>, so what is on screen is what gets serialised.
+      document.execCommand('insertText', false, '\n');
+      clearTimeout(beTypeTimer);
+      beTypeTimer = setTimeout(() => { beHarvest(); beSync(); }, 300);
+      return;
+    }
+    return;
+  }
+
+  if (el.classList.contains('be-cell')) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const cells = [...$('#beSurface').querySelectorAll('[data-block="' + i + '"] .be-cell')];
+      const at = cells.indexOf(el);
+      const next = cells[at + (e.shiftKey ? -1 : 1)];
+      if (next) { next.focus(); document.getSelection().selectAllChildren(next); }
+      else if (!e.shiftKey) { beHarvest(); b.rows.push(b.rows[0].map(() => '')); beRender(i); }
+    }
+    return;
+  }
+
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    beHarvest();
+    const [before, after] = beSplitAt(el);
+    // Enter on an empty list item ends the list rather than making another.
+    if (b.type === 'li' && !before.trim() && !after.trim()) {
+      if (b.indent) { b.indent--; beRender(i, true); beSync(); return; }
+      beApplyType(b, 'p'); b.text = ''; beRender(i, true); beSync(); return;
+    }
+    b.text = before;
+    const next = b.type === 'li'
+      ? { type: 'li', ordered: b.ordered, checked: b.checked === null || b.checked === undefined ? null : false,
+          indent: b.indent || 0, text: after, num: b.ordered ? (b.num || 1) + 1 : null, delim: b.delim || '.' }
+      : { type: b.type === 'h' || b.type === 'quote' ? 'p' : b.type, text: after };
+    beBlocks.splice(i + 1, 0, next);
+    beRender(i + 1, false);
+    beSync();
+    return;
+  }
+
+  if (e.key === 'Backspace' && beCaretAtStart(el)) {
+    beHarvest();
+    if (b.type === 'li' && b.indent) { e.preventDefault(); b.indent--; beRender(i, false); beSync(); return; }
+    if (b.type === 'li' || b.type === 'quote' || b.type === 'h') {
+      e.preventDefault(); beApplyType(b, 'p'); beRender(i, false); beSync(); return;
+    }
+    const prev = beBlocks[i - 1];
+    if (!prev) return;
+    e.preventDefault();
+    if (prev.type === 'hr' || prev.type === 'table' || prev.type === 'code') {
+      beBlocks.splice(i - 1, 1); beRender(i - 1, false); beSync(); return;
+    }
+    const at = String(prev.text || '').length;
+    prev.text = String(prev.text || '') + String(b.text || '');
+    beBlocks.splice(i, 1);
+    beRender(i - 1, true);
+    // put the caret where the join happened rather than at the very end
+    const target = $('#beSurface').querySelector('[data-block="' + (i - 1) + '"] .be-text');
+    if (target && at) beCaretTo(target, at);
+    beSync();
+    return;
+  }
+
+  if (e.key === 'Tab' && b.type === 'li') {
+    e.preventDefault();
+    beHarvest();
+    b.indent = Math.max(0, (b.indent || 0) + (e.shiftKey ? -1 : 1));
+    beRender(i, true);
+    beSync();
+    return;
+  }
+
+  if (e.key === 'ArrowUp' && beCaretAtStart(el) && i > 0) { e.preventDefault(); beFocusBlock(i - 1, true); }
+  if (e.key === 'ArrowDown' && beCaretAtEnd(el) && i < beBlocks.length - 1) { e.preventDefault(); beFocusBlock(i + 1, false); }
+}
+
+function beCaretTo(el, offset) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let left = offset, node = null;
+  while (walker.nextNode()) {
+    node = walker.currentNode;
+    if (node.nodeValue.length >= left) break;
+    left -= node.nodeValue.length;
+  }
+  if (!node) return;
+  const r = document.createRange();
+  r.setStart(node, Math.min(left, node.nodeValue.length));
+  r.collapse(true);
+  const s = window.getSelection();
+  s.removeAllRanges(); s.addRange(r);
+}
+
+// ---- slash menu ----
+let beMenuFor = null;
+function beCloseMenu() {
+  const m = $('#beMenu');
+  if (m) { m.classList.add('hidden'); m.innerHTML = ''; }
+  beMenuFor = null;
+}
+function beOpenMenu(el, i) {
+  const m = $('#beMenu');
+  if (!m) return;
+  beMenuFor = i;
+  const q = (el.textContent || '').replace(/^\//, '').toLowerCase();
+  const items = BE_MENU.filter((x) => !q || x.label.toLowerCase().includes(q) || x.key.startsWith(q));
+  if (!items.length) return beCloseMenu();
+  m.innerHTML = items.map((x, n) =>
+    '<button data-key="' + x.key + '"' + (n === 0 ? ' class="sel"' : '') + '>' +
+    '<span class="be-mi">' + x.icon + '</span>' + escapeHtml(x.label) + '</button>').join('');
+  m.classList.remove('hidden');
+  const r = el.getBoundingClientRect();
+  m.style.left = Math.min(innerWidth - m.offsetWidth - 12, r.left) + 'px';
+  m.style.top = (r.bottom + 6 + m.offsetHeight > innerHeight ? r.top - m.offsetHeight - 6 : r.bottom + 6) + 'px';
+  m.querySelectorAll('[data-key]').forEach((btn) => {
+    btn.onmousedown = (ev) => {
+      ev.preventDefault();
+      const b = beBlocks[i];
+      b.text = '';
+      beApplyType(b, btn.dataset.key);
+      beCloseMenu();
+      beRender(i, true);
+      beSync();
+    };
+  });
+}
+
+// ---- selection toolbar ----
+function beSyncToolbar() {
+  const bar = $('#beBar');
+  if (!bar) return;
+  const s = window.getSelection();
+  const root = $('#beSurface');
+  if (!s || s.isCollapsed || !s.rangeCount || !root) return bar.classList.add('hidden');
+  const r = s.getRangeAt(0);
+  if (!root.contains(r.commonAncestorContainer)) return bar.classList.add('hidden');
+  const box = r.getBoundingClientRect();
+  if (!box.width && !box.height) return bar.classList.add('hidden');
+  bar.classList.remove('hidden');
+  bar.style.left = Math.max(8, Math.min(innerWidth - bar.offsetWidth - 8, box.left + box.width / 2 - bar.offsetWidth / 2)) + 'px';
+  bar.style.top = Math.max(8, box.top - bar.offsetHeight - 8) + 'px';
+}
+
+// ---- binding ----
+let beTypeTimer = null;
+function beBind() {
+  const root = $('#beSurface');
+  if (!root) return;
+
+  root.oninput = (e) => {
+    const el = e.target.closest('.be-text, .be-codetext, .be-cell');
+    if (!el) return;
+    // "/" on an otherwise empty paragraph opens the block menu.
+    const b = beBlocks[+el.dataset.i];
+    if (b && b.type === 'p' && el.classList.contains('be-text') && /^\//.test(el.textContent || '')) {
+      beOpenMenu(el, +el.dataset.i);
+    } else if (beMenuFor != null) beCloseMenu();
+    clearTimeout(beTypeTimer);
+    beTypeTimer = setTimeout(() => { beHarvest(); beSync(); }, 450);
+  };
+  root.onkeydown = (e) => {
+    if (beMenuFor != null) {
+      const m = $('#beMenu');
+      const btns = [...m.querySelectorAll('[data-key]')];
+      const at = btns.findIndex((x) => x.classList.contains('sel'));
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const nx = Math.max(0, Math.min(btns.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)));
+        btns.forEach((x, n) => x.classList.toggle('sel', n === nx));
+        return;
+      }
+      if (e.key === 'Enter') { e.preventDefault(); btns[Math.max(0, at)].onmousedown(new Event('mousedown')); return; }
+      if (e.key === 'Escape') { e.preventDefault(); beCloseMenu(); return; }
+    }
+    beKeydown(e);
+  };
+  root.onblur = () => { beHarvest(); beSync(); };
+  // Track which block holds the caret, so the hint appears there and nowhere
+  // else. Without this every blank line advertised itself at once.
+  root.addEventListener('focusin', (e) => {
+    const el = e.target.closest('.be-text');
+    root.querySelectorAll('.be-text.be-here').forEach((x) => x.classList.remove('be-here'));
+    if (el) el.classList.add('be-here');
+  });
+
+  root.querySelectorAll('[data-check]').forEach((btn) => {
+    btn.onclick = () => {
+      const b = beBlocks[+btn.dataset.check];
+      beHarvest(); b.checked = !b.checked; beRender(); beSync();
+    };
+  });
+  root.querySelectorAll('[data-add]').forEach((btn) => {
+    btn.onclick = () => {
+      const i = +btn.dataset.add;
+      beHarvest();
+      beBlocks.splice(i + 1, 0, { type: 'p', text: '' });
+      beRender(i + 1, false);
+      beSync();
+    };
+  });
+  root.querySelectorAll('[data-trow]').forEach((btn) => {
+    btn.onclick = () => { const i = +btn.dataset.trow; beHarvest(); beBlocks[i].rows.push(beBlocks[i].rows[0].map(() => '')); beRender(); beSync(); };
+  });
+  root.querySelectorAll('[data-tcol]').forEach((btn) => {
+    btn.onclick = () => {
+      const i = +btn.dataset.tcol; beHarvest();
+      beBlocks[i].rows.forEach((r) => r.push(''));
+      beBlocks[i].align.push('');
+      beRender(); beSync();
+    };
+  });
+  root.querySelectorAll('.be-lang').forEach((inp) => {
+    inp.onchange = () => { beHarvest(); beSync(); };
+  });
+
+  // drag to reorder
+  root.querySelectorAll('[data-handle]').forEach((h) => {
+    h.ondragstart = (e) => { beDragFrom = +h.dataset.handle; e.dataTransfer.effectAllowed = 'move'; };
+    h.ondragend = () => { beDragFrom = null; root.querySelectorAll('.be-block').forEach((x) => x.classList.remove('drop')); };
+  });
+  root.querySelectorAll('.be-block').forEach((blk) => {
+    blk.ondragover = (e) => {
+      if (beDragFrom == null) return;
+      e.preventDefault();
+      root.querySelectorAll('.be-block').forEach((x) => x.classList.remove('drop'));
+      blk.classList.add('drop');
+    };
+    blk.ondrop = (e) => {
+      if (beDragFrom == null) return;
+      e.preventDefault();
+      const to = +blk.dataset.block;
+      beHarvest();
+      const [moved] = beBlocks.splice(beDragFrom, 1);
+      beBlocks.splice(to, 0, moved);
+      beDragFrom = null;
+      beRender();
+      beSync();
+    };
+  });
+}
+
+function beBindChrome() {
+  const bar = $('#beBar');
+  if (bar && !bar.dataset.bound) {
+    bar.dataset.bound = '1';
+    bar.querySelectorAll('[data-cmd]').forEach((btn) => {
+      btn.onmousedown = (e) => {
+        e.preventDefault();
+        const c = btn.dataset.cmd;
+        if (c === 'link') { const u = prompt('Link to:'); if (u) document.execCommand('createLink', false, u); }
+        else if (c === 'code') {
+          const s = window.getSelection();
+          if (s && !s.isCollapsed) {
+            const t = s.toString();
+            const el = document.createElement('code');
+            el.textContent = t;
+            s.getRangeAt(0).deleteContents();
+            s.getRangeAt(0).insertNode(el);
+          }
+        } else document.execCommand(c);
+        beHarvest(); beSync(); beSyncToolbar();
+      };
+    });
+  }
+  document.addEventListener('selectionchange', beSyncToolbar);
+  document.addEventListener('mousedown', (e) => {
+    if (beMenuFor != null && !e.target.closest('#beMenu')) beCloseMenu();
+  });
+}
+
+// ---- entry point ----
+function renderWriteSurface() {
+  const ta = $('#docEditor');
+  if (!ta) return;
+  beBlocks = mdToBlocks(ta.value);
+  beRender();
+  beBindChrome();
 }
 
 // =====================================================================

@@ -61,9 +61,13 @@ Learning is purple throughout. Amber stays the app's "in progress" colour, so a 
 
 ## A knowledge workspace, not a notes tab
 
-Documents are a first-class entity with their own workspace: a sidebar (pinned, recent, tags, folders, full-text search), tabs, a markdown editor, a reading view, a resizable split, an outline, and distraction-free writing.
+Documents are a first-class entity with their own workspace: a sidebar (pinned, recent, tags, folders, full-text search), tabs, a block editor, a markdown source view, a reading view, a resizable split, an outline, and distraction-free writing.
 
 ![Documents](docs/screenshots/documents.png)
+
+**Writing is block-based, not markdown-typing.** A heading looks like a heading as you write it, `**` never appears on screen, `/` opens a block menu, selecting text raises a formatting bar, and blocks drag to reorder. Lists indent with Tab, Enter on an empty list item ends the list, and Backspace at the start of a block merges it into the one above.
+
+The file on disk is still a plain `.md`. The block editor is a *view* over the markdown rather than a separate format: every edit is serialised straight back to markdown, which then goes through the same autosave, draft and conflict handling as before. Anything the editor does not model — an HTML block, an indented code block, a footnote — is carried through untouched instead of being reformatted, and the round trip is idempotent, so opening a document never rewrites it. Prefer the source? **Edit** and **Split** are still there.
 
 Markdown is rendered by a small purpose-built engine — GFM tables, task lists, fenced code with syntax highlighting, blockquotes, images — with **every URL allowlisted and every value escaped**, so a pasted document can't smuggle script into the app.
 
@@ -275,6 +279,8 @@ Nothing leaves your machine. The only outbound calls are the ones Spotify makes 
 | `C` | capture a thought |
 | `D` | day planner (day types, jump to a day) |
 | `S` | summary |
+| `/` (in a document) | block menu |
+| `⌘B` `⌘I` `⌘K` (in a document) | bold · italic · link |
 | `⌘K` | command palette |
 | `⌘⇧Space` | global quick capture (anywhere on macOS) |
 | `←` `→` | previous / next day |
