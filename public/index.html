@@ -1502,23 +1502,34 @@
     padding: 12px 14px; margin: 6px 0 0; overflow-x: auto; }
   .be-codetext { outline: none; display: block; white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 13px; line-height: 1.55; color: #d7dbe6; }
-  .be-codehead { display: flex; align-items: center; gap: 10px; margin: 8px 0 0; }
-  .be-lang { background: none; border: none; color: var(--muted); font-family: inherit; font-size: 11px;
-    padding: 2px 4px; outline: none; width: 110px; }
-  .be-lang:focus { color: var(--text); }
-  .be-codehint { font-size: 10.5px; color: var(--muted); opacity: 0; transition: opacity var(--t-fast); }
-  .be-block:focus-within .be-codehint { opacity: .6; }
-  .be-code { margin: 4px 0 0; }
-  .be-mermtoggle { background: var(--panel); border: 1px solid var(--line); color: var(--muted);
-    font-family: inherit; font-size: 11px; padding: 2px 9px; border-radius: 7px; cursor: pointer; }
-  .be-mermtoggle:hover { color: var(--text); border-color: var(--accent); }
-  /* A diagram is a figure, not a code listing: it gets room and sits centred. */
-  .be-merm { margin: 6px 0 0; padding: 18px 14px; border: 1px solid var(--line); border-radius: 12px;
-    background: rgba(255,255,255,.02); display: flex; justify-content: center; overflow-x: auto; }
+  /* A code block reads as one object: a quiet header carrying the language and
+     its actions, then the code, joined rather than stacked. */
+  .be-codeblock { margin: 10px 0 2px; border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden; background: rgba(0,0,0,.26); }
+  .be-codehead { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 10px;
+    border-bottom: 1px solid var(--line); background: rgba(255,255,255,.022); }
+  .be-codespring { flex: 1; }
+  .be-langpill { display: inline-flex; align-items: center; gap: 6px; background: none;
+    border: 1px solid transparent; color: var(--muted); font-family: inherit; font-size: 11.5px;
+    font-weight: 600; padding: 3px 8px; border-radius: 7px; cursor: pointer; transition: .14s; }
+  .be-langpill:hover { color: var(--text); border-color: var(--line-2); background: var(--panel-2); }
+  .be-langdot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: .8; }
+  .be-caret { font-size: 9px; opacity: .6; }
+  .be-codebtn { background: none; border: none; color: var(--muted); font-family: inherit;
+    font-size: 12.5px; width: 26px; height: 24px; border-radius: 6px; cursor: pointer;
+    opacity: 0; transition: opacity var(--t-fast), color var(--t-fast), background var(--t-fast); }
+  .be-block:hover .be-codebtn, .be-block:focus-within .be-codebtn { opacity: .7; }
+  .be-codebtn:hover { opacity: 1; color: var(--text); background: var(--panel-2); }
+  .be-code { margin: 0; padding: 12px 14px; background: none; border: none; border-radius: 0; overflow-x: auto; }
+  .be-mermtoggle { background: none; border: 1px solid var(--line); color: var(--muted);
+    font-family: inherit; font-size: 11px; padding: 2px 9px; border-radius: 7px; cursor: pointer; transition: .14s; }
+  .be-mermtoggle:hover { color: var(--text); border-color: var(--accent); background: var(--panel-2); }
+  /* A diagram is a figure, not a listing: it gets room and sits centred. */
+  .be-merm { padding: 22px 16px; display: flex; justify-content: center; overflow-x: auto; }
   .be-merm svg { max-width: 100%; height: auto; }
-  .be-merm.loading { min-height: 90px; }
+  .be-merm.loading { min-height: 96px; align-items: center; }
   .be-merm.loading::after { content: 'Drawing…'; color: var(--muted); font-size: 12px; }
-  .be-merm.failed { border-color: rgba(255,107,129,.4); }
+  .be-merm.failed { border-top: 1px solid rgba(255,107,129,.35); }
   .be-merm-err { color: var(--danger); font-size: 12px; font-family: ui-monospace, Menlo, monospace;
     white-space: pre-wrap; text-align: left; }
   .be-merm-empty { color: var(--muted); font-size: 12.5px; }
@@ -7752,9 +7763,21 @@ function beInline(root) {
   return beInlineRaw(root, true);
 }
 
+// Leaves a block and puts the caret in a paragraph after it, adding one if
+// there is nothing there. Being unable to get back out of the last code block
+// in a document is the single most trapping thing an editor can do.
+function beLeaveBlock(i) {
+  const next = beBlocks[i + 1];
+  if (!next || next.type === 'code' || next.type === 'table' || next.type === 'hr') {
+    beBlocks.splice(i + 1, 0, { type: 'p', text: '' });
+  }
+  beRender(i + 1, false);
+  beSync();
+}
+
 // A code block's newlines live in the DOM as <br> or <div> boundaries, and
 // textContent drops both — which welded every line of a code block into one.
-function beCodeText(el) {
+function beCodeTextRaw(el) {
   let out = '';
   const walk = (node) => {
     node.childNodes.forEach((n) => {
@@ -7769,8 +7792,10 @@ function beCodeText(el) {
     });
   };
   walk(el);
-  return out.replace(/\u00a0/g, ' ').replace(/\n$/, '');
+  return out.replace(/\u00a0/g, ' ');
 }
+// The stored form drops one trailing newline, since the fence supplies it.
+function beCodeText(el) { return beCodeTextRaw(el).replace(/\n$/, ''); }
 
 // ---- mermaid ----------------------------------------------------------
 // Vendored in public/vendor, never a CDN: the app has to work offline and
@@ -7857,6 +7882,22 @@ function renderMermaidIn(root) {
   });
 }
 
+// Highlighted when a language is set, plain when it is not — using the app's
+// own highlighter, so code in a document looks like code everywhere else.
+function beCodeHtml(b) {
+  const code = String(b.code || '');
+  if (!b.lang || (b.lang || '').toLowerCase() === 'mermaid') return escapeHtml(code);
+  try { return highlightCode(code, b.lang); } catch { return escapeHtml(code); }
+}
+
+const BE_LANG_LABEL = {
+  mermaid: 'Mermaid', bash: 'Bash', c: 'C', cpp: 'C++', css: 'CSS', diff: 'Diff', go: 'Go',
+  graphql: 'GraphQL', html: 'HTML', java: 'Java', javascript: 'JavaScript', js: 'JavaScript',
+  json: 'JSON', kotlin: 'Kotlin', markdown: 'Markdown', php: 'PHP', python: 'Python', py: 'Python',
+  ruby: 'Ruby', rust: 'Rust', sql: 'SQL', swift: 'Swift', toml: 'TOML', ts: 'TypeScript',
+  tsx: 'TSX', typescript: 'TypeScript', xml: 'XML', yaml: 'YAML', sh: 'Shell', shell: 'Shell',
+};
+
 const BE_LANGS = ['mermaid', 'bash', 'c', 'cpp', 'css', 'diff', 'go', 'graphql', 'html', 'java',
   'javascript', 'json', 'kotlin', 'markdown', 'php', 'python', 'ruby', 'rust', 'sql', 'swift',
   'toml', 'tsx', 'typescript', 'xml', 'yaml'];
@@ -7908,15 +7949,20 @@ function beBlockHtml(b, i) {
   else if (b.type === 'code') {
     const isMerm = (b.lang || '').toLowerCase() === 'mermaid';
     const showSrc = !isMerm || b.showSrc;
+    const label = b.lang ? (BE_LANG_LABEL[b.lang.toLowerCase()] || b.lang) : 'Plain text';
     body = '<div class="be-codehead">' +
-      '<input class="be-lang" list="beLangs" data-i="' + i + '" value="' + escapeHtml(b.lang || '') +
-        '" placeholder="language" spellcheck="false" />' +
+      '<button class="be-langpill" data-lang="' + i + '" title="Choose a language">' +
+        '<span class="be-langdot"></span>' + escapeHtml(label) + '<span class="be-caret">⌄</span></button>' +
       (isMerm ? '<button class="be-mermtoggle" data-merm="' + i + '">' +
         (showSrc ? '◈ Diagram' : '‹› Source') + '</button>' : '') +
-      '<span class="be-codehint">' + (showSrc ? '⏎⏎ or Esc to leave' : '') + '</span></div>' +
+      '<span class="be-codespring"></span>' +
+      '<button class="be-codebtn" data-copy="' + i + '" title="Copy">⧉</button>' +
+      (showSrc ? '<button class="be-codebtn" data-leave="' + i + '" title="Leave this block (Esc)">⏎</button>' : '') +
+      '</div>' +
       (isMerm && !showSrc ? '<div class="be-merm" data-merm-host="' + i + '"></div>' : '') +
-      (showSrc ? '<pre class="be-code"><code class="be-codetext" contenteditable="plaintext-only" data-i="' + i + '">' +
-        escapeHtml(b.code || '') + '</code></pre>' : '');
+      (showSrc ? '<pre class="be-code"><code class="be-codetext" contenteditable="plaintext-only" ' +
+        'spellcheck="false" data-i="' + i + '">' + beCodeHtml(b) + '</code></pre>' : '');
+    body = '<div class="be-codeblock">' + body + '</div>';
   } else if (b.type === 'raw') {
     body = '<pre class="be-raw"><code class="be-codetext" contenteditable="plaintext-only" data-i="' + i + '">' +
       escapeHtml(b.text || '') + '</code></pre>';
@@ -7967,10 +8013,6 @@ function beHarvest() {
     const text = beCodeText(el);
     if (b.type === 'code') b.code = text;
     else b.text = text;
-  });
-  root.querySelectorAll('.be-lang').forEach((el) => {
-    const b = beBlocks[+el.dataset.i];
-    if (b) b.lang = el.value.trim();
   });
   root.querySelectorAll('.be-cell').forEach((el) => {
     const b = beBlocks[+el.dataset.i];
@@ -8071,24 +8113,27 @@ function beKeydown(e) {
   }
 
   if (el.classList.contains('be-codetext')) {
-    if (e.key === 'Escape') {
-      e.preventDefault(); beHarvest();
-      if ((b.lang || '').toLowerCase() === 'mermaid') { b.showSrc = false; beRender(); }
-      beSync(); el.blur();
+    // Escape and Cmd+Enter both leave, landing the caret in a paragraph after
+    // the block — creating one when the code block is the last thing in the
+    // document, which is when being stuck in it is most annoying.
+    if (e.key === 'Escape' || (mod && e.key === 'Enter')) {
+      e.preventDefault(); e.stopPropagation();
+      beHarvest();
+      if ((b.lang || '').toLowerCase() === 'mermaid') b.showSrc = false;
+      beLeaveBlock(i);
       return;
     }
     if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '  '); return; }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      const text = beCodeText(el);
-      // Enter on a blank last line leaves the block, the way it does in every
-      // editor that has code blocks. Escape works too, but nobody guesses it.
-      if (/\n\s*$/.test(text) && beCaretAtEnd(el)) {
+      // Enter on an already-blank last line leaves the block. The raw DOM text
+      // is what gets tested: beCodeText trims the trailing newline, which is
+      // exactly the character this needs to see.
+      const raw = beCodeTextRaw(el);
+      if (/\n[ \t]*$/.test(raw) && beCaretAtEnd(el)) {
         beHarvest();
-        b.code = text.replace(/\n\s*$/, '');
-        beBlocks.splice(i + 1, 0, { type: 'p', text: '' });
-        beRender(i + 1, false);
-        beSync();
+        b.code = String(b.code || '').replace(/\n[ \t]*$/, '');
+        beLeaveBlock(i);
         return;
       }
       // Insert a real newline rather than letting contenteditable build a
@@ -8169,6 +8214,20 @@ function beKeydown(e) {
   if (e.key === 'ArrowDown' && beCaretAtEnd(el) && i < beBlocks.length - 1) { e.preventDefault(); beFocusBlock(i + 1, false); }
 }
 
+// How many characters precede the caret inside `el`. The inverse of
+// beCaretTo, and what makes it possible to re-highlight a code block while
+// someone is typing in it without the caret jumping.
+function beOffsetOf(el) {
+  const s = window.getSelection();
+  if (!s || !s.rangeCount) return null;
+  const r = s.getRangeAt(0);
+  if (!el.contains(r.startContainer)) return null;
+  const probe = document.createRange();
+  probe.selectNodeContents(el);
+  probe.setEnd(r.startContainer, r.startOffset);
+  return probe.toString().length;
+}
+
 function beCaretTo(el, offset) {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   let left = offset, node = null;
@@ -8237,6 +8296,7 @@ function beSyncToolbar() {
 
 // ---- binding ----
 let beTypeTimer = null;
+let beComposing = false;
 function beBind() {
   const root = $('#beSurface');
   if (!root) return;
@@ -8250,8 +8310,24 @@ function beBind() {
       beOpenMenu(el, +el.dataset.i);
     } else if (beMenuFor != null) beCloseMenu();
     clearTimeout(beTypeTimer);
-    beTypeTimer = setTimeout(() => { beHarvest(); beSync(); }, 450);
+    beTypeTimer = setTimeout(() => {
+      beHarvest(); beSync();
+      // Re-colour a code block in place. Only the one being typed in, only
+      // after the pause, and never mid-composition — an IME candidate window
+      // must not have the DOM pulled out from under it.
+      if (el.classList.contains('be-codetext') && !beComposing && b && b.type === 'code'
+          && b.lang && b.lang.toLowerCase() !== 'mermaid') {
+        const at = beOffsetOf(el);
+        const html = beCodeHtml(b);
+        if (html !== el.innerHTML) {
+          el.innerHTML = html;
+          if (at != null) beCaretTo(el, at);
+        }
+      }
+    }, 450);
   };
+  root.oncompositionstart = () => { beComposing = true; };
+  root.oncompositionend = () => { beComposing = false; };
   root.onkeydown = (e) => {
     if (beMenuFor != null) {
       const m = $('#beMenu');
@@ -8303,10 +8379,25 @@ function beBind() {
       beRender(); beSync();
     };
   });
-  root.querySelectorAll('.be-lang').forEach((inp) => {
-    // Changing the language can change the whole block (mermaid gets a
-    // diagram), so this re-renders rather than only re-serialising.
-    inp.onchange = () => { beHarvest(); beRender(); beSync(); };
+  root.querySelectorAll('[data-lang]').forEach((btn) => {
+    btn.onclick = (e) => {
+      const i = +btn.dataset.lang;
+      beHarvest();
+      openPicker(btn, 'Language',
+        [{ icon: '○', label: 'Plain text', id: '' }].concat(
+          BE_LANGS.map((l) => ({ icon: l === 'mermaid' ? '◈' : '‹›', label: BE_LANG_LABEL[l] || l, id: l }))),
+        (o) => { beBlocks[i].lang = o.id; if (o.id === 'mermaid') beBlocks[i].showSrc = true; beRender(); beSync(); });
+    };
+  });
+  root.querySelectorAll('[data-copy]').forEach((btn) => {
+    btn.onclick = async () => {
+      beHarvest();
+      try { await navigator.clipboard.writeText(beBlocks[+btn.dataset.copy].code || ''); flash('Copied'); }
+      catch { flash('Could not copy'); }
+    };
+  });
+  root.querySelectorAll('[data-leave]').forEach((btn) => {
+    btn.onclick = () => { beHarvest(); beLeaveBlock(+btn.dataset.leave); };
   });
   root.querySelectorAll('[data-merm]').forEach((btn) => {
     btn.onclick = () => {
@@ -9893,6 +9984,9 @@ $('#wrThis').onclick = () => { reviewWeek = mondayOf(new Date()); renderReviewPa
 // Escape closes the top-most surface
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
+  // Inside the block editor, Escape means "leave this block" — it used to fall
+  // through to here and close the document, dumping you back on the board.
+  if (e.target && e.target.closest && e.target.closest('#beSurface')) return;
   if (!$('#learnSession').classList.contains('hidden')) return closeLearnSession();
   if (!$('#learnDetail').classList.contains('hidden')) return closeLearnDetail();
   if (!$('#projectDetail').classList.contains('hidden')) return closeProjectDetail();
