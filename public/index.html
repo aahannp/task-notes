@@ -1509,7 +1509,7 @@
   .ws-panes.mode-write .ws-editwrap,
   .ws-panes.mode-write .ws-split-handle,
   .ws-panes.mode-write .ws-readwrap { display: none; }
-  #beWrap { display: none; overflow-y: auto; padding: 40px 8px 45vh; }
+  #beWrap { display: none; overflow-y: auto; padding: 40px 24px 45vh; }
   .be-surface { max-width: 760px; margin: 0 auto; }
   .be-block { position: relative; display: flex; align-items: flex-start; gap: 4px;
     border-radius: 8px; transition: background var(--t-fast); }
@@ -1542,12 +1542,12 @@
   .be-surface { font-family: var(--serif); }
   .be-text { outline: none; line-height: 1.72; font-size: 17px; padding: 3px 4px;
     border-radius: 6px; letter-spacing: .1px; }
-  /* The *measure* is what should be 68ch, not the container. Capping the
-     container at 44rem squeezed every table into four ribbons of one word per
-     line. Wide things get the whole column; paragraphs stay narrow. */
-  .be-surface { max-width: 60rem; }
-  .be-block[data-type="p"] .be-text, .be-block[data-type="quote"] .be-text,
-  .be-block[data-type="li"] .be-text { max-width: 68ch; }
+  /* Wide by preference. A 68ch measure is the typographic default and it was
+     too narrow here — the writing surface should use the window it is given,
+     so the column runs to 76rem and paragraphs are no longer capped below it.
+     Tables still size to their content and scroll. */
+  .be-surface { max-width: 76rem; }
+
   /* Chrome inside the editor stays in the interface font — a serif button is
      fancy dress, not typography. */
   .be-gutter, .be-codehead, .be-tacts, .be-check, .be-lang, .be-langpill,
@@ -2021,14 +2021,14 @@
   .ws-editor::placeholder { color: #5d6478; }
   .ws-readwrap { padding: 28px 38px 40vh; }
   .ws-panes.mode-read .ws-readwrap { padding: 34px 0 40vh; }
-  .ws-panes.mode-read .doc-render { max-width: 60rem; margin: 0 auto; padding: 0 34px; }
+  .ws-panes.mode-read .doc-render { max-width: 76rem; margin: 0 auto; padding: 0 34px; }
 
   /* rendered markdown typography */
   /* The reading view is the same prose as the writing view, so it is set the
      same way — otherwise switching modes changes the document. */
   .doc-render { font-family: var(--serif); font-size: 17px; line-height: 1.75; color: #dfe3ee;
     overflow-wrap: break-word; letter-spacing: .1px; }
-  .doc-render p, .doc-render li, .doc-render blockquote { max-width: 68ch; }
+
   .doc-render code, .doc-render pre { font-family: var(--mono); letter-spacing: 0; }
   /* A table sized to its content and allowed to scroll beats a table folded
      into one word per line. */
