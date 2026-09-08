@@ -5454,6 +5454,17 @@ function openDocMenu() {
 // ---------- contextual creation ----------
 // Creating from a Learning item / Project / Task / Idea carries that context
 // automatically — the user never rebuilds what they already had.
+// The documents page is an overlay at z-index 60, while the task modal (500)
+// and the project and learning detail panes (80) sit above it. Opening a
+// document without standing down the surface that asked for it puts the
+// document *underneath* — so it reads as "nothing happened", with the doc
+// quietly created in the background.
+function leaveForDocument() {
+  closeTaskModal();
+  closeProjectDetail();
+  closeLearnDetail();
+}
+
 async function newDocumentFor(kind, id, seedTitle) {
   const key = { project: 'projectId', learning: 'learningId', task: 'taskId', idea: 'ideaId' }[kind] || null;
   const fields = { title: seedTitle || 'Untitled', content: '# ' + (seedTitle || 'Untitled') + '\n\n' };
@@ -5464,6 +5475,7 @@ async function newDocumentFor(kind, id, seedTitle) {
   if (kind === 'task') { const t = allTasks().find((x) => x.id === id); if (t && t.projectId) fields.projectId = t.projectId; }
   const d = await createDoc(fields);
   if (!d) { flash('Could not create that document.'); return null; }
+  leaveForDocument();
   await openPage('docs');
   await openDocument(d.id);
   return d;
@@ -6180,7 +6192,9 @@ function renderDocSection(container, kind, id, label) {
   container.querySelectorAll('[data-doc]').forEach((r) => {
     r.onclick = async (e) => {
       if (e.target.dataset.unlink) return;
-      await openPage('docs'); openDocument(r.dataset.doc);
+      leaveForDocument();
+      await openPage('docs');
+      await openDocument(r.dataset.doc);
     };
   });
   container.querySelectorAll('[data-unlink]').forEach((b) => {
