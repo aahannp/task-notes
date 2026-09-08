@@ -39,7 +39,9 @@ They aren't separate apps bolted together. A task belongs to a project, referenc
 
 The part I'm most fond of. You constantly run into things you realise you don't properly understand — *"I should really know how mutexes work."* You don't want a task. You want to throw it in a bag and get to it.
 
-So the bag is an actual bag. Chips sit inside it at slightly odd angles, they shift as you move your cursor through them, and clicking one animates it out of the bag and into today's learning.
+So the bag is an actual bag. Chips sit inside it at slightly odd angles, the crowd parts a little as your cursor moves through it, and clicking one animates it out of the bag and into today's learning.
+
+The chip you are reaching for **holds still**. An earlier version pushed every chip away from the cursor, which meant the one you wanted fled as you approached it and nothing could be caught; now the nearest chip is a fixed target that grows slightly and comes to the front, only its neighbours yield, and they yield by a few pixels rather than darting. Chips can also be **dragged** and stay where you drop them, so the bag can be arranged the way you think about it.
 
 ![Learning Bag](docs/screenshots/learning-bag.png)
 
@@ -52,6 +54,8 @@ Hover anything for a preview — you shouldn't need to open a modal just to reme
 Every item keeps the full detail behind it: what you want to understand, why you added it, context, source, priority, status, tags, notes, related project, related tasks, time spent, last studied.
 
 Prefer not to rummage? There's a plain list view, every chip is keyboard-reachable, and `prefers-reduced-motion` turns the physics off while keeping the whole workflow.
+
+Learning is purple throughout. Amber stays the app's "in progress" colour, so a topic and a task in flight are never confusable at a glance.
 
 <br>
 
@@ -102,6 +106,8 @@ Each project opens into a command center: **health**, progress, completed/remain
 Health is explained in words, never an opaque score — *"Active this week, nothing blocked"*, *"No activity for 9 days"*, *"3 blocked tasks and deadline approaching"* — plus a momentum strip of tasks finished per week. Tasks can **depend on** other tasks; a blocked one says what it's waiting on, and the project shows the chain.
 
 ![Project detail](docs/screenshots/project-detail.png)
+
+The two destructive controls say which they are, because they are easy to confuse and expensive to get wrong. **Unlink** takes a task out of the project and leaves it on its day. **🗑** deletes the task itself. And deleting a project asks first, naming it and how many tasks go with it — it takes them, rather than leaving orphans pointing at something that no longer exists.
 
 <br>
 
@@ -191,11 +197,20 @@ The board is where you work a single day. The Tasks page is every task you have,
 - **Global task view** — every task across every day, filterable by state and project
 - **Estimates vs actuals** — estimate a task, then see it against the time you actually focused
 - **Spotify control** — play/pause, skip, volume, seek and search-and-play against the desktop app (optional)
-- **Continue where you left off** — a strip of the documents, learning, projects and tasks you were actually in the middle of
 - **Day-aware suggestions** — the app knows if you're at the office, working from home or off, and suggests accordingly (it never schedules anything for you)
 - **Things that have gone quiet** — stale projects, tasks, learning, ideas and documents, with keep / snooze / archive, so commitments don't silently pile up
 - **Command palette** (⌘K) — every command that actually does something, plus document search
 - **Search, keyboard shortcuts, and a motion language** that's meant to be felt more than noticed
+
+<br>
+
+## How it looks
+
+Flat liquid glass, and **no gradients anywhere** — not one, in about nine thousand lines of markup, styles and logic.
+
+Depth comes from stacked translucency instead of painted light: three surface tiers over one still ground, hairline edges, a specular top edge, and a two-layer shadow (ambient spread plus a tight contact shadow) so a panel reads as a pane above the page rather than a rectangle with a drop shadow.
+
+Glass needs something behind it or it reads as pale grey card, so a layer of flat colour blocks — softened by the compositor, still not a gradient — sits under everything for the panels above to refract. Dense grids and long-form reading damp it deliberately: a wash of colour under 11px event labels costs legibility and buys nothing.
 
 <br>
 
@@ -268,8 +283,8 @@ Deliberately small and boring so it stays hackable:
 - **`server.js`** — a zero-dependency Node HTTP server. Serves the frontend and a small JSON API over the files above.
 - **`public/index.html`** — the entire frontend. One file: markup, styles and logic, including a dependency-free markdown parser, sanitiser and highlighter.
 - **`public/mini.html` / `public/capture.html`** — the two small native companion windows.
-- **`helpers/tn-calendar.swift`** — a read-only EventKit helper that prints JSON; built by `npm run build:helper`, which `npm run dist` runs for you.
-- **`main.js` / `preload.js`** — the Electron shell for the macOS app and the Focus companion window, talking over a tiny explicit IPC bridge.
+- **`helpers/tn-calendar.swift`** — an EventKit helper that prints JSON: reads your agenda, and creates, edits and deletes events. It takes the occurrence's start date alongside the event id, because every occurrence of a recurring series shares one identifier and looking one up by id alone returns the first. Built by `npm run build:helper`, which `npm run dist` runs for you.
+- **`main.js` / `preload.js`** — the Electron shell for the macOS app, the Focus companion and Quick Capture windows, and native notifications, talking over a tiny explicit IPC bridge.
 
 <br>
 
