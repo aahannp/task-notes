@@ -65,7 +65,11 @@ Documents are a first-class entity with their own workspace: a sidebar (pinned, 
 
 ![Documents](docs/screenshots/documents.png)
 
-**Writing is block-based, not markdown-typing.** A heading looks like a heading as you write it, `**` never appears on screen, `/` opens a block menu, selecting text raises a formatting bar, and blocks drag to reorder. Lists indent with Tab, Enter on an empty list item ends the list, and Backspace at the start of a block merges it into the one above. Code blocks pick a language from a list, and a blank line then Enter leaves the block.
+**Writing is block-based, not markdown-typing.** A heading looks like a heading as you write it, `**` never appears on screen, `/` opens a block menu, selecting text raises a formatting bar, and blocks drag to reorder. Lists indent with Tab, Enter on an empty list item ends the list, and Backspace at the start of a block merges it into the one above.
+
+Every block has its own actions on the handle beside it — turn into, duplicate, move, delete — which is also the only way to remove a diagram, since one showing its picture has no text in it to put a caret in. The gutter appears on focus as well as on hover, the block menu is a real listbox that reports its selection, every control is labelled, and there is one visible focus ring throughout, so the editor is usable without a mouse.
+
+A code block carries its language as a pill you pick from a list, is syntax-highlighted as you type — re-coloured on a pause, with the caret held by character offset and left alone mid-composition so an IME is never pulled apart — and can be copied or left from its own header. Four things leave it: Escape, ⌘Enter, a blank line then Enter, or that button. If it's the last block in the document a paragraph is created below, because being unable to get back out is the worst thing an editor can do to you.
 
 **Diagrams render where you write them.** Set a code block's language to `mermaid` and it becomes the drawing — flowcharts, sequence diagrams, the rest — in a hand-drawn style, themed to match the app rather than dropped in as a foreign white rectangle. Toggle to **Source** to edit it, Escape to go back. The fence stays an ordinary ```mermaid block in the markdown, so the diagram is still just text in your file, and GitHub renders it too.
 

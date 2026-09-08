@@ -1488,9 +1488,18 @@
   .be-block { position: relative; display: flex; align-items: flex-start; gap: 4px;
     border-radius: 8px; transition: background var(--t-fast); }
   .be-block.drop { box-shadow: 0 -2px 0 0 var(--accent); }
+  /* Hidden until hover is fine for a mouse and useless for everything else,
+     so the gutter also appears whenever anything inside the block has focus
+     and whenever its own buttons are tabbed to. */
   .be-gutter { display: flex; align-items: center; gap: 1px; width: 44px; flex-shrink: 0;
-    opacity: 0; transition: opacity var(--t-fast); padding-top: 4px; justify-content: flex-end; }
+    opacity: 0; transition: opacity var(--t-fast); padding-top: 6px; justify-content: flex-end; }
   .be-block:hover .be-gutter, .be-block:focus-within .be-gutter { opacity: 1; }
+  .be-gutter:focus-within { opacity: 1; }
+  /* One visible focus ring for everything in the editor. */
+  #beSurface :focus-visible, #beMenu :focus-visible, #beBar :focus-visible,
+  .ws-bar :focus-visible, .ws-side :focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .be-text:focus-visible { outline-offset: 3px; }
   .be-gutter button { background: none; border: none; color: var(--muted); cursor: pointer;
     font-family: inherit; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: 5px; }
   .be-gutter button:hover { background: var(--panel-2); color: var(--text); }
@@ -2874,12 +2883,12 @@
 
 <datalist id="beLangs"></datalist>
 <div class="hidden" id="beMenu"></div>
-<div class="hidden" id="beBar">
-  <button data-cmd="bold" title="Bold (⌘B)"><b>B</b></button>
-  <button data-cmd="italic" title="Italic (⌘I)"><i>I</i></button>
-  <button data-cmd="strikeThrough" title="Strikethrough">S&#822;</button>
-  <button data-cmd="code" title="Inline code">‹›</button>
-  <button data-cmd="link" title="Link (⌘K)">🔗</button>
+<div class="hidden" id="beBar" role="toolbar" aria-label="Text formatting">
+  <button data-cmd="bold" title="Bold (⌘B)" aria-label="Bold"><b>B</b></button>
+  <button data-cmd="italic" title="Italic (⌘I)" aria-label="Italic"><i>I</i></button>
+  <button data-cmd="strikeThrough" title="Strikethrough" aria-label="Strikethrough">S&#822;</button>
+  <button data-cmd="code" title="Inline code" aria-label="Inline code">‹›</button>
+  <button data-cmd="link" title="Link (⌘K)" aria-label="Add a link">🔗</button>
 </div>
 
 <!-- ============ CALENDAR (day / week / month / year) ============ -->
@@ -2962,7 +2971,8 @@
         </div>
         <div class="ws-panes hidden" id="docPanes">
           <!-- The block editor. #docEditor below stays the model of record. -->
-          <div id="beWrap"><div class="be-surface" id="beSurface"></div></div>
+          <div id="beWrap"><div class="be-surface" id="beSurface" role="group"
+            aria-label="Document body — press slash on an empty line for block types"></div></div>
           <div class="ws-editwrap" id="docEditWrap">
             <textarea id="docEditor" class="ws-editor" spellcheck="true"
               placeholder="# Start writing…&#10;&#10;Markdown works: **bold**, `code`, ```fences```, tables, - [ ] tasks, and [[links to other documents]]."
@@ -8025,13 +8035,17 @@ function beBlockHtml(b, i) {
     const showSrc = !isMerm || b.showSrc;
     const label = b.lang ? (BE_LANG_LABEL[b.lang.toLowerCase()] || b.lang) : 'Plain text';
     body = '<div class="be-codehead">' +
-      '<button class="be-langpill" data-lang="' + i + '" title="Choose a language">' +
+      '<button class="be-langpill" data-lang="' + i + '" title="Choose a language" ' +
+        'aria-label="Code language: ' + escapeHtml(label) + '">' +
         '<span class="be-langdot"></span>' + escapeHtml(label) + '<span class="be-caret">⌄</span></button>' +
       (isMerm ? '<button class="be-mermtoggle" data-merm="' + i + '">' +
         (showSrc ? '◈ Diagram' : '‹› Source') + '</button>' : '') +
       '<span class="be-codespring"></span>' +
-      '<button class="be-codebtn" data-copy="' + i + '" title="Copy">⧉</button>' +
-      (showSrc ? '<button class="be-codebtn" data-leave="' + i + '" title="Leave this block (Esc)">⏎</button>' : '') +
+      '<button class="be-codebtn" data-copy="' + i + '" title="Copy" aria-label="Copy code">⧉</button>' +
+      (showSrc ? '<button class="be-codebtn" data-leave="' + i + '" title="Leave this block (Esc)" ' +
+        'aria-label="Leave this block">⏎</button>' : '') +
+      '<button class="be-codebtn" data-del="' + i + '" title="Delete this block" ' +
+        'aria-label="Delete this block">🗑</button>' +
       '</div>' +
       (isMerm && !showSrc ? '<div class="be-merm" data-merm-host="' + i + '"></div>' : '') +
       (showSrc ? '<pre class="be-code"><code class="be-codetext" contenteditable="plaintext-only" ' +
@@ -8055,8 +8069,10 @@ function beBlockHtml(b, i) {
   } else body = inner('div');
 
   return '<div class="be-block" data-block="' + i + '" data-type="' + b.type + '">' +
-    '<div class="be-gutter"><button class="be-add" data-add="' + i + '" title="Insert below">＋</button>' +
-    '<button class="be-handle" data-handle="' + i + '" draggable="true" title="Drag to move">⋮⋮</button></div>' +
+    '<div class="be-gutter">' +
+    '<button class="be-add" data-add="' + i + '" title="Insert a block below" aria-label="Insert a block below">＋</button>' +
+    '<button class="be-handle" data-handle="' + i + '" draggable="true" ' +
+      'title="Drag to move · click for actions" aria-label="Block actions">⋮⋮</button></div>' +
     '<div class="be-body">' + body + '</div></div>';
 }
 
@@ -8198,6 +8214,21 @@ function beKeydown(e) {
       return;
     }
     if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '  '); return; }
+    // Backspace at the very start deletes the block when it is empty and
+    // steps out of it when it is not. Without this a code block could only be
+    // escaped, never removed.
+    if (e.key === 'Backspace' && beCaretAtStart(el)) {
+      const raw = beCodeTextRaw(el);
+      if (!raw.trim()) {
+        e.preventDefault();
+        beBlocks.splice(i, 1);
+        if (!beBlocks.length) beBlocks.push({ type: 'p', text: '' });
+        beRender(Math.max(0, i - 1), true);
+        beSync();
+        return;
+      }
+      if (i > 0) { e.preventDefault(); beFocusBlock(i - 1, true); return; }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       // Enter on an already-blank last line leaves the block. The raw DOM text
@@ -8332,9 +8363,12 @@ function beOpenMenu(el, i) {
   const q = (el.textContent || '').replace(/^\//, '').toLowerCase();
   const items = BE_MENU.filter((x) => !q || x.label.toLowerCase().includes(q) || x.key.startsWith(q));
   if (!items.length) return beCloseMenu();
+  m.setAttribute('role', 'listbox');
+  m.setAttribute('aria-label', 'Block types');
   m.innerHTML = items.map((x, n) =>
-    '<button data-key="' + x.key + '"' + (n === 0 ? ' class="sel"' : '') + '>' +
-    '<span class="be-mi">' + x.icon + '</span>' + escapeHtml(x.label) + '</button>').join('');
+    '<button role="option" id="beOpt' + n + '" aria-selected="' + (n === 0) + '" data-key="' + x.key + '"' +
+    (n === 0 ? ' class="sel"' : '') + '>' +
+    '<span class="be-mi" aria-hidden="true">' + x.icon + '</span>' + escapeHtml(x.label) + '</button>').join('');
   m.classList.remove('hidden');
   const r = el.getBoundingClientRect();
   m.style.left = Math.min(innerWidth - m.offsetWidth - 12, r.left) + 'px';
@@ -8349,6 +8383,43 @@ function beOpenMenu(el, i) {
       beRender(i, true);
       beSync();
     };
+  });
+}
+
+// ---- per-block actions ----
+function beBlockMenu(anchor, i) {
+  beHarvest();
+  const b = beBlocks[i];
+  const turn = BE_MENU.filter((m) => m.key !== 'table').map((m) =>
+    ({ icon: m.icon, label: 'Turn into ' + m.label.toLowerCase(), id: 'turn:' + m.key }));
+  const opts = [
+    { icon: '⧉', label: 'Duplicate', id: 'dup' },
+    { icon: '↑', label: 'Move up', id: 'up' },
+    { icon: '↓', label: 'Move down', id: 'down' },
+    { icon: '🗑', label: 'Delete block', id: 'del' },
+  ].concat(b.type === 'table' || b.type === 'hr' ? [] : turn);
+  openPicker(anchor, 'Block', opts, (o) => {
+    if (o.id === 'del') {
+      beBlocks.splice(i, 1);
+      if (!beBlocks.length) beBlocks.push({ type: 'p', text: '' });
+      beRender(Math.max(0, i - 1), true);
+    } else if (o.id === 'dup') {
+      beBlocks.splice(i + 1, 0, JSON.parse(JSON.stringify(b)));
+      beRender(i + 1, true);
+    } else if (o.id === 'up' && i > 0) {
+      beBlocks.splice(i - 1, 0, beBlocks.splice(i, 1)[0]);
+      beRender(i - 1, true);
+    } else if (o.id === 'down' && i < beBlocks.length - 1) {
+      beBlocks.splice(i + 1, 0, beBlocks.splice(i, 1)[0]);
+      beRender(i + 1, true);
+    } else if (o.id.startsWith('turn:')) {
+      // Turning a diagram or code block into text keeps what was written in
+      // it, rather than quietly discarding the body.
+      if (b.type === 'code' && b.code && !b.text) b.text = b.code;
+      beApplyType(b, o.id.slice(5));
+      beRender(i, true);
+    } else return;
+    beSync();
   });
 }
 
@@ -8410,7 +8481,10 @@ function beBind() {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         const nx = Math.max(0, Math.min(btns.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)));
-        btns.forEach((x, n) => x.classList.toggle('sel', n === nx));
+        btns.forEach((x, n) => {
+          x.classList.toggle('sel', n === nx);
+          x.setAttribute('aria-selected', String(n === nx));
+        });
         return;
       }
       if (e.key === 'Enter') { e.preventDefault(); btns[Math.max(0, at)].onmousedown(new Event('mousedown')); return; }
@@ -8473,6 +8547,16 @@ function beBind() {
   root.querySelectorAll('[data-leave]').forEach((btn) => {
     btn.onclick = () => { beHarvest(); beLeaveBlock(+btn.dataset.leave); };
   });
+  root.querySelectorAll('[data-del]').forEach((btn) => {
+    btn.onclick = () => {
+      const i = +btn.dataset.del;
+      beHarvest();
+      beBlocks.splice(i, 1);
+      if (!beBlocks.length) beBlocks.push({ type: 'p', text: '' });
+      beRender(Math.max(0, i - 1), true);
+      beSync();
+    };
+  });
   root.querySelectorAll('[data-merm]').forEach((btn) => {
     btn.onclick = () => {
       const b = beBlocks[+btn.dataset.merm];
@@ -8487,6 +8571,10 @@ function beBind() {
   root.querySelectorAll('[data-handle]').forEach((h) => {
     h.ondragstart = (e) => { beDragFrom = +h.dataset.handle; e.dataTransfer.effectAllowed = 'move'; };
     h.ondragend = () => { beDragFrom = null; root.querySelectorAll('.be-block').forEach((x) => x.classList.remove('drop')); };
+    // A click (rather than a drag) opens the block's own actions. A diagram
+    // showing its picture has no editable text in it at all, so without this
+    // there was no way to delete one — by keyboard or by mouse.
+    h.onclick = () => beBlockMenu(h, +h.dataset.handle);
   });
   root.querySelectorAll('.be-block').forEach((blk) => {
     blk.ondragover = (e) => {
