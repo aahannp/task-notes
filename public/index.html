@@ -1648,6 +1648,32 @@
   #beBar b { font-weight: 800; }
   #beBar i { font-style: italic; }
 
+  /* ---- Reminders ---- */
+  .reminderbar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .rem { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-md);
+    background: rgba(245,166,35,.09); border: 1px solid rgba(245,166,35,.34);
+    box-shadow: var(--glass-hi); animation: remIn .3s var(--ease-out) backwards; }
+  @keyframes remIn { from { opacity: 0; transform: translateY(-6px); } }
+  /* Waved away twice and it stops being polite about it. */
+  .rem.insistent { background: rgba(255,107,129,.10); border-color: rgba(255,107,129,.42); }
+  .rem-ic { font-size: 16px; flex-shrink: 0; }
+  .rem-body { flex: 1; min-width: 0; }
+  .rem-text { font-size: 14.5px; font-weight: 600; color: var(--text); }
+  .rem-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .rem-ack, .rem-done { font-family: inherit; font-size: 12.5px; font-weight: 600;
+    padding: 6px 13px; border-radius: 9px; cursor: pointer; flex-shrink: 0; transition: .15s; }
+  .rem-ack { background: none; border: 1px solid var(--line-2); color: var(--muted); }
+  .rem-ack:hover { color: var(--text); border-color: var(--accent); background: var(--panel-2); }
+  .rem-done { background: var(--accent); border: 1px solid transparent; color: #0d1020; }
+  .rem-done:hover { filter: brightness(1.08); }
+  .rem-quick { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 4px; }
+  .rem-quick button { background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+    font-family: inherit; font-size: 12px; padding: 5px 11px; border-radius: 8px; cursor: pointer; }
+  .rem-quick button:hover { color: var(--text); border-color: var(--accent); }
+  .rem-note { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; }
+  /* A day that is carrying reminders says so in the month grid. */
+  .cal-cell .cal-rem { position: absolute; top: 4px; left: 5px; font-size: 9px; }
+
   /* ---- Calendar page: day / week / month / year over the real calendar ---- */
   .cw-top { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
   .cw-title h2 { font-size: 27px; font-weight: 800; letter-spacing: -.5px; margin: 0; }
@@ -2530,6 +2556,8 @@
 
   <div class="encourage" id="encourage"></div>
 
+  <div class="reminderbar" id="reminderBar" style="display:none"></div>
+
   <div class="toprow">
   <div class="spotcard" id="spotBar" style="display:none">
     <div class="spot-art" id="spotArtWrap"><img id="spotArt" alt="" />
@@ -2933,6 +2961,21 @@
   <button data-cmd="strikeThrough" title="Strikethrough" aria-label="Strikethrough">S&#822;</button>
   <button data-cmd="code" title="Inline code" aria-label="Inline code">‹›</button>
   <button data-cmd="link" title="Link (⌘K)" aria-label="Add a link">🔗</button>
+</div>
+
+<div class="modal-overlay hidden" id="reminderSheet">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head"><h2>🔔 Remind me</h2><button class="modal-x" id="remClose">✕</button></div>
+    <div class="modal-body">
+      <label class="fld"><span>What should I remind you about?</span>
+        <input id="remText" placeholder="e.g. chase the lease review" autocomplete="off" /></label>
+      <label class="fld"><span>On</span><input type="date" id="remDate" /></label>
+      <div class="rem-quick" id="remQuick"></div>
+      <p class="rem-note">It appears every time you open that day, and keeps appearing until you mark it done.
+        Acking buys quiet — and less of it each time.</p>
+      <div class="ee-acts"><button class="btn-primary" id="remSave">Set reminder</button></div>
+    </div>
+  </div>
 </div>
 
 <!-- ============ CALENDAR (day / week / month / year) ============ -->
@@ -3373,6 +3416,9 @@ async function load() {
   $('#today').style.display = isToday(current) ? 'none' : '';
   $('#newPickup').value = iso(current); // default pick-up date to the viewed day
   $('#pickupPick').classList.remove('missing');
+
+  renderReminders();
+  startReminderWatch();
 
   // The agenda belongs to the day being viewed, so it has to follow a day
   // change. Nothing was doing that: the only thing refreshing it was the 60s
@@ -4353,10 +4399,12 @@ const saveReviews  = () => saveStore('reviews', reviews);
 
 async function loadStores(force) {
   if (storesLoaded && !force) return;
-  const [p, l, i, a, r, cap] = await Promise.all([
+  const [p, l, i, a, r, cap, rem] = await Promise.all([
     loadStore('projects'), loadStore('learning'), loadStore('ideas'),
     loadStore('activity'), loadStore('reviews'), loadStore('captures'),
+    loadStore('reminders'),
   ]);
+  reminders = (rem || []).map(normReminder);
   projects = (p || []).map(normProject);
   learnItems = (l || []).map(normLearn);
   ideas = (i || []).map(normIdea);
@@ -6020,6 +6068,7 @@ function docCommands() {
     { ic: '💡', t: 'Open Ideas', run: () => openPage('ideas') },
     { ic: '✓', t: 'Open Tasks', run: () => openPage('tasks') },
     { ic: '📈', t: 'Open Weekly Review', run: () => openPage('review') },
+    { ic: '🔔', t: 'Remind me on a day…', run: () => openReminderSheet() },
     { ic: '📅', t: 'Open Calendar', run: () => openPage('calendar') },
     { ic: '🗓', t: 'Day planner — day types, jump to a day', run: () => openCalendar() },
     { ic: '🎯', t: 'Start focus session', run: () => { closePage(); fmProject = null; openFocusMode(); } },
@@ -8839,6 +8888,156 @@ function renderWriteSurface() {
 }
 
 // =====================================================================
+// REMINDERS — a thing to be told about on a given day, until it is done
+// =====================================================================
+// Set one for a day; from that day on it appears every time you are looking
+// at that day, and keeps appearing until you mark it done. Acknowledging is
+// explicitly *not* dismissal: it buys quiet, and each successive ack buys
+// less of it, so something you keep waving away comes back harder.
+
+let reminders = [];
+let reminderTimer = null;
+
+// Minutes of quiet an ack buys, by how many times you have acked already.
+// The last value repeats, so it settles at a nag rather than escalating for
+// ever into a loop.
+const ACK_QUIET_MIN = [60, 30, 12, 5, 2];
+// `n` is the ack count *after* incrementing, so the first ack indexes 0.
+const ackQuiet = (n) => ACK_QUIET_MIN[Math.min(Math.max(0, n - 1), ACK_QUIET_MIN.length - 1)] * 60000;
+
+function normReminder(r) {
+  return {
+    id: r.id || uid(),
+    text: r.text || '',
+    date: r.date || iso(new Date()),
+    status: r.status === 'done' ? 'done' : 'open',
+    acks: r.acks || 0,
+    quietUntil: r.quietUntil || null,
+    createdAt: r.createdAt || Date.now(),
+    doneAt: r.doneAt || null,
+    notifiedOn: r.notifiedOn || null,      // the day a desktop notification last fired
+    taskId: r.taskId || null,
+  };
+}
+async function loadReminders() {
+  reminders = ((await loadStore('reminders')) || []).map(normReminder);
+}
+function saveReminders() { saveStore('reminders', reminders); }
+
+// Due on the day being viewed: dated on or before it, still open, and past
+// whatever quiet the last ack bought.
+function remindersDue(dayISO) {
+  const now = Date.now();
+  return reminders.filter((r) => r.status === 'open' && r.date <= dayISO
+    && (!r.quietUntil || now >= r.quietUntil));
+}
+// Everything still open for a day, whether or not it is currently quiet —
+// used for the count on the day itself.
+function remindersOn(dayISO) {
+  return reminders.filter((r) => r.status === 'open' && r.date <= dayISO);
+}
+
+function renderReminders() {
+  const host = $('#reminderBar');
+  if (!host) return;
+  const day = iso(current);
+  const due = remindersDue(day);
+  if (!due.length) { host.innerHTML = ''; host.style.display = 'none'; return; }
+  host.style.display = '';
+  host.innerHTML = due.map((r) => {
+    const late = r.date < day;
+    const nagged = r.acks >= 2;
+    return '<div class="rem' + (nagged ? ' insistent' : '') + '" data-rem="' + escapeHtml(r.id) + '">' +
+      '<span class="rem-ic">🔔</span>' +
+      '<div class="rem-body">' +
+        '<div class="rem-text">' + escapeHtml(r.text) + '</div>' +
+        '<div class="rem-meta">' +
+          (late ? 'was for ' + fmtShort(r.date) : 'for today') +
+          (r.acks ? ' · put off ' + r.acks + '×' : '') +
+        '</div>' +
+      '</div>' +
+      '<button class="rem-ack" data-ack="' + escapeHtml(r.id) + '">Ack</button>' +
+      '<button class="rem-done" data-done="' + escapeHtml(r.id) + '">Done</button>' +
+    '</div>';
+  }).join('');
+
+  host.querySelectorAll('[data-ack]').forEach((b) => {
+    b.onclick = () => {
+      const r = reminders.find((x) => x.id === b.dataset.ack);
+      if (!r) return;
+      r.acks += 1;
+      r.quietUntil = Date.now() + ackQuiet(r.acks);
+      saveReminders();
+      renderReminders();
+      flash('🔔 Back in ' + Math.round(ackQuiet(r.acks) / 60000) + ' min');
+    };
+  });
+  host.querySelectorAll('[data-done]').forEach((b) => {
+    b.onclick = () => {
+      const r = reminders.find((x) => x.id === b.dataset.done);
+      if (!r) return;
+      r.status = 'done';
+      r.doneAt = Date.now();
+      saveReminders();
+      logActivity('reminder-done', 'Finished reminder “' + r.text.slice(0, 50) + '”', {});
+      renderReminders();
+      flash('✓ Reminder cleared');
+    };
+  });
+
+  // The desktop notification fires once per day per reminder, so a reminder
+  // announces itself when you first reach the day rather than every render.
+  if (DESKTOP && window.tn && window.tn.notify) {
+    due.filter((r) => r.notifiedOn !== day).forEach((r) => {
+      try { window.tn.notify({ title: 'Reminder', body: r.text, day: r.date }); } catch {}
+      r.notifiedOn = day;
+    });
+    saveReminders();
+  }
+}
+
+// While you sit on a day, quiet expiring should bring the reminder back
+// without needing a navigation.
+function startReminderWatch() {
+  if (reminderTimer) return;
+  reminderTimer = setInterval(() => {
+    if (activePage) return;
+    const day = iso(current);
+    const anyQuiet = reminders.some((r) => r.status === 'open' && r.date <= day && r.quietUntil);
+    if (anyQuiet) renderReminders();
+  }, 30000);
+}
+
+async function addReminder(text, date, taskId) {
+  const t = (text || '').trim();
+  if (!t) return null;
+  const r = normReminder({ text: t, date: date || iso(current), taskId: taskId || null });
+  reminders.push(r);
+  saveReminders();
+  logActivity('reminder-set', 'Reminder for ' + fmtShort(r.date) + ': “' + t.slice(0, 50) + '”', { taskId: taskId || undefined });
+  renderReminders();
+  flash('🔔 Reminder set for ' + (r.date === iso(new Date()) ? 'today' : fmtShort(r.date)));
+  return r;
+}
+
+// A small sheet, because a reminder is two fields and should not be a page.
+function openReminderSheet(seedText, seedDate, taskId) {
+  const m = $('#reminderSheet');
+  const inDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return iso(d); };
+  $('#remText').value = seedText || '';
+  $('#remDate').value = seedDate || inDays(1);
+  m.dataset.taskId = taskId || '';
+  m.classList.remove('hidden');
+  setTimeout(() => $('#remText').focus(), 30);
+  $('#remQuick').innerHTML = [['Tomorrow', 1], ['In 3 days', 3], ['Next week', 7], ['In 2 weeks', 14]]
+    .map(([label, n]) => '<button data-in="' + n + '">' + label + '</button>').join('');
+  $('#remQuick').querySelectorAll('[data-in]').forEach((b) => {
+    b.onclick = () => { $('#remDate').value = inDays(+b.dataset.in); };
+  });
+}
+function closeReminderSheet() { $('#reminderSheet').classList.add('hidden'); }
+
+// =====================================================================
 // CALENDAR PAGE — day / week / month / year over the real calendar
 // =====================================================================
 let cwView = 'month';
@@ -10226,6 +10425,15 @@ document.querySelectorAll('.nav-btn').forEach((b) => {
 document.querySelectorAll('.page-close').forEach((b) => { b.onclick = closePage; });
 bindCalendarPage();
 watchOverlays();
+
+$('#remClose').onclick = closeReminderSheet;
+$('#reminderSheet').onclick = (e) => { if (e.target === $('#reminderSheet')) closeReminderSheet(); };
+$('#remSave').onclick = async () => {
+  const r = await addReminder($('#remText').value, $('#remDate').value,
+    $('#reminderSheet').dataset.taskId || null);
+  if (r) closeReminderSheet();
+};
+$('#remText').onkeydown = (e) => { if (e.key === 'Enter') $('#remSave').click(); };
 $('#pdClose').onclick = closeProjectDetail;
 $('#ldClose').onclick = closeLearnDetail;
 $('#lsClose').onclick = closeLearnSession;

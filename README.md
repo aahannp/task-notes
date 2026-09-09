@@ -188,6 +188,16 @@ Why not a Google sign-in? Because it would be strictly worse: a sensitive Calend
 
 <br>
 
+## Reminders that don't go quiet
+
+Set a reminder for a day — tomorrow, in three days, next week — and from that day on it sits at the top of the board every time you open it.
+
+Two buttons, and the difference between them is the point. **Done** clears it for good. **Ack** does not: it buys quiet, and each successive ack buys less — an hour, then thirty minutes, twelve, five, two. Wave it away often enough and it turns red and tells you how many times you have. A reminder you never mark done keeps appearing on every later day too, labelled with the day it was actually for.
+
+On macOS it also fires a desktop notification the first time you reach its day.
+
+<br>
+
 ## Calendar & day context
 
 Mark days as working, off, vacation or holiday; track home vs office and login/logout. The rest of the app uses that context — for example, Learning nudges you more gently on days you actually have room to breathe.
@@ -265,6 +275,7 @@ Everything lives in `data/`, which is git-ignored:
 | `activity.json` | the activity log that feeds project history and the weekly review |
 | `reviews.json` | weekly reflections and frozen week snapshots |
 | `captures.json` | the capture inbox |
+| `reminders.json` | reminders, and how many times each has been waved away |
 | `documents.json` | document metadata (never bodies) |
 | `docs/<id>.md` | one plain markdown file per document — readable outside the app |
 | `docs/<id>.versions.json` | recent version history for that document |
