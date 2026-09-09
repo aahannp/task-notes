@@ -196,6 +196,8 @@ Two buttons, and the difference between them is the point. **Done** clears it fo
 
 On macOS it also fires a desktop notification the first time you reach its day.
 
+A **Reminders** tab lists everything you have set — overdue, today, later — with how many times each has been put off, how long it is currently quiet for, and when you set it. Move one to another day from the date field on its row, mark it done, reopen it, or delete it outright.
+
 <br>
 
 ## Calendar & day context

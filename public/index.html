@@ -526,6 +526,34 @@
     font-size: 12px; padding: 3px 9px; border-radius: 99px; outline: none; width: 130px;
     font-family: inherit;
   }
+  /* Every form control gets a floor. There was none: a control without its own
+     class fell straight through to the browser's native widget, which in a
+     dark app is a white box. Element selectors are the weakest thing in CSS,
+     so anything with its own styling still wins — this only catches what would
+     otherwise have nothing. */
+  input, select, textarea {
+    font-family: var(--ui); font-size: 13.5px; color: var(--text);
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--r-sm); padding: 9px 11px; outline: none;
+    color-scheme: dark;
+    transition: border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: rgba(124,155,255,.55); background: var(--panel-2);
+    box-shadow: 0 0 0 3px rgba(124,155,255,.12);
+  }
+  input::placeholder, textarea::placeholder { color: var(--muted); opacity: .65; }
+  /* These carry their own painting and must not be given a box. */
+  input[type="range"], input[type="checkbox"], input[type="radio"], input[type="color"] {
+    padding: 0; background: none; border: none; box-shadow: none; accent-color: var(--accent);
+  }
+  input[type="range"]:focus, input[type="checkbox"]:focus, input[type="radio"]:focus {
+    background: none; box-shadow: none;
+  }
+  select { padding-right: 26px; cursor: pointer; }
+  textarea { line-height: 1.55; resize: vertical; }
+  button { font-family: var(--ui); }
+
   .hidden { display: none !important; }
   /* With an overlay open the page behind it must not scroll. Each overlay is
      its own scroll container, so locking the document does not trap content. */
@@ -1666,11 +1694,67 @@
   .rem-ack:hover { color: var(--text); border-color: var(--accent); background: var(--panel-2); }
   .rem-done { background: var(--accent); border: 1px solid transparent; color: #0d1020; }
   .rem-done:hover { filter: brightness(1.08); }
-  .rem-quick { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 4px; }
+  /* the sheet */
+  .rem-form { display: flex; flex-direction: column; gap: 8px; }
+  .rem-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--muted); }
+  .rem-input { width: 100%; font-size: 15px; padding: 11px 13px; }
+  .rem-when { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+  .rem-date { padding: 8px 10px; }
+  .rem-quick { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 0; }
   .rem-quick button { background: var(--panel); border: 1px solid var(--line); color: var(--muted);
-    font-family: inherit; font-size: 12px; padding: 5px 11px; border-radius: 8px; cursor: pointer; }
-  .rem-quick button:hover { color: var(--text); border-color: var(--accent); }
-  .rem-note { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; }
+    font-family: inherit; font-size: 12px; padding: 6px 12px; border-radius: 99px; cursor: pointer;
+    transition: .15s; }
+  .rem-quick button:hover { color: var(--text); border-color: var(--line-2); background: var(--panel-2); }
+  .rem-quick button.on { color: var(--text); border-color: rgba(124,155,255,.5); background: var(--panel-2); }
+  .rem-note { font-size: 12px; color: var(--muted); line-height: 1.55; margin: 6px 0 0; }
+  .rem-note b { color: var(--text); font-weight: 650; }
+  .rem-formacts { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .rem-list { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .rem-sec { font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .7px;
+    color: var(--muted); margin: 6px 0 8px; }
+  .rem-empty { font-size: 13px; color: var(--muted); }
+  .rem-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: var(--r-sm);
+    background: var(--panel); border: 1px solid var(--line); margin-bottom: 7px; }
+  .rem-row.is-done { opacity: .55; }
+  .rem-row-body { flex: 1; min-width: 0; }
+  .rem-row-text { font-size: 13.5px; color: var(--text); }
+  .rem-row-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .rem-row-btn { background: none; border: 1px solid var(--line); color: var(--muted); font-family: inherit;
+    font-size: 11.5px; padding: 4px 10px; border-radius: 7px; cursor: pointer; flex-shrink: 0; transition: .15s; }
+  .rem-row-btn:hover { color: var(--text); border-color: var(--accent); background: var(--panel-2); }
+  .rem-row-btn.danger:hover { color: var(--danger); border-color: rgba(255,107,129,.5); }
+
+  /* the page */
+  .rp-date { width: 150px; flex-shrink: 0; }
+  .rp-list { display: flex; flex-direction: column; }
+  .rp-sec { font-size: 10.5px; font-weight: 750; text-transform: uppercase; letter-spacing: .7px;
+    color: var(--muted); margin: 18px 0 9px; display: flex; align-items: center; gap: 7px; }
+  .rp-sec span { background: var(--panel-2); border-radius: 99px; padding: 1px 7px; font-size: 10px; }
+  .rp-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 9px;
+    border-radius: var(--r-md); background: var(--panel); border: 1px solid var(--line);
+    box-shadow: var(--glass-hi); transition: border-color var(--t-fast); }
+  .rp-card:hover { border-color: var(--line-2); }
+  .rp-card.late { border-color: rgba(255,107,129,.3); background: rgba(255,107,129,.05); }
+  .rp-card.done { opacity: .5; }
+  .rp-main { flex: 1; min-width: 0; }
+  .rp-text { font-size: 15px; color: var(--text); font-weight: 550; }
+  .rp-card.done .rp-text { text-decoration: line-through; }
+  .rp-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+  .rp-when { font-weight: 700; color: var(--text); }
+  .rp-when.late { color: var(--danger); }
+  .rp-acks { color: #f5c26b; }
+  .rp-acts { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+  .rp-move { width: 140px; padding: 6px 9px; font-size: 12px; opacity: .75; }
+  .rp-move:hover, .rp-move:focus { opacity: 1; }
+  .rp-btn { background: none; border: 1px solid var(--line); color: var(--muted); font-family: inherit;
+    font-size: 12px; padding: 6px 12px; border-radius: 8px; cursor: pointer; transition: .15s; }
+  .rp-btn:hover { color: var(--text); border-color: var(--accent); background: var(--panel-2); }
+  .rp-btn.danger:hover { color: var(--danger); border-color: rgba(255,107,129,.5); }
+  @media (max-width: 700px) {
+    .rp-card { flex-direction: column; align-items: stretch; }
+    .rp-acts { justify-content: flex-end; }
+  }
   /* A day that is carrying reminders says so in the month grid. */
   .cal-cell .cal-rem { position: absolute; top: 4px; left: 5px; font-size: 9px; }
 
@@ -2526,6 +2610,9 @@
   <path d="M9.5 17h5M10 20.5h4"/><path d="M12 3a6 6 0 00-3.5 10.9c.6.4.9 1 .9 1.7V17h5.2v-1.4c0-.7.3-1.3.9-1.7A6 6 0 0012 3z"/></symbol>
 <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
   <rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-reminders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M18 8.5a6 6 0 10-12 0c0 4.2-1.4 5.6-2 6.3-.3.3-.1.9.4.9h15.2c.5 0 .7-.6.4-.9-.6-.7-2-2.1-2-6.3z"/>
+  <path d="M10 19.2a2.2 2.2 0 004 0"/></symbol>
 <symbol id="i-review" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
   <path d="M4 20V4M4 20h16"/><path d="M7.5 16.5l3.5-4.5 3 2.5L20 7"/></symbol>
 </svg>
@@ -2540,6 +2627,7 @@
     <button class="nav-btn" data-page="docs"><svg class="ico" viewBox="0 0 24 24"><use href="#i-docs"/></svg>Documents</button>
     <button class="nav-btn" data-page="ideas"><svg class="ico" viewBox="0 0 24 24"><use href="#i-ideas"/></svg>Ideas</button>
     <button class="nav-btn" data-page="calendar"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendar"/></svg>Calendar</button>
+    <button class="nav-btn" data-page="reminders"><svg class="ico" viewBox="0 0 24 24"><use href="#i-reminders"/></svg>Reminders</button>
     <button class="nav-btn" data-page="review"><svg class="ico" viewBox="0 0 24 24"><use href="#i-review"/></svg>Weekly Review</button>
   </nav>
 
@@ -2964,17 +3052,40 @@
 </div>
 
 <div class="modal-overlay hidden" id="reminderSheet">
-  <div class="modal" style="max-width:460px">
-    <div class="modal-head"><h2>🔔 Remind me</h2><button class="modal-x" id="remClose">✕</button></div>
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head"><h2>🔔 Reminders</h2><button class="modal-x" id="remClose">✕</button></div>
     <div class="modal-body">
-      <label class="fld"><span>What should I remind you about?</span>
-        <input id="remText" placeholder="e.g. chase the lease review" autocomplete="off" /></label>
-      <label class="fld"><span>On</span><input type="date" id="remDate" /></label>
-      <div class="rem-quick" id="remQuick"></div>
-      <p class="rem-note">It appears every time you open that day, and keeps appearing until you mark it done.
-        Acking buys quiet — and less of it each time.</p>
-      <div class="ee-acts"><button class="btn-primary" id="remSave">Set reminder</button></div>
+      <div class="rem-form">
+        <label class="rem-lbl" for="remText">What should I remind you about?</label>
+        <input id="remText" class="rem-input" placeholder="e.g. chase the lease review" autocomplete="off" />
+        <div class="rem-when">
+          <label class="rem-lbl" for="remDate">On</label>
+          <input type="date" id="remDate" class="rem-date" />
+        </div>
+        <div class="rem-quick" id="remQuick"></div>
+        <p class="rem-note">It appears every time you open that day and keeps appearing until you mark it
+          done. <b>Ack</b> only buys quiet — and less of it each time.</p>
+        <div class="rem-formacts"><button class="btn-primary" id="remSave">Set reminder</button></div>
+      </div>
+      <div class="rem-list" id="remList"></div>
     </div>
+  </div>
+</div>
+
+<!-- ============ REMINDERS ============ -->
+<div class="page hidden" id="page-reminders">
+  <div class="page-inner">
+    <div class="page-head">
+      <div><h2>🔔 Reminders</h2><p class="page-sub">What you asked to be told about, and when.</p></div>
+      <button class="page-close" title="Back to today">✕</button>
+    </div>
+    <div class="addrow-page big">
+      <input id="rpNew" placeholder="Remind me to…" autocomplete="off" />
+      <input type="date" id="rpDate" class="rp-date" />
+      <button class="addbtn" id="rpAdd">+</button>
+    </div>
+    <div class="page-bar"><div class="filters" id="rpFilters"></div></div>
+    <div class="rp-list" id="rpList"></div>
   </div>
 </div>
 
@@ -4516,7 +4627,7 @@ function projectById(id) { return projects.find((p) => p.id === id); }
 // =====================================================================
 // PAGE ROUTING — each area is a full-screen surface over the Today board.
 // =====================================================================
-const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar'];
+const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders'];
 let activePage = null;
 
 async function openPage(name) {
@@ -4534,6 +4645,7 @@ async function openPage(name) {
   if (name === 'ideas') renderIdeasPage();
   if (name === 'review') renderReviewPage();
   if (name === 'calendar') renderCalendarPage();
+  if (name === 'reminders') renderRemindersPage();
 }
 function closePage() {
   PAGES.forEach((p) => $('#page-' + p).classList.add('hidden'));
@@ -9016,8 +9128,158 @@ async function addReminder(text, date, taskId) {
   saveReminders();
   logActivity('reminder-set', 'Reminder for ' + fmtShort(r.date) + ': “' + t.slice(0, 50) + '”', { taskId: taskId || undefined });
   renderReminders();
+  renderReminderList();
   flash('🔔 Reminder set for ' + (r.date === iso(new Date()) ? 'today' : fmtShort(r.date)));
   return r;
+}
+
+function deleteReminder(id) {
+  reminders = reminders.filter((r) => r.id !== id);
+  saveReminders();
+  renderReminderList();
+  renderReminders();
+  flash('Reminder removed');
+}
+
+// Everything you have set, so a reminder can be found and got rid of without
+// waiting for the day it fires on.
+function renderReminderList() {
+  const host = $('#remList');
+  if (!host) return;
+  const open = reminders.filter((r) => r.status === 'open').sort((a, b) => (a.date < b.date ? -1 : 1));
+  const done = reminders.filter((r) => r.status === 'done');
+  if (!open.length && !done.length) {
+    host.innerHTML = '<div class="rem-empty">Nothing set yet.</div>';
+    return;
+  }
+  const today = iso(new Date());
+  const row = (r) => {
+    const when = r.date === today ? 'today' : (r.date < today ? 'was for ' + fmtShort(r.date) : fmtShort(r.date));
+    return '<div class="rem-row' + (r.status === 'done' ? ' is-done' : '') + '">' +
+      '<div class="rem-row-body"><div class="rem-row-text">' + escapeHtml(r.text) + '</div>' +
+      '<div class="rem-row-meta">' + when + (r.acks ? ' · put off ' + r.acks + '×' : '') +
+        (r.status === 'done' ? ' · done' : '') + '</div></div>' +
+      (r.status === 'open' ? '<button class="rem-row-btn" data-rdone="' + escapeHtml(r.id) + '">Done</button>' : '') +
+      '<button class="rem-row-btn danger" data-rdel="' + escapeHtml(r.id) + '" title="Remove">🗑</button>' +
+    '</div>';
+  };
+  host.innerHTML =
+    (open.length ? '<div class="rem-sec">Set</div>' + open.map(row).join('') : '') +
+    (done.length ? '<div class="rem-sec">Done</div>' + done.slice(-5).map(row).join('') : '');
+  host.querySelectorAll('[data-rdel]').forEach((b) => { b.onclick = () => deleteReminder(b.dataset.rdel); });
+  host.querySelectorAll('[data-rdone]').forEach((b) => {
+    b.onclick = () => {
+      const r = reminders.find((x) => x.id === b.dataset.rdone);
+      if (!r) return;
+      r.status = 'done'; r.doneAt = Date.now();
+      saveReminders(); renderReminderList(); renderReminders();
+    };
+  });
+}
+
+// ---- the Reminders page ----
+// Everything from today forward, plus anything overdue, because a reminder you
+// missed is the one most worth seeing.
+let rpFilter = 'upcoming';
+function rpBuckets() {
+  const today = iso(new Date());
+  const open = reminders.filter((r) => r.status === 'open');
+  return {
+    overdue: open.filter((r) => r.date < today).sort((a, b) => (a.date < b.date ? -1 : 1)),
+    today: open.filter((r) => r.date === today),
+    later: open.filter((r) => r.date > today).sort((a, b) => (a.date < b.date ? -1 : 1)),
+    done: reminders.filter((r) => r.status === 'done').sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)),
+  };
+}
+
+function renderRemindersPage() {
+  const b = rpBuckets();
+  const counts = { upcoming: b.overdue.length + b.today.length + b.later.length, done: b.done.length };
+  const fl = $('#rpFilters');
+  if (fl) {
+    fl.innerHTML = [['upcoming', 'Upcoming'], ['done', 'Done']].map(([k, label]) =>
+      '<button data-rpf="' + k + '" class="' + (rpFilter === k ? 'on' : '') + '">' + label +
+      ' <span>' + (counts[k] || 0) + '</span></button>').join('');
+    fl.querySelectorAll('[data-rpf]').forEach((x) => {
+      x.onclick = () => { rpFilter = x.dataset.rpf; renderRemindersPage(); };
+    });
+  }
+  const dp = $('#rpDate');
+  if (dp && !dp.value) { const d = new Date(); d.setDate(d.getDate() + 1); dp.value = iso(d); }
+
+  const today = iso(new Date());
+  const card = (r) => {
+    const late = r.date < today;
+    const quiet = r.quietUntil && Date.now() < r.quietUntil
+      ? Math.max(1, Math.round((r.quietUntil - Date.now()) / 60000)) : 0;
+    const when = r.date === today ? 'Today' : late ? 'Was for ' + fmtShort(r.date) : fmtShort(r.date);
+    const away = r.date > today
+      ? Math.round((new Date(r.date + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000) : 0;
+    return '<div class="rp-card' + (late ? ' late' : '') + (r.status === 'done' ? ' done' : '') + '">' +
+      '<div class="rp-main">' +
+        '<div class="rp-text">' + escapeHtml(r.text) + '</div>' +
+        '<div class="rp-meta">' +
+          '<span class="rp-when' + (late ? ' late' : '') + '">' + when + '</span>' +
+          (away ? '<span>in ' + away + ' day' + (away > 1 ? 's' : '') + '</span>' : '') +
+          (r.acks ? '<span class="rp-acks">put off ' + r.acks + '×</span>' : '') +
+          (quiet ? '<span>quiet for ' + quiet + 'm</span>' : '') +
+          '<span>set ' + relTime(r.createdAt) + '</span>' +
+          (r.status === 'done' && r.doneAt ? '<span>done ' + relTime(r.doneAt) + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="rp-acts">' +
+        (r.status === 'open'
+          ? '<input type="date" class="rp-move" data-rmove="' + escapeHtml(r.id) + '" value="' + r.date + '" title="Move to another day" />' +
+            '<button class="rp-btn" data-rdone2="' + escapeHtml(r.id) + '">Done</button>'
+          : '<button class="rp-btn" data-rreopen="' + escapeHtml(r.id) + '">Reopen</button>') +
+        '<button class="rp-btn danger" data-rdel2="' + escapeHtml(r.id) + '" title="Remove">🗑</button>' +
+      '</div>' +
+    '</div>';
+  };
+
+  const sec = (title, rows) => rows.length
+    ? '<div class="rp-sec">' + title + ' <span>' + rows.length + '</span></div>' + rows.map(card).join('') : '';
+
+  const host = $('#rpList');
+  if (!host) return;
+  host.innerHTML = rpFilter === 'done'
+    ? (b.done.length ? b.done.map(card).join('')
+      : '<div class="empty small"><div class="empty-t">Nothing finished yet.</div></div>')
+    : (counts.upcoming
+      ? sec('Overdue', b.overdue) + sec('Today', b.today) + sec('Later', b.later)
+      : '<div class="empty small"><div class="empty-t">No reminders set.</div>' +
+        '<div class="empty-s">Set one above, or press ⌘K and search for “remind”.</div></div>');
+
+  host.querySelectorAll('[data-rdel2]').forEach((x) => {
+    x.onclick = () => { deleteReminder(x.dataset.rdel2); renderRemindersPage(); };
+  });
+  host.querySelectorAll('[data-rdone2]').forEach((x) => {
+    x.onclick = () => {
+      const r = reminders.find((y) => y.id === x.dataset.rdone2);
+      if (!r) return;
+      r.status = 'done'; r.doneAt = Date.now();
+      saveReminders(); renderReminders(); renderRemindersPage();
+    };
+  });
+  host.querySelectorAll('[data-rreopen]').forEach((x) => {
+    x.onclick = () => {
+      const r = reminders.find((y) => y.id === x.dataset.rreopen);
+      if (!r) return;
+      // Reopening starts the nagging over rather than resuming where it left off.
+      r.status = 'open'; r.doneAt = null; r.acks = 0; r.quietUntil = null; r.notifiedOn = null;
+      saveReminders(); renderReminders(); renderRemindersPage();
+    };
+  });
+  host.querySelectorAll('[data-rmove]').forEach((x) => {
+    x.onchange = () => {
+      const r = reminders.find((y) => y.id === x.dataset.rmove);
+      if (!r || !x.value) return;
+      r.date = x.value;
+      r.quietUntil = null; r.notifiedOn = null;   // a new day is a fresh start
+      saveReminders(); renderReminders(); renderRemindersPage();
+      flash('Moved to ' + fmtShort(r.date));
+    };
+  });
 }
 
 // A small sheet, because a reminder is two fields and should not be a page.
@@ -9032,8 +9294,12 @@ function openReminderSheet(seedText, seedDate, taskId) {
   $('#remQuick').innerHTML = [['Tomorrow', 1], ['In 3 days', 3], ['Next week', 7], ['In 2 weeks', 14]]
     .map(([label, n]) => '<button data-in="' + n + '">' + label + '</button>').join('');
   $('#remQuick').querySelectorAll('[data-in]').forEach((b) => {
-    b.onclick = () => { $('#remDate').value = inDays(+b.dataset.in); };
+    b.onclick = () => {
+      $('#remDate').value = inDays(+b.dataset.in);
+      $('#remQuick').querySelectorAll('[data-in]').forEach((x) => x.classList.toggle('on', x === b));
+    };
   });
+  renderReminderList();
 }
 function closeReminderSheet() { $('#reminderSheet').classList.add('hidden'); }
 
@@ -10434,6 +10700,11 @@ $('#remSave').onclick = async () => {
   if (r) closeReminderSheet();
 };
 $('#remText').onkeydown = (e) => { if (e.key === 'Enter') $('#remSave').click(); };
+$('#rpAdd').onclick = async () => {
+  const r = await addReminder($('#rpNew').value, $('#rpDate').value);
+  if (r) { $('#rpNew').value = ''; renderRemindersPage(); }
+};
+$('#rpNew').onkeydown = (e) => { if (e.key === 'Enter') $('#rpAdd').click(); };
 $('#pdClose').onclick = closeProjectDetail;
 $('#ldClose').onclick = closeLearnDetail;
 $('#lsClose').onclick = closeLearnSession;
