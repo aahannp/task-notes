@@ -192,7 +192,9 @@ Why not a Google sign-in? Because it would be strictly worse: a sensitive Calend
 
 Set a reminder for a day — tomorrow, in three days, next week — and from that day on it sits at the top of the board every time you open it.
 
-Two buttons, and the difference between them is the point. **Done** clears it for good. **Ack** does not: it buys quiet, and each successive ack buys less — an hour, then thirty minutes, twelve, five, two. Wave it away often enough and it turns red and tells you how many times you have. A reminder you never mark done keeps appearing on every later day too, labelled with the day it was actually for.
+When one comes due it **takes over the screen**. That is the point of it: it covers the app, ignores Escape, ignores a click outside, and waits. Being on another page is not an exemption — it will find you there.
+
+Two buttons, and the difference between them is everything. **Done** clears it for good, with a tick that draws itself and a small burst of confetti, because finishing something should feel like something. **Ack — let me work** is the way back to your day: it buys quiet, and each successive ack buys less — an hour, then thirty minutes, twelve, five, two. Wave it away often enough and it turns red and tells you how many times you have. Behind it a quiet line keeps count: *2 reminders put off · back in 12 min*, with a **Show now** if you would rather deal with it. A reminder you never mark done keeps appearing on every later day too, labelled with the day it was actually for.
 
 On macOS it also fires a desktop notification the first time you reach its day.
 

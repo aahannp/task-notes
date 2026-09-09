@@ -1694,6 +1694,62 @@
   .rem-ack:hover { color: var(--text); border-color: var(--accent); background: var(--panel-2); }
   .rem-done { background: var(--accent); border: 1px solid transparent; color: #0d1020; }
   .rem-done:hover { filter: brightness(1.08); }
+  /* The blocker. A reminder you asked to be stopped by should stop you: it
+     covers the app, ignores Escape and ignores a click outside. Ack is the way
+     back to work, and it is right there. */
+  .remblock { position: fixed; inset: 0; z-index: 700; display: grid; place-items: center;
+    background: rgba(6,7,10,.82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    animation: rbIn .22s var(--ease-out); padding: 24px; }
+  @keyframes rbIn { from { opacity: 0; } }
+  .remblock-card { width: min(560px, 100%); background: var(--panel-3);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line-2); border-radius: var(--r-xl); padding: 30px 30px 24px;
+    box-shadow: var(--shadow), var(--glass-hi-strong); text-align: center;
+    animation: rbPop .3s var(--ease-spring) backwards; }
+  @keyframes rbPop { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+  .remblock-bell { font-size: 34px; animation: rbRing 1.6s var(--ease-out) 2; transform-origin: 50% 12%; }
+  @keyframes rbRing { 0%,60%,100% { transform: rotate(0); } 8% { transform: rotate(15deg); }
+    18% { transform: rotate(-13deg); } 28% { transform: rotate(9deg); } 38% { transform: rotate(-6deg); } }
+  .remblock-title { font-family: var(--serif); font-size: 25px; font-weight: 600; letter-spacing: -.3px;
+    margin: 6px 0 18px; }
+  .remblock-list { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+  .rb-item { padding: 16px 18px; border-radius: var(--r-md); background: rgba(245,166,35,.09);
+    border: 1px solid rgba(245,166,35,.3); transition: opacity .4s, transform .4s, max-height .4s;
+    max-height: 220px; overflow: hidden; }
+  .rb-item.insistent { background: rgba(255,107,129,.10); border-color: rgba(255,107,129,.4); }
+  .rb-text { font-size: 16.5px; font-weight: 600; color: var(--text); line-height: 1.4; }
+  .rb-meta { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .rb-acts { display: flex; gap: 9px; margin-top: 14px; }
+  .rb-ack, .rb-done { font-family: inherit; font-size: 13.5px; font-weight: 650; padding: 9px 18px;
+    border-radius: 10px; cursor: pointer; transition: .15s; }
+  .rb-ack { background: none; border: 1px solid var(--line-2); color: var(--muted); }
+  .rb-ack:hover { color: var(--text); border-color: var(--accent); background: var(--panel-2); }
+  .rb-done { background: #3fb27f; border: 1px solid transparent; color: #06210f; margin-left: auto; }
+  .rb-done:hover { filter: brightness(1.08); }
+  /* Finishing one: it ticks, lifts, and gets out of the way. */
+  .rb-item.finished { background: rgba(63,178,127,.14); border-color: rgba(63,178,127,.5); }
+  .rb-item.collapse { max-height: 0; opacity: 0; transform: translateY(-8px) scale(.97);
+    padding-top: 0; padding-bottom: 0; margin-top: -12px; }
+  .rb-tick { display: grid; place-items: center; gap: 8px; padding: 4px 0; }
+  .rb-tick svg { width: 42px; height: 42px; }
+  .rb-tick circle, .rb-tick path { fill: none; stroke: #3fb27f; stroke-width: 2.4;
+    stroke-linecap: round; stroke-linejoin: round; }
+  .rb-tick circle { stroke-dasharray: 126; stroke-dashoffset: 126; animation: rbRing2 .45s var(--ease-out) forwards; }
+  .rb-tick path { stroke-dasharray: 30; stroke-dashoffset: 30; animation: rbTick .3s var(--ease-out) .32s forwards; }
+  @keyframes rbRing2 { to { stroke-dashoffset: 0; } }
+  @keyframes rbTick { to { stroke-dashoffset: 0; } }
+  .rb-tick span { font-size: 13.5px; color: #8fe3c4; font-weight: 600; }
+  .remblock-foot { font-size: 11.5px; color: var(--muted); margin-top: 18px; }
+  /* The soft presence: what is currently put off, and for how long. */
+  .rem-quietstrip { display: flex; align-items: center; gap: 9px; padding: 8px 13px;
+    border-radius: var(--r-sm); background: var(--panel); border: 1px solid var(--line);
+    font-size: 12.5px; color: var(--muted); }
+  .rem-quietstrip b { color: var(--text); font-weight: 600; }
+  .rem-quietstrip button { margin-left: auto; background: none; border: 1px solid var(--line);
+    color: var(--muted); font-family: inherit; font-size: 11.5px; padding: 4px 10px;
+    border-radius: 7px; cursor: pointer; }
+  .rem-quietstrip button:hover { color: var(--text); border-color: var(--accent); }
+
   /* the sheet */
   .rem-form { display: flex; flex-direction: column; gap: 8px; }
   .rem-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
@@ -3049,6 +3105,15 @@
   <button data-cmd="strikeThrough" title="Strikethrough" aria-label="Strikethrough">S&#822;</button>
   <button data-cmd="code" title="Inline code" aria-label="Inline code">‹›</button>
   <button data-cmd="link" title="Link (⌘K)" aria-label="Add a link">🔗</button>
+</div>
+
+<div class="remblock hidden" id="remBlock" role="alertdialog" aria-modal="true" aria-label="Reminder">
+  <div class="remblock-card">
+    <div class="remblock-bell">🔔</div>
+    <div class="remblock-title" id="rbTitle">Reminder</div>
+    <div class="remblock-list" id="rbList"></div>
+    <div class="remblock-foot" id="rbFoot"></div>
+  </div>
 </div>
 
 <div class="modal-overlay hidden" id="reminderSheet">
@@ -6686,7 +6751,7 @@ const Z_POPOVER = 900;
 // Anything covering the page has to stop the page moving underneath it. The
 // overlays are declared in markup and toggled with `.hidden`, so rather than
 // touching every open/close site this watches their class attribute.
-const OVERLAY_SEL = '.modal-overlay, .page, .detail, .lsession, .cmdk, .sheet, .fwrap, .capbar';
+const OVERLAY_SEL = '.modal-overlay, .page, .detail, .lsession, .cmdk, .sheet, .fwrap, .capbar, .remblock';
 function anyOverlayOpen() {
   return [...document.querySelectorAll(OVERLAY_SEL)].some((el) => !el.classList.contains('hidden'))
     || !!document.querySelector('.pickpop');
@@ -9049,31 +9114,70 @@ function remindersOn(dayISO) {
   return reminders.filter((r) => r.status === 'open' && r.date <= dayISO);
 }
 
+// Anything due takes over the screen. That is the point of it: a reminder you
+// asked to be stopped by should stop you. Ack is right there and is the way
+// back to work — it buys quiet, less of it each time.
 function renderReminders() {
-  const host = $('#reminderBar');
-  if (!host) return;
   const day = iso(current);
   const due = remindersDue(day);
-  if (!due.length) { host.innerHTML = ''; host.style.display = 'none'; return; }
-  host.style.display = '';
-  host.innerHTML = due.map((r) => {
-    const late = r.date < day;
-    const nagged = r.acks >= 2;
-    return '<div class="rem' + (nagged ? ' insistent' : '') + '" data-rem="' + escapeHtml(r.id) + '">' +
-      '<span class="rem-ic">🔔</span>' +
-      '<div class="rem-body">' +
-        '<div class="rem-text">' + escapeHtml(r.text) + '</div>' +
-        '<div class="rem-meta">' +
-          (late ? 'was for ' + fmtShort(r.date) : 'for today') +
-          (r.acks ? ' · put off ' + r.acks + '×' : '') +
-        '</div>' +
-      '</div>' +
-      '<button class="rem-ack" data-ack="' + escapeHtml(r.id) + '">Ack</button>' +
-      '<button class="rem-done" data-done="' + escapeHtml(r.id) + '">Done</button>' +
-    '</div>';
-  }).join('');
+  const block = $('#remBlock');
+  if (!block) return;
 
-  host.querySelectorAll('[data-ack]').forEach((b) => {
+  if (due.length) {
+    $('#rbTitle').textContent = due.length > 1 ? due.length + ' reminders' : 'Reminder';
+    $('#rbList').innerHTML = due.map((r) => {
+      const late = r.date < day;
+      return '<div class="rb-item' + (r.acks >= 2 ? ' insistent' : '') + '" data-rb="' + escapeHtml(r.id) + '">' +
+        '<div class="rb-text">' + escapeHtml(r.text) + '</div>' +
+        '<div class="rb-meta">' + (late ? 'was for ' + fmtShort(r.date) : 'for today') +
+          (r.acks ? ' · you have put this off ' + r.acks + '×' : '') + '</div>' +
+        '<div class="rb-acts">' +
+          '<button class="rb-ack" data-ack="' + escapeHtml(r.id) + '">Ack — let me work</button>' +
+          '<button class="rb-done" data-done="' + escapeHtml(r.id) + '">Done</button>' +
+        '</div></div>';
+    }).join('');
+    $('#rbFoot').textContent = 'Acking buys quiet — ' + Math.round(ackQuiet((due[0].acks || 0) + 1) / 60000) +
+      ' minutes this time, and less the next.';
+    block.classList.remove('hidden');
+    bindReminderBlock();
+  } else {
+    block.classList.add('hidden');
+    $('#rbList').innerHTML = '';
+  }
+
+  // Behind it, a quiet line saying what is currently put off — so acking hides
+  // the interruption without hiding the fact.
+  const host = $('#reminderBar');
+  if (host) {
+    const quiet = reminders.filter((r) => r.status === 'open' && r.date <= day
+      && r.quietUntil && Date.now() < r.quietUntil);
+    if (!quiet.length) { host.innerHTML = ''; host.style.display = 'none'; }
+    else {
+      const soonest = Math.min(...quiet.map((r) => r.quietUntil));
+      const mins = Math.max(1, Math.round((soonest - Date.now()) / 60000));
+      host.style.display = '';
+      host.innerHTML = '<div class="rem-quietstrip">🔔 <span><b>' + quiet.length + ' reminder' +
+        (quiet.length > 1 ? 's' : '') + '</b> put off · back in ' + mins + ' min</span>' +
+        '<button id="remShowNow">Show now</button></div>';
+      $('#remShowNow').onclick = () => {
+        quiet.forEach((r) => { r.quietUntil = null; });
+        saveReminders(); renderReminders();
+      };
+    }
+  }
+
+  if (DESKTOP && window.tn && window.tn.notify) {
+    due.filter((r) => r.notifiedOn !== day).forEach((r) => {
+      try { window.tn.notify({ title: 'Reminder', body: r.text, day: r.date }); } catch {}
+      r.notifiedOn = day;
+    });
+    if (due.some((r) => r.notifiedOn === day)) saveReminders();
+  }
+}
+
+function bindReminderBlock() {
+  const block = $('#remBlock');
+  block.querySelectorAll('[data-ack]').forEach((b) => {
     b.onclick = () => {
       const r = reminders.find((x) => x.id === b.dataset.ack);
       if (!r) return;
@@ -9081,43 +9185,51 @@ function renderReminders() {
       r.quietUntil = Date.now() + ackQuiet(r.acks);
       saveReminders();
       renderReminders();
+      if (typeof renderRemindersPage === 'function' && activePage === 'reminders') renderRemindersPage();
       flash('🔔 Back in ' + Math.round(ackQuiet(r.acks) / 60000) + ' min');
     };
   });
-  host.querySelectorAll('[data-done]').forEach((b) => {
+  block.querySelectorAll('[data-done]').forEach((b) => {
     b.onclick = () => {
       const r = reminders.find((x) => x.id === b.dataset.done);
       if (!r) return;
+      const card = block.querySelector('[data-rb="' + CSS.escape(r.id) + '"]');
       r.status = 'done';
       r.doneAt = Date.now();
       saveReminders();
       logActivity('reminder-done', 'Finished reminder “' + r.text.slice(0, 50) + '”', {});
-      renderReminders();
-      flash('✓ Reminder cleared');
+      if (typeof renderRemindersPage === 'function' && activePage === 'reminders') renderRemindersPage();
+      if (!card) { renderReminders(); return; }
+      // The tick draws, the card lifts away, and only then does the rest
+      // re-render — finishing something should feel like something.
+      const rect = card.getBoundingClientRect();
+      card.classList.add('finished');
+      card.innerHTML = '<div class="rb-tick">' +
+        '<svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="20"/><path d="M13.5 22.5l5.5 5.5 11-12"/></svg>' +
+        '<span>Done</span></div>';
+      if (typeof celebrate === 'function') {
+        setTimeout(() => celebrate(rect.left + rect.width / 2, rect.top + rect.height / 2), 260);
+      }
+      setTimeout(() => card.classList.add('collapse'), 900);
+      setTimeout(() => renderReminders(), 1350);
     };
   });
-
-  // The desktop notification fires once per day per reminder, so a reminder
-  // announces itself when you first reach the day rather than every render.
-  if (DESKTOP && window.tn && window.tn.notify) {
-    due.filter((r) => r.notifiedOn !== day).forEach((r) => {
-      try { window.tn.notify({ title: 'Reminder', body: r.text, day: r.date }); } catch {}
-      r.notifiedOn = day;
-    });
-    saveReminders();
-  }
 }
 
 // While you sit on a day, quiet expiring should bring the reminder back
 // without needing a navigation.
 function startReminderWatch() {
   if (reminderTimer) return;
+  // Quiet lapsing brings it back wherever you are — a blocker that only fires
+  // on the board is one you avoid by staying off the board. Being on another
+  // page is not an exemption.
   reminderTimer = setInterval(() => {
-    if (activePage) return;
     const day = iso(current);
+    const showing = !$('#remBlock').classList.contains('hidden');
+    const anyDue = remindersDue(day).length > 0;
     const anyQuiet = reminders.some((r) => r.status === 'open' && r.date <= day && r.quietUntil);
-    if (anyQuiet) renderReminders();
-  }, 30000);
+    if (anyDue !== showing || anyQuiet) renderReminders();
+  }, 15000);
 }
 
 async function addReminder(text, date, taskId) {
@@ -10822,6 +10934,9 @@ $('#wrThis').onclick = () => { reviewWeek = mondayOf(new Date()); renderReviewPa
 // Escape closes the top-most surface
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
+  // A blocking reminder is the one thing Escape must not dismiss — being
+  // escapable is exactly what it is not.
+  if (!$('#remBlock').classList.contains('hidden')) return;
   // Inside the block editor, Escape means "leave this block" — it used to fall
   // through to here and close the document, dumping you back on the board.
   if (e.target && e.target.closest && e.target.closest('#beSurface')) return;
