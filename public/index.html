@@ -3747,6 +3747,24 @@ async function reconcileCarry(days) {
     if (untouched && (mine.note || '') !== (s.note || '')) { mine.note = s.note || ''; changed = true; }
   });
 
+  // Dependencies are rewritten onto this day's copies. Left pointing at
+  // yesterday's ids they drift a day further out of date with every carry,
+  // which is how one ended up referring to the 1st.
+  const counterpart = (srcTaskId) => tasks.find((t) => t.srcId === srcTaskId);
+  tasks.forEach((t) => {
+    if (!Array.isArray(t.dependsOn) || !t.dependsOn.length) return;
+    const next = [];
+    t.dependsOn.forEach((d) => {
+      const onSrc = src.tasks.find((x) => x.id === d);
+      if (!onSrc) { next.push(d); return; }        // not from the previous day; leave it
+      if (onSrc.status === 'done') { changed = true; return; }   // satisfied there
+      const here = counterpart(onSrc.id);
+      next.push(here ? here.id : d);
+      if (here && here.id !== d) changed = true;
+    });
+    if (next.length !== t.dependsOn.length || next.some((v, i) => v !== t.dependsOn[i])) t.dependsOn = next;
+  });
+
   // Finishing something yesterday should not leave it staring at you today —
   // but only if you have not touched the copy. Tasks carried before lineage
   // existed are matched on their wording, which is all they have.
@@ -6274,10 +6292,54 @@ function projectMomentum(p, weeksBack) {
 // DEPENDENCIES — informational planning, never a hard block.
 // =====================================================================
 function taskById(id) { return allTasks().find((t) => t.id === id) || null; }
-function blockersFor(task) {
-  return (task.dependsOn || []).map(taskById).filter(Boolean).filter((t) => t.status !== 'done');
+
+// A dependency records the id of a task as it stood on the day the link was
+// made, but a carried task gets a fresh id every day — so "plan the phase2"
+// was waiting on a copy of its blocker from the 1st, a record frozen in the
+// past that finishing today's copy could never clear.
+//
+// A dependency is really about *this* day: what matters is whether the thing
+// you are waiting on is done on the day you are looking at. So it resolves to
+// the blocker's counterpart on the dependent task's own day, and never to a
+// copy from a later day — a future day holds a snapshot that has not happened
+// yet, and blocking on it would mean blocking forever.
+function sameLineage(all, task, id) {
+  let cur = task;
+  for (let hop = 0; hop < 90 && cur; hop++) {
+    if (cur.id === id) return true;
+    cur = cur.srcId ? all.find((x) => x.id === cur.srcId) : null;
+  }
+  return false;
 }
-function dependentsOf(id) { return allTasks().filter((t) => (t.dependsOn || []).includes(id)); }
+function resolveBlocker(task, id) {
+  const all = allTasks();
+  const day = task._date || iso(current);
+  const onDay = all.filter((t) => t._date === day && t.id !== task.id);
+  const viaLineage = onDay.find((t) => sameLineage(all, t, id));
+  if (viaLineage) return viaLineage;
+  const direct = all.find((t) => t.id === id) || null;
+  if (!direct) return null;
+  if (direct._date === day) return direct;
+  // Copies made before lineage existed have only their wording to go on, and
+  // only days up to this one are evidence of anything.
+  const same = all.filter((t) => (t.text || '').trim() === (direct.text || '').trim() && t._date <= day);
+  if (!same.length) return direct;
+  same.sort((a, b) => (a._date < b._date ? -1 : a._date > b._date ? 1 : 0));
+  return same[same.length - 1];
+}
+function blockersFor(task) {
+  return (task.dependsOn || []).map((id) => resolveBlocker(task, id))
+    .filter(Boolean).filter((t) => t.status !== 'done');
+}
+function dependentsOf(id) {
+  // Mirrors resolveBlocker, so a task still reports what it blocks after
+  // either side has been carried onto a new day.
+  return allTasks().filter((x) => (x.dependsOn || []).some((d) => {
+    if (d === id) return true;
+    const r = resolveBlocker(x, d);
+    return !!r && r.id === id;
+  }));
+}
 // Longest chain first, so the project view shows the real critical path.
 function dependencyChains(projectId) {
   const tasks = allTasks().filter((t) => t.projectId === projectId);
