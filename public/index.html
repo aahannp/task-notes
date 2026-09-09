@@ -3242,6 +3242,12 @@ function normalize(t) {
     projectId: t.projectId || null,
     learningId: t.learningId || null,
     dependsOn: Array.isArray(t.dependsOn) ? t.dependsOn : [],
+    // Which task on the previous day this one continues, and the status it
+    // arrived with. Carrying work forward is a reconciliation rather than a
+    // copy, and without a lineage there is no way to tell "the same work
+    // again" from "a new task that happens to be worded the same".
+    srcId: t.srcId || null,
+    carriedAs: t.carriedAs || null,
   };
 }
 function taskFocusedSeconds(id) {
@@ -3388,20 +3394,17 @@ async function load() {
   // emptied on purpose sets `noCarry` and is left alone.
   const todayMidnight = new Date(new Date().toDateString());
   const curMidnight = new Date(current.toDateString());
-  const carryable = tasks.length === 0 && curMidnight >= todayMidnight;
-  let preMeta = null;
-  if (carryable) {
-    try { preMeta = (await (await fetch('/api/meta?date=' + iso(current))).json()).meta || {}; } catch { preMeta = {}; }
-  }
-  if (carryable && !preMeta.noCarry) {
-    const carried = await carryForward(days);
-    if (carried.length) { tasks = carried; save(); }
-  }
-
-  // Load day meta before rendering so per-task focus times are correct.
+  // Load day meta before rendering so per-task focus times are correct — and
+  // before reconciling, which needs to know what you have dismissed here.
   const m = await (await fetch('/api/meta?date=' + iso(current))).json();
   meta = m.meta || {};
   normalizeMeta();
+
+  // Today and any day after it stay in step with the day before them. A day
+  // you deliberately emptied is left alone.
+  if (curMidnight >= todayMidnight && !meta.noCarry) {
+    if (await reconcileCarry(days)) save();
+  }
 
   // Auto clock-in: stamp login the first time you open a working today (never on days off).
   if (isToday(current) && !meta.login && !isOffDay()) {
@@ -3415,6 +3418,14 @@ async function load() {
 }
 
 let metaTimer;
+// Removing a carried task is a decision about this day, so it is remembered:
+// reconciliation would otherwise hand it straight back on the next load.
+function forgetCarried(t) {
+  if (!t || !t.srcId) return;
+  if (!Array.isArray(meta.carryDropped)) meta.carryDropped = [];
+  if (!meta.carryDropped.includes(t.srcId)) { meta.carryDropped.push(t.srcId); saveMeta(); }
+}
+
 function saveMeta() {
   clearTimeout(metaTimer);
   metaTimer = setTimeout(async () => {
@@ -3681,6 +3692,74 @@ if (DESKTOP) {
   });
 }
 
+
+const CARRY_OPEN = (t) => t.status === 'todo' || t.status === 'progress' || t.status === 'blocked';
+
+// The most recent earlier day that has any tasks on it at all.
+async function carrySourceDay(days) {
+  const prior = days.filter((d) => d < iso(current)).sort().reverse();
+  for (const src of prior.slice(0, 14)) {
+    let arr = [];
+    try { arr = ((await (await fetch('/api/tasks?date=' + src)).json()).tasks || []); } catch { continue; }
+    if (arr.length) return { date: src, tasks: arr.map(normalize) };
+  }
+  return null;
+}
+
+// Carrying work forward is a *reconciliation*, not a one-off snapshot.
+//
+// It used to run only when a day was completely empty, so the first time you
+// looked at tomorrow it took a copy and froze it. Anything you then added,
+// renamed or finished on today never reached tomorrow — which is how Sep 8 and
+// Sep 9 came to disagree: Sep 9 was holding a copy taken before two tasks were
+// renamed, before one was finished, and before another was added.
+//
+// So this runs on every load of a day that is today or later, and reconciles:
+// everything still open on the previous day exists here, nothing open there is
+// missing, and a copy you have not started yet keeps up with edits to the
+// original. It never touches a task you have already worked on.
+async function reconcileCarry(days) {
+  const src = await carrySourceDay(days);
+  if (!src) return false;
+  const dropped = Array.isArray(meta.carryDropped) ? meta.carryDropped : [];
+  // Tasks carried before lineage existed are matched on their wording, which
+  // is the only handle they have.
+  const matches = (mine, theirs) => (mine.srcId ? mine.srcId === theirs.id
+    : (mine.text || '').trim() === (theirs.text || '').trim());
+  let changed = false;
+
+  src.tasks.filter(CARRY_OPEN).forEach((s) => {
+    if (dropped.includes(s.id)) return;              // you removed it here on purpose
+    const mine = tasks.find((t) => matches(t, s));
+    if (!mine) {
+      tasks.push(normalize({
+        ...s, id: uid(), srcId: s.id, carried: true, carriedAs: s.status,
+        carryCount: (s.carryCount || 0) + 1, createdAt: Date.now(), doneAt: null,
+      }));
+      changed = true;
+      return;
+    }
+    if (!mine.srcId) { mine.srcId = s.id; mine.carriedAs = mine.status; changed = true; }
+    // An untouched copy follows the original; once you have changed its status
+    // or written a note against it, it is yours and is left alone.
+    const untouched = mine.status === mine.carriedAs && !mine.note;
+    if (untouched && mine.text !== s.text) { mine.text = s.text; changed = true; }
+    if (untouched && (mine.note || '') !== (s.note || '')) { mine.note = s.note || ''; changed = true; }
+  });
+
+  // Finishing something yesterday should not leave it staring at you today —
+  // but only if you have not touched the copy. Tasks carried before lineage
+  // existed are matched on their wording, which is all they have.
+  for (let i = tasks.length - 1; i >= 0; i--) {
+    const t = tasks[i];
+    const untouched = t.carriedAs ? (t.status === t.carriedAs && !t.note) : (t.status === 'todo' && !t.note);
+    if (!untouched) continue;
+    const s = t.srcId ? src.tasks.find((x) => x.id === t.srcId)
+      : (t.carried ? src.tasks.find((x) => (x.text || '').trim() === (t.text || '').trim()) : null);
+    if (s && s.status === 'done') { tasks.splice(i, 1); changed = true; }
+  }
+  return changed;
+}
 
 async function carryForward(days) {
   const prior = days.filter((d) => d < iso(current)).sort().reverse();
@@ -4183,6 +4262,7 @@ $('#tmDelete').onclick = () => {
   const t = editingTask(); if (!t) return;
   const card = document.querySelector('.card[data-id="' + t.id + '"]');
   const removeIt = () => {
+    forgetCarried(t);
     tasks = tasks.filter((x) => x.id !== t.id);
     // Clearing the last task is a deliberate "this day is empty" — remember it
     // so the next load does not helpfully carry everything back in.
@@ -4535,6 +4615,7 @@ function renderProjectDetail() {
       if (!confirm('Delete “' + label + '”?\n\nThis removes the task itself, not just its link to the project.')) return;
       const date = row.dataset.date, tid = row.dataset.tid;
       if (date === iso(current)) {
+        forgetCarried(tasks.find((t) => t.id === tid));
         tasks = tasks.filter((t) => t.id !== tid);
         if (!tasks.length) { meta.noCarry = true; saveMeta(); }
         save();
@@ -10168,6 +10249,7 @@ $('#pdDelete').onclick = async () => {
   for (const date of Object.keys(byDay)) {
     const ids = new Set(byDay[date]);
     if (date === iso(current)) {
+      tasks.filter((t) => ids.has(t.id)).forEach(forgetCarried);
       tasks = tasks.filter((t) => !ids.has(t.id));
       // An emptied day is a deliberate empty day, not one to refill tomorrow.
       if (!tasks.length) { meta.noCarry = true; saveMeta(); }
