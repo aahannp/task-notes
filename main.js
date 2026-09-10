@@ -216,6 +216,10 @@ app.whenReady().then(() => {
   // Listen on a random free port bound to localhost only.
   const listener = server.listen(0, '127.0.0.1', () => {
     appPort = listener.address().port;
+    // The port was only ever in memory, so nothing outside the app could find
+    // it — including the MCP server. It is written next to the data and
+    // removed on quit, so a stale file means "not running".
+    if (server.writePortFile) server.writePortFile(appPort);
     createWindow(appPort);
   });
 
@@ -237,6 +241,8 @@ app.whenReady().then(() => {
 app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch {} });
 
 app.on('before-quit', saveMiniState);
+app.on('will-quit', () => { if (server.clearPortFile) server.clearPortFile(); });
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });

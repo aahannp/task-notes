@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "task-notes": {
+      "command": "node",
+      "args": ["mcp/tasknotes.js"]
+    }
+  }
+}

@@ -293,6 +293,26 @@ That produces `dist-app/Task Notes-<version>-arm64.dmg`. The build is unsigned, 
 
 <br>
 
+## Driving it from Claude
+
+There is an MCP server at `mcp/tasknotes.js` — stdio, zero dependencies, like everything else here. Point Claude Code at it and you can add tasks, move them between columns, start projects, park things in the backlog, capture thoughts, set reminders, and read or write documents by asking.
+
+```bash
+claude mcp add task-notes --scope user -- node ~/task-notes/mcp/tasknotes.js
+```
+
+Working inside this repo, the checked-in `.mcp.json` does the same thing without the setup.
+
+**Fourteen tools:** `list_tasks` · `add_task` · `update_task` · `list_projects` · `add_project` · `capture` · `list_backlog` · `add_backlog` · `add_reminder` · `list_documents` · `read_document` · `write_document` · `day_summary` · `focus_summary`.
+
+**Nothing deletes.** Claude can create and change; removing a task, a project or a document stays something you do yourself, so a misread instruction cannot erase work.
+
+Everything goes through the running app's local HTTP API rather than the data directory. Every rule that keeps the data coherent — carry-forward lineage, day-local dependencies, the activity log, document bodies as real `.md` files, atomic writes — lives in `server.js`, and a second process editing files directly would honour none of it. So the app has to be open; if it isn't, the tools say so rather than guessing.
+
+The app publishes its port to `data/port.json` when it starts and removes it on quit, which is how the MCP server finds it. And because there are now two writers, the app polls for changes it did not make and picks them up within fifteen seconds — a task added from a chat appears on the board on its own, and the next save from the app will not write over it.
+
+<br>
+
 ## Your data
 
 Everything lives in `data/`, which is git-ignored:
@@ -311,6 +331,7 @@ Everything lives in `data/`, which is git-ignored:
 | `backlog.json` | work parked for later, and the task each item became |
 | `documents.json` | document metadata (never bodies) |
 | `docs/<id>.md` | one plain markdown file per document — readable outside the app |
+| `port.json` | where the app is listening, so the MCP server can find it; removed on quit |
 | `docs/<id>.versions.json` | recent version history for that document |
 | `assets/<id>/…` | images embedded in that document |
 

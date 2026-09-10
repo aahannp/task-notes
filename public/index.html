@@ -3787,6 +3787,7 @@ async function load() {
 
   render(true);
   renderMeta();
+  markRev(iso(current));
 }
 
 let metaTimer;
@@ -4215,16 +4216,68 @@ async function carryForward(days) {
 }
 
 let saveTimer;
+// Until the MCP server existed this app was the only thing that ever wrote
+// to `data/`, so it could treat what it held in memory as the truth. It is
+// not the only writer any more: a task added from a chat has to appear here,
+// and — more to the point — must not be quietly overwritten by the next save
+// from this side. So each write records the revision it produced, and a poll
+// notices when the file on disk stops matching it.
+const knownRev = { date: null, tasks: 0, stores: {} };
+
 async function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    await fetch('/api/tasks?date=' + iso(current), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tasks),
-    });
+    const day = iso(current);
+    try {
+      const r = await (await fetch('/api/tasks?date=' + day, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tasks),
+      })).json();
+      if (r && r.rev && knownRev.date === day) knownRev.tasks = r.rev;
+    } catch {}
     flash();
   }, 250);
+}
+
+// Called after a day loads: this is now the baseline.
+async function markRev(day) {
+  try {
+    const r = await (await fetch('/api/rev?date=' + day)).json();
+    knownRev.date = day;
+    knownRev.tasks = r.tasks || 0;
+    knownRev.stores = r.stores || {};
+  } catch {}
+}
+
+// Reloads only what actually changed, and never while you are typing —
+// pulling the board out from under a half-written task would be worse than
+// showing it fifteen seconds late.
+async function pollExternalChanges() {
+  const day = iso(current);
+  if (knownRev.date !== day) return;
+  const el = document.activeElement;
+  if (el && (/^(INPUT|TEXTAREA)$/.test(el.tagName) || el.isContentEditable)) return;
+  let r;
+  try { r = await (await fetch('/api/rev?date=' + day)).json(); } catch { return; }
+  if (knownRev.date !== iso(current)) return;                  // day changed mid-flight
+
+  // Both, not one or the other: a single chat turn can add a task *and* drop
+  // something in the inbox, and returning after the first left the second
+  // sitting on disk unseen until something else happened to change.
+  const tasksMoved = knownRev.tasks && r.tasks && r.tasks !== knownRev.tasks;
+  const storesMoved = Object.keys(r.stores || {})
+    .filter((k) => knownRev.stores[k] && r.stores[k] !== knownRev.stores[k]);
+  if (!tasksMoved && !storesMoved.length) return;
+
+  if (storesMoved.length) {
+    knownRev.stores = r.stores;
+    await loadStores(true);
+  }
+  if (tasksMoved) await load();            // load() re-baselines the revision
+  else if (activePage) openPage(activePage);
+  renderTodayExtras();                     // the inbox nudge and backlog count
+  flash('↻ Updated from elsewhere');
 }
 
 function flash(msg) {
@@ -4751,10 +4804,11 @@ function saveStore(name, value) {
   clearTimeout(storeTimers[name]);
   storeTimers[name] = setTimeout(async () => {
     try {
-      await fetch('/api/store?name=' + name, {
+      const r = await (await fetch('/api/store?name=' + name, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(value, (k, v) => (k.startsWith('_') ? undefined : v)),
-      });
+      })).json();
+      if (r && r.rev) knownRev.stores[name] = r.rev;
     } catch {}
   }, 220);
 }
@@ -9909,6 +9963,7 @@ function startReminderWatch() {
     const anyQuiet = reminders.some((r) => r.status === 'open' && r.date <= day && r.quietUntil);
     if (anyDue !== showing || anyQuiet) renderReminders();
     backlogNotify();
+    pollExternalChanges();
   }, 15000);
 }
 

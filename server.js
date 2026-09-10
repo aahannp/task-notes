@@ -163,6 +163,27 @@ function fileFor(date) {
   return path.join(DATA_DIR, `${date}.json`);
 }
 
+// The mtime is revision enough: it only has to answer "did this change since
+// I last wrote it", which is what a second writer — the MCP server — makes
+// possible for the first time.
+function fileRev(f) {
+  try { return fs.statSync(f).mtimeMs; } catch { return 0; }
+}
+
+// Where the app is listening. The Electron shell binds a random free port and
+// held it only in memory, so nothing outside the app could find it.
+function portFile() { return path.join(DATA_DIR, 'port.json'); }
+function writePortFile(port) {
+  try { writeAtomic(portFile(), JSON.stringify({ port: Number(port), pid: process.pid, at: Date.now() }, null, 2)); }
+  catch {}
+}
+function clearPortFile() {
+  try {
+    const cur = JSON.parse(fs.readFileSync(portFile(), 'utf8'));
+    if (cur && cur.pid === process.pid) fs.unlinkSync(portFile());
+  } catch {}
+}
+
 function readTasks(date) {
   const f = fileFor(date);
   if (!fs.existsSync(f)) return [];
@@ -499,10 +520,61 @@ const server = http.createServer((req, res) => {
           const tasks = JSON.parse(body);
           if (!Array.isArray(tasks)) throw new Error('not array');
           writeTasks(date, tasks);
-          sendJSON(res, 200, { ok: true });
+          sendJSON(res, 200, { ok: true, rev: fileRev(fileFor(date)) });
         } catch {
           sendJSON(res, 400, { error: 'bad body' });
         }
+      });
+      return;
+    }
+
+    // Append a single task. The whole-array PUT above is right for the app,
+    // which holds the day in memory — but wrong for anyone else, who would be
+    // reading an array and writing it back a moment later, quietly discarding
+    // whatever the app did in between. The read and the write happen here.
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        try {
+          const t = JSON.parse(body);
+          if (!t || typeof t !== 'object' || Array.isArray(t)) throw new Error('not an object');
+          if (!String(t.text || '').trim()) throw new Error('no text');
+          const task = Object.assign({
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            status: 'todo', createdAt: Date.now(),
+          }, t);
+          const arr = readTasks(date);
+          arr.push(task);
+          writeTasks(date, arr);
+          sendJSON(res, 200, { ok: true, task, rev: fileRev(fileFor(date)) });
+        } catch (e) {
+          sendJSON(res, 400, { error: String(e.message || 'bad body') });
+        }
+      });
+      return;
+    }
+
+    // Change fields on one task without rewriting the day around it.
+    if (req.method === 'PATCH') {
+      const id = u.searchParams.get('id');
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        try {
+          const patch = JSON.parse(body);
+          if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('not an object');
+          const arr = readTasks(date);
+          const t = arr.find((x) => x.id === id);
+          if (!t) return sendJSON(res, 404, { error: 'no such task on ' + date });
+          // Identity and lineage are not editable content.
+          ['id', 'srcId', 'carriedAs', 'carriedNote', 'carried'].forEach((k) => delete patch[k]);
+          if (patch.status === 'done' && t.status !== 'done' && patch.doneAt == null) patch.doneAt = Date.now();
+          if (patch.status && patch.status !== 'done') patch.doneAt = null;
+          Object.assign(t, patch);
+          writeTasks(date, arr);
+          sendJSON(res, 200, { ok: true, task: t, rev: fileRev(fileFor(date)) });
+        } catch (e) { sendJSON(res, 400, { error: String(e.message || 'bad body') }); }
       });
       return;
     }
@@ -783,8 +855,30 @@ const server = http.createServer((req, res) => {
             : Array.isArray(value);
           if (!ok) throw new Error('shape');
           writeCollection(name, value);
-          sendJSON(res, 200, { ok: true });
+          sendJSON(res, 200, { ok: true, rev: fileRev(collectionFile(name)) });
         } catch { sendJSON(res, 400, { error: 'bad body' }); }
+      });
+      return;
+    }
+    // Prepend one item, read and write in the same place — see the note on
+    // POST /api/tasks. Only for the array stores; `reviews` is a map.
+    if (req.method === 'POST') {
+      if (OBJECT_COLLECTIONS.has(name)) return sendJSON(res, 400, { error: 'not a list' });
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        try {
+          const item = JSON.parse(body);
+          if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error('not an object');
+          const rec = Object.assign({
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            createdAt: Date.now(),
+          }, item);
+          const arr = readCollection(name);
+          arr.unshift(rec);
+          writeCollection(name, arr);
+          sendJSON(res, 200, { ok: true, item: rec, rev: fileRev(collectionFile(name)) });
+        } catch (e) { sendJSON(res, 400, { error: String(e.message || 'bad body') }); }
       });
       return;
     }
@@ -1099,6 +1193,18 @@ const server = http.createServer((req, res) => {
     return res.end('Method not allowed');
   }
 
+  // What has changed on disk, so the app can notice a write it did not make.
+  if (u.pathname === '/api/rev' && req.method === 'GET') {
+    const date = safeDate(u.searchParams.get('date'));
+    const stores = {};
+    Object.keys(COLLECTIONS).forEach((k) => { stores[k] = fileRev(collectionFile(k)); });
+    return sendJSON(res, 200, {
+      tasks: date ? fileRev(fileFor(date)) : 0,
+      meta: date ? fileRev(metaFileFor(date)) : 0,
+      stores,
+    });
+  }
+
   // List which dates have task data (exclude .meta.json sidecar files)
   if (u.pathname === '/api/days' && req.method === 'GET') {
     const days = fs
@@ -1116,9 +1222,14 @@ const server = http.createServer((req, res) => {
 // the caller can listen on any free port.
 if (require.main === module) {
   server.listen(PORT, () => {
+    writePortFile(PORT);
     console.log(`\n  ✅ Task Notes running at  http://localhost:${PORT}`);
     console.log(`  📁 Data stored in         ${DATA_DIR}\n`);
   });
+  process.on('exit', clearPortFile);
+  ['SIGINT', 'SIGTERM'].forEach((sig) => process.on(sig, () => { clearPortFile(); process.exit(0); }));
 }
 
 module.exports = server;
+module.exports.writePortFile = writePortFile;
+module.exports.clearPortFile = clearPortFile;
