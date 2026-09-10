@@ -1193,6 +1193,74 @@ const server = http.createServer((req, res) => {
     return res.end('Method not allowed');
   }
 
+  // MCP health. The log is written by the MCP server, one JSON line per call;
+  // the aggregation happens here so the panel stays a renderer.
+  if (u.pathname === '/api/mcp' && req.method === 'GET') {
+    const f = path.join(DATA_DIR, 'mcp-log.jsonl');
+    let all = [];
+    try {
+      all = fs.readFileSync(f, 'utf8').split('\n').filter(Boolean)
+        .map((l) => { try { return JSON.parse(l); } catch { return null; } })
+        .filter(Boolean);
+    } catch {}
+
+    const now = Date.now();
+    const startOfToday = new Date(new Date().toDateString()).getTime();
+    const weekAgo = now - 7 * 86400000;
+    const calls = all.filter((e) => e.kind === 'call');
+    const pct = (arr, p) => {
+      if (!arr.length) return 0;
+      const a = arr.slice().sort((x, y) => x - y);
+      return a[Math.min(a.length - 1, Math.floor((p / 100) * a.length))];
+    };
+
+    const byTool = {};
+    calls.forEach((e) => {
+      const t = (byTool[e.tool] = byTool[e.tool] || { tool: e.tool, n: 0, err: 0, ms: [], write: !!e.write });
+      t.n++;
+      if (!e.ok) t.err++;
+      if (typeof e.ms === 'number') t.ms.push(e.ms);
+    });
+
+    const daily = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(startOfToday - i * 86400000);
+      const from = d.getTime(), to = from + 86400000;
+      daily.push({
+        date: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'),
+        n: calls.filter((e) => e.ts >= from && e.ts < to).length,
+      });
+    }
+
+    let port = null;
+    try { port = JSON.parse(fs.readFileSync(portFile(), 'utf8')); } catch {}
+
+    return sendJSON(res, 200, {
+      port: { present: !!port, current: !!(port && port.pid === process.pid), port: port && port.port },
+      stats: {
+        total: calls.length,
+        today: calls.filter((e) => e.ts >= startOfToday).length,
+        week: calls.filter((e) => e.ts >= weekAgo).length,
+        ok: calls.filter((e) => e.ok).length,
+        err: calls.filter((e) => !e.ok).length,
+        lastTs: calls.length ? Math.max(...calls.map((e) => e.ts)) : 0,
+        sessions: new Set(all.map((e) => e.session)).size,
+        sessionsToday: new Set(all.filter((e) => e.ts >= startOfToday).map((e) => e.session)).size,
+        connects: all.filter((e) => e.kind === 'connect').length,
+        lastClient: (all.filter((e) => e.kind === 'connect').pop() || {}).client || null,
+        p50: pct(calls.map((e) => e.ms).filter((n) => typeof n === 'number'), 50),
+        p95: pct(calls.map((e) => e.ms).filter((n) => typeof n === 'number'), 95),
+        byTool: Object.values(byTool).map((t) => ({
+          tool: t.tool, n: t.n, err: t.err, write: t.write, p50: pct(t.ms, 50), p95: pct(t.ms, 95),
+        })).sort((a, b) => b.n - a.n),
+        daily,
+      },
+      events: all.slice(-80).reverse(),
+      errors: calls.filter((e) => !e.ok).slice(-10).reverse(),
+      changes: calls.filter((e) => e.ok && e.write).slice(-40).reverse(),
+    });
+  }
+
   // What has changed on disk, so the app can notice a write it did not make.
   if (u.pathname === '/api/rev' && req.method === 'GET') {
     const date = safeDate(u.searchParams.get('date'));

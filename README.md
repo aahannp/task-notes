@@ -311,6 +311,23 @@ Everything goes through the running app's local HTTP API rather than the data di
 
 The app publishes its port to `data/port.json` when it starts and removes it on quit, which is how the MCP server finds it. And because there are now two writers, the app polls for changes it did not make and picks them up within fifteen seconds — a task added from a chat appears on the board on its own, and the next save from the app will not write over it.
 
+### Seeing what it did
+
+There is a **● MCP** pill in the header. Grey when nothing has connected, green when it has been used recently, amber when calls are failing — hover for the reason.
+
+Open it for the panel: calls today and this week, sessions, error rate, a fourteen-day bar chart, a per-tool breakdown with median and p95 latency, the last failures with their real messages, and — the part that matters — **what Claude changed**, in words, newest first:
+
+```
+write_document   Created “Notes from chat”  #mtvgslnhqlzc          2m ago
+add_project      Project created: Service auth phase 2             5m ago
+add_backlog      In the backlog: read the s2s pfs again — 24 Sep   5m ago
+add_task         Added to 2026-09-10: review the grants audit      6m ago
+```
+
+Every row is clickable and goes to the thing itself — the day, the document, the page. An assistant with write access to your work is only reasonable if you can see what it wrote.
+
+The log lives in `data/mcp-log.jsonl`, one line per call, appended by the MCP server rather than sent to the app — so a call that failed *because the app was closed* is recorded too. It keeps the last 2000 lines.
+
 <br>
 
 ## Your data
@@ -332,6 +349,7 @@ Everything lives in `data/`, which is git-ignored:
 | `documents.json` | document metadata (never bodies) |
 | `docs/<id>.md` | one plain markdown file per document — readable outside the app |
 | `port.json` | where the app is listening, so the MCP server can find it; removed on quit |
+| `mcp-log.jsonl` | one line per MCP call — what was asked, what changed, how long it took |
 | `docs/<id>.versions.json` | recent version history for that document |
 | `assets/<id>/…` | images embedded in that document |
 

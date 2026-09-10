@@ -24,6 +24,34 @@ const http = require('http');
 const DATA_DIR = process.env.TASKNOTES_DATA || path.join(os.homedir(), 'task-notes', 'data');
 const NOT_RUNNING = 'Task Notes is not running. Open the app, then try again.';
 
+// ------------------------------------------------------------------ the log
+//
+// One line per call, appended here rather than sent to the app, for two
+// reasons: Claude Code can run several of these processes at once and a
+// whole-file rewrite from two of them would shred the file, and a call that
+// failed *because the app was closed* is exactly the thing a health panel
+// needs to show — there is nothing running to send it to.
+const LOG = path.join(DATA_DIR, 'mcp-log.jsonl');
+const SESSION = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+const LOG_KEEP = 2000;
+
+function logEvent(rec) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.appendFileSync(LOG, JSON.stringify(rec) + '\n');
+  } catch {}
+}
+// Once per process, and only when it has actually grown.
+function trimLog() {
+  try {
+    if (fs.statSync(LOG).size < 300 * 1024) return;
+    const lines = fs.readFileSync(LOG, 'utf8').split('\n').filter(Boolean);
+    if (lines.length <= LOG_KEEP) return;
+    fs.writeFileSync(LOG, lines.slice(-LOG_KEEP).join('\n') + '\n');
+  } catch {}
+}
+trimLog();
+
 // ---------------------------------------------------------------- transport
 
 // The app writes its port here when it binds; it removes the file on quit, so
@@ -108,6 +136,7 @@ const TOOLS = [
   },
   {
     name: 'add_task',
+    write: true,
     description: 'Put a new task on a day\'s board. Defaults to today and to the "todo" column.',
     inputSchema: {
       type: 'object',
@@ -135,6 +164,7 @@ const TOOLS = [
   },
   {
     name: 'update_task',
+    write: true,
     description: 'Change an existing task — move it between columns, reword it, add a note or an estimate. Get ids from list_tasks.',
     inputSchema: {
       type: 'object',
@@ -171,6 +201,7 @@ const TOOLS = [
   },
   {
     name: 'add_project',
+    write: true,
     description: 'Start a new project — a container for related tasks, documents and focus time, which the app tracks progress against.',
     inputSchema: {
       type: 'object',
@@ -189,6 +220,7 @@ const TOOLS = [
   },
   {
     name: 'capture',
+    write: true,
     description: 'Drop a thought into the Inbox to be sorted out later. Use this when something is worth keeping but is not yet a task.',
     inputSchema: { type: 'object', required: ['text'], properties: { text: { type: 'string' } } },
     async run(a) {
@@ -212,6 +244,7 @@ const TOOLS = [
   },
   {
     name: 'add_backlog',
+    write: true,
     description: 'Park something for later rather than putting it on today\'s board. A pick-up date is how it comes back; without one it only surfaces when you go looking.',
     inputSchema: {
       type: 'object',
@@ -232,6 +265,7 @@ const TOOLS = [
   },
   {
     name: 'add_reminder',
+    write: true,
     description: 'Set a reminder for a day. On that day the app blocks the screen until it is acknowledged or marked done.',
     inputSchema: {
       type: 'object',
@@ -269,6 +303,7 @@ const TOOLS = [
   },
   {
     name: 'write_document',
+    write: true,
     description: 'Create a document, or change one that exists. With an id and mode "append" the content is added to the end; with mode "replace" it overwrites. Every write keeps a version, so nothing is lost.',
     inputSchema: {
       type: 'object',
@@ -357,6 +392,12 @@ async function handle(msg) {
 
   if (method === 'initialize') {
     const want = params && params.protocolVersion;
+    const who = (params && params.clientInfo) || {};
+    logEvent({
+      ts: Date.now(), kind: 'connect', session: SESSION, ok: true,
+      client: [who.name, who.version].filter(Boolean).join(' ') || 'unknown',
+      protocol: want || null,
+    });
     return reply(id, {
       protocolVersion: KNOWN.includes(want) ? want : PROTOCOL,
       capabilities: { tools: { listChanged: false } },
@@ -372,12 +413,27 @@ async function handle(msg) {
 
   if (method === 'tools/call') {
     const name = params && params.name;
+    const started = Date.now();
     const tool = TOOLS.find((t) => t.name === name);
-    if (!tool) return fail(id, -32602, 'Unknown tool: ' + name);
+    if (!tool) {
+      logEvent({ ts: started, kind: 'call', session: SESSION, tool: String(name), ok: false, ms: 0, err: 'unknown tool' });
+      return fail(id, -32602, 'Unknown tool: ' + name);
+    }
     try {
       const text = await tool.run((params && params.arguments) || {});
+      logEvent({
+        ts: started, kind: 'call', session: SESSION, tool: name, ok: true,
+        ms: Date.now() - started, write: !!tool.write,
+        // The first line of the result already says what changed, in words,
+        // with the id in it. That is the audit trail.
+        result: String(text).split('\n')[0].slice(0, 200),
+      });
       return reply(id, { content: [{ type: 'text', text: String(text) }] });
     } catch (e) {
+      logEvent({
+        ts: started, kind: 'call', session: SESSION, tool: name, ok: false,
+        ms: Date.now() - started, write: !!tool.write, err: String(e.message || e).slice(0, 240),
+      });
       // A tool failing is a result the model should see and can act on, not a
       // protocol error — so it comes back as an errored result, not a fault.
       return reply(id, { content: [{ type: 'text', text: 'Error: ' + (e.message || String(e)) }], isError: true });

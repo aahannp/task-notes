@@ -1373,6 +1373,48 @@
     border: 1px solid rgba(124,155,255,.24); border-radius: 15px; padding: 19px 16px; }
   .wr-hero-n b { display: block; font-size: 27px; font-weight: 750; letter-spacing: -.9px; }
   .wr-hero-n span { font-size: 12px; color: var(--muted); }
+  /* ---- MCP health ---- */
+  .mcp-pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ui);
+    font-size: 12px; font-weight: 650; letter-spacing: .3px; color: var(--muted);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 99px;
+    padding: 6px 11px; cursor: pointer; transition: .15s; }
+  .mcp-pill:hover { color: var(--text); border-color: var(--accent); }
+  .mcp-dot { width: 7px; height: 7px; border-radius: 50%; background: #6b7285; flex-shrink: 0; }
+  .mcp-pill.live .mcp-dot { background: var(--green, #3fb27f); }
+  .mcp-pill.live { color: var(--text); }
+  .mcp-pill.warn .mcp-dot { background: #f5a623; }
+  .mcp-modal { max-width: 760px; }
+  .mcp-state { font-size: 12px; color: var(--muted); margin-left: 2px; }
+  .mcp-sec { margin-bottom: 26px; }
+  .mcp-sec:last-child { margin-bottom: 4px; }
+  .mcp-h { font-size: 10.5px; font-weight: 750; letter-spacing: .9px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 11px; }
+  .mcp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 700px) { .mcp-grid { grid-template-columns: repeat(2, 1fr); } }
+  .mcp-stat { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel-2); padding: 12px 13px; }
+  .mcp-stat .b { font-size: 21px; font-weight: 750; letter-spacing: -.4px; }
+  .mcp-stat .l { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .mcp-bars { display: flex; align-items: flex-end; gap: 4px; height: 46px; margin-top: 2px; }
+  .mcp-bar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .mcp-bar-t { width: 100%; height: 34px; display: flex; align-items: flex-end;
+    background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+  .mcp-bar-f { width: 100%; background: var(--accent); opacity: .65; border-radius: 3px 3px 0 0; }
+  .mcp-bar-d { font-size: 9px; color: var(--muted); }
+  .mcp-rows { display: flex; flex-direction: column; gap: 5px; }
+  .mcp-row { display: flex; align-items: center; gap: 10px; padding: 8px 11px; font-size: 13px;
+    border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel-2); }
+  .mcp-row .t { font-family: var(--mono); font-size: 11.5px; color: var(--accent); flex-shrink: 0; min-width: 118px; }
+  .mcp-row .x { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mcp-row .w { font-size: 11px; color: var(--muted); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .mcp-row.bad { border-color: rgba(255,107,129,.34); }
+  .mcp-row.bad .x { color: #ff8f8f; }
+  .mcp-row.link { cursor: pointer; }
+  .mcp-row.link:hover { border-color: var(--accent); }
+  .mcp-none { font-size: 12.5px; color: var(--muted); font-style: italic; }
+  .mcp-hint { font-size: 11.5px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  .mcp-hint code { font-family: var(--mono); font-size: 11px; background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+
   /* ---- Backlog ---- */
   .bl { margin: 26px 0 4px; }
   .bl-head { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
@@ -2748,6 +2790,7 @@
       </div>
       <span class="count" id="count"></span>
       <button class="summary-btn" id="calendarBtn" style="display:none">📅 Calendar</button>
+      <button class="mcp-pill" id="mcpPill" title="MCP health"><span class="mcp-dot" id="mcpDot"></span>MCP</button>
       <button class="summary-btn" id="summaryBtn">📊 Summary</button>
     </div>
   </header>
@@ -2984,6 +3027,17 @@
       <button class="fm-spot-play" id="fmSpotPlay" title="Play / Pause">▶</button>
       <button id="fmSpotNext" title="Next">⏭</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="mcpPanel">
+  <div class="modal mcp-modal">
+    <div class="modal-head">
+      <h2>MCP</h2>
+      <span class="mcp-state" id="mcpState"></span>
+      <button class="modal-close" id="mcpClose" title="Close">✕</button>
+    </div>
+    <div class="modal-body" id="mcpBody"></div>
   </div>
 </div>
 
@@ -3745,6 +3799,7 @@ async function load() {
   renderReminders();
   startReminderWatch();
   backlogNotify();
+  fetchMcp().then(renderMcpPill);
 
   // The agenda belongs to the day being viewed, so it has to follow a day
   // change. Nothing was doing that: the only thing refreshing it was the 60s
@@ -7583,6 +7638,174 @@ async function saveFocusWrap() {
 }
 
 // =====================================================================
+// MCP HEALTH — what Claude has been doing to this data.
+//
+// The counters matter less than the last section: a list of every change
+// made from a chat, in words, newest first. An assistant with write access
+// to your work is only reasonable if you can see what it wrote.
+// =====================================================================
+let mcpData = null;
+let mcpTimer = null;
+
+const MCP_LIVE_MS = 15 * 60 * 1000;      // "live" means it did something recently
+
+async function fetchMcp() {
+  try { mcpData = await (await fetch('/api/mcp')).json(); } catch { mcpData = null; }
+  return mcpData;
+}
+
+function mcpHealth(d) {
+  if (!d || !d.stats || !d.stats.total) return { cls: '', label: 'never used' };
+  const age = Date.now() - (d.stats.lastTs || 0);
+  const recent = (d.events || []).filter((e) => e.kind === 'call').slice(0, 20);
+  const bad = recent.filter((e) => !e.ok).length;
+  if (recent.length >= 5 && bad / recent.length > 0.2) {
+    return { cls: 'warn', label: bad + ' of the last ' + recent.length + ' calls failed' };
+  }
+  if (age < MCP_LIVE_MS) return { cls: 'live', label: 'active · last call ' + relTime(d.stats.lastTs) };
+  return { cls: '', label: 'idle · last call ' + relTime(d.stats.lastTs) };
+}
+
+function renderMcpPill() {
+  const pill = $('#mcpPill');
+  if (!pill) return;
+  const h = mcpHealth(mcpData);
+  pill.className = 'mcp-pill' + (h.cls ? ' ' + h.cls : '');
+  pill.title = 'MCP — ' + h.label;
+}
+
+// The result line the MCP server logged already names what changed and
+// carries the id, so the trail can be clicked back to the thing itself.
+function mcpTarget(e) {
+  const r = e.result || '';
+  let m = /^Added to (\d{4}-\d{2}-\d{2}).*#(\w+)$/.exec(r) || /^Updated on (\d{4}-\d{2}-\d{2}):/.exec(r);
+  if (m && m[1]) return { kind: 'day', day: m[1] };
+  m = /#(\w+)$/.exec(r);
+  if (m && /document/i.test(e.tool)) return { kind: 'doc', id: m[1] };
+  if (e.tool === 'capture') return { kind: 'page', page: 'inbox' };
+  if (e.tool === 'add_backlog') return { kind: 'today' };
+  if (e.tool === 'add_project') return { kind: 'page', page: 'projects' };
+  if (e.tool === 'add_reminder') return { kind: 'page', page: 'reminders' };
+  return null;
+}
+async function mcpGoTo(t) {
+  if (!t) return;
+  closeMcp();
+  if (t.kind === 'day') { current = new Date(t.day + 'T12:00:00'); closePage(); await load(); }
+  else if (t.kind === 'doc') { await openPage('docs'); openDocument(t.id); }
+  else if (t.kind === 'page') await openPage(t.page);
+  else if (t.kind === 'today') closePage();
+}
+
+function renderMcpPanel() {
+  const el = $('#mcpBody');
+  if (!el) return;
+  const d = mcpData;
+  const h = mcpHealth(d);
+  $('#mcpState').textContent = h.label;
+
+  if (!d) {
+    el.innerHTML = '<div class="mcp-none">Could not read the MCP log.</div>';
+    return;
+  }
+  const st = d.stats || {};
+  if (!st.total && !st.connects) {
+    el.innerHTML = '<div class="mcp-none">Nothing has connected yet.</div>'
+      + '<div class="mcp-hint">Register the server with Claude Code and it will show up here:<br>'
+      + '<code>claude mcp add task-notes --scope user -- node ~/task-notes/mcp/tasknotes.js</code></div>';
+    return;
+  }
+
+  const stat = (b, l) => '<div class="mcp-stat"><div class="b">' + b + '</div><div class="l">' + l + '</div></div>';
+  const rate = st.total ? Math.round((st.err / st.total) * 100) : 0;
+
+  // ---- health
+  let html = '<div class="mcp-sec"><div class="mcp-h">Health</div><div class="mcp-grid">'
+    + stat(st.today || 0, 'calls today')
+    + stat(st.week || 0, 'this week')
+    + stat(st.sessions || 0, 'session' + (st.sessions === 1 ? '' : 's') + ' ever')
+    + stat(rate + '%', 'error rate')
+    + '</div><div class="mcp-hint">'
+    + (d.port && d.port.current
+        ? 'Port published — anything asking where the app is will find it.'
+        : 'No current port file. Restart Task Notes, or the MCP server will not be able to reach it.')
+    + (st.lastClient && st.lastClient !== 'unknown' ? ' Last client: ' + escapeHtml(st.lastClient) + '.' : '')
+    + '</div></div>';
+
+  // ---- volume
+  const daily = st.daily || [];
+  const peak = Math.max(1, ...daily.map((x) => x.n));
+  html += '<div class="mcp-sec"><div class="mcp-h">Last 14 days</div><div class="mcp-bars">'
+    + daily.map((x) => '<span class="mcp-bar" title="' + x.date + ' · ' + x.n + '">'
+      + '<span class="mcp-bar-t"><span class="mcp-bar-f" style="height:'
+      + (x.n ? Math.max(8, Math.round((x.n / peak) * 100)) : 0) + '%"></span></span>'
+      + '<span class="mcp-bar-d">' + Number(x.date.slice(8)) + '</span></span>').join('')
+    + '</div></div>';
+
+  // ---- per tool
+  const tools = st.byTool || [];
+  html += '<div class="mcp-sec"><div class="mcp-h">By tool · median ' + (st.p50 || 0)
+    + 'ms, p95 ' + (st.p95 || 0) + 'ms</div><div class="mcp-rows">'
+    + (tools.length ? tools.map((t) => '<div class="mcp-row' + (t.err ? ' bad' : '') + '">'
+        + '<span class="t">' + escapeHtml(t.tool) + '</span>'
+        + '<span class="x">' + t.n + ' call' + (t.n === 1 ? '' : 's')
+        + (t.err ? ' · ' + t.err + ' failed' : '') + '</span>'
+        + '<span class="w">' + t.p50 + ' / ' + t.p95 + ' ms</span></div>').join('')
+      : '<div class="mcp-none">No calls yet.</div>')
+    + '</div></div>';
+
+  // ---- errors
+  const errs = d.errors || [];
+  html += '<div class="mcp-sec"><div class="mcp-h">Recent failures</div><div class="mcp-rows">'
+    + (errs.length ? errs.map((e) => '<div class="mcp-row bad">'
+        + '<span class="t">' + escapeHtml(e.tool || '—') + '</span>'
+        + '<span class="x" title="' + escapeHtml(e.err || '') + '">' + escapeHtml(e.err || 'failed') + '</span>'
+        + '<span class="w">' + relTime(e.ts) + '</span></div>').join('')
+      : '<div class="mcp-none">Nothing has failed.</div>')
+    + '</div></div>';
+
+  // ---- the part that matters
+  const ch = d.changes || [];
+  html += '<div class="mcp-sec"><div class="mcp-h">What Claude changed</div><div class="mcp-rows">'
+    + (ch.length ? ch.map((e, i) => {
+        const t = mcpTarget(e);
+        return '<div class="mcp-row' + (t ? ' link' : '') + '"' + (t ? ' data-go="' + i + '"' : '') + '>'
+          + '<span class="t">' + escapeHtml(e.tool) + '</span>'
+          + '<span class="x" title="' + escapeHtml(e.result || '') + '">' + escapeHtml(e.result || '') + '</span>'
+          + '<span class="w">' + relTime(e.ts) + '</span></div>';
+      }).join('')
+      : '<div class="mcp-none">Claude has not changed anything.</div>')
+    + '</div></div>';
+
+  el.innerHTML = html;
+  el.querySelectorAll('[data-go]').forEach((row) => {
+    row.onclick = () => mcpGoTo(mcpTarget(ch[+row.dataset.go]));
+  });
+}
+
+async function openMcp() {
+  $('#mcpPanel').classList.remove('hidden');
+  $('#mcpBody').innerHTML = '<div class="mcp-none">Reading the log…</div>';
+  await fetchMcp();
+  renderMcpPanel();
+  renderMcpPill();
+  clearInterval(mcpTimer);
+  mcpTimer = setInterval(async () => {
+    if ($('#mcpPanel').classList.contains('hidden')) return clearInterval(mcpTimer);
+    await fetchMcp(); renderMcpPanel(); renderMcpPill();
+  }, 10000);
+}
+function closeMcp() {
+  $('#mcpPanel').classList.add('hidden');
+  clearInterval(mcpTimer);
+}
+if ($('#mcpPill')) {
+  $('#mcpPill').onclick = openMcp;
+  $('#mcpClose').onclick = closeMcp;
+  $('#mcpPanel').onclick = (e) => { if (e.target === $('#mcpPanel')) closeMcp(); };
+}
+
+// =====================================================================
 // BACKLOG — work you have decided on but are not doing yet.
 //
 // Its own store rather than a day file, because a backlog item has no day.
@@ -9964,6 +10187,7 @@ function startReminderWatch() {
     if (anyDue !== showing || anyQuiet) renderReminders();
     backlogNotify();
     pollExternalChanges();
+    fetchMcp().then(renderMcpPill);
   }, 15000);
 }
 
@@ -11672,6 +11896,7 @@ document.addEventListener('keydown', (e) => {
   // A blocking reminder is the one thing Escape must not dismiss — being
   // escapable is exactly what it is not.
   if (!$('#remBlock').classList.contains('hidden')) return;
+  if (!$('#mcpPanel').classList.contains('hidden')) return closeMcp();
   // Inside the block editor, Escape means "leave this block" — it used to fall
   // through to here and close the document, dumping you back on the board.
   if (e.target && e.target.closest && e.target.closest('#beSurface')) return;
