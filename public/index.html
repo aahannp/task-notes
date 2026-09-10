@@ -1041,13 +1041,16 @@
   .card { cursor: pointer; }
 
   /* ==================== NAVIGATION ==================== */
-  .mainnav { display: flex; gap: 4px; margin: 14px 0 2px; padding: 4px; overflow-x: auto;
+  /* Eleven tabs. The scrollbar here is hidden, so a tab that does not fit is
+     a tab you cannot find — the padding is tuned to keep the whole set on one
+     line at the app's own window width. */
+  .mainnav { display: flex; gap: 2px; margin: 14px 0 2px; padding: 4px; overflow-x: auto;
     background: var(--panel); border: 1px solid var(--line); border-radius: 13px;
     backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); box-shadow: var(--glass-hi); }
   .mainnav::-webkit-scrollbar { display: none; }
-  .nav-btn { display: flex; align-items: center; gap: 7px; white-space: nowrap;
+  .nav-btn { display: flex; align-items: center; gap: 6px; white-space: nowrap;
     background: transparent; border: none; color: var(--muted); font-family: inherit;
-    font-size: 13px; font-weight: 600; padding: 9px 14px; border-radius: 9px; cursor: pointer; transition: .15s; }
+    font-size: 13px; font-weight: 600; padding: 9px 11px; border-radius: 9px; cursor: pointer; transition: .15s; }
   .nav-btn { letter-spacing: .1px; }
   .nav-btn .ico { width: 15px; height: 15px; flex-shrink: 0; opacity: .75; }
   .nav-btn:hover { color: var(--text); background: var(--panel-2); }
@@ -1370,6 +1373,47 @@
     border: 1px solid rgba(124,155,255,.24); border-radius: 15px; padding: 19px 16px; }
   .wr-hero-n b { display: block; font-size: 27px; font-weight: 750; letter-spacing: -.9px; }
   .wr-hero-n span { font-size: 12px; color: var(--muted); }
+  /* ---- Focus log ---- */
+  .fx-date { margin-left: auto; font-size: 12.5px; padding: 7px 10px; }
+  .fx-history { display: flex; align-items: flex-end; gap: 4px; height: 74px; margin-bottom: 26px;
+    padding: 0 2px; overflow-x: auto; }
+  .fx-hbar { flex: 1 0 16px; min-width: 16px; display: flex; flex-direction: column; align-items: center;
+    gap: 5px; cursor: pointer; background: none; border: none; padding: 0; }
+  .fx-htrack { width: 100%; height: 48px; display: flex; align-items: flex-end;
+    background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+  .fx-hfill { width: 100%; background: var(--accent); opacity: .5; border-radius: 4px 4px 0 0; transition: .15s; }
+  .fx-hbar:hover .fx-hfill { opacity: .85; }
+  .fx-hbar.on .fx-hfill { opacity: 1; }
+  .fx-hbar.on .fx-hd { color: var(--text); font-weight: 700; }
+  .fx-hd { font-size: 9.5px; color: var(--muted); letter-spacing: .2px; }
+
+  .fx-tl { position: relative; height: 40px; margin: 0 0 24px; border-radius: 9px;
+    background: var(--panel-2); border: 1px solid var(--line); overflow: hidden; }
+  .fx-tl-block { position: absolute; top: 7px; bottom: 7px; background: var(--accent); opacity: .78;
+    border-radius: 4px; min-width: 3px; }
+  .fx-tl-hr { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+  .fx-tl-lab { position: absolute; bottom: 2px; font-size: 9px; color: var(--muted); transform: translateX(-50%); }
+
+  .fw-where { font-size: 11.5px; color: var(--muted); margin: 14px 0 -4px; }
+  .fx-tl-cap { font-size: 11.5px; color: var(--muted); margin: -16px 0 22px; }
+  .fx-stats { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 860px) { .fx-stats { grid-template-columns: repeat(2, 1fr); } }
+  .fx-list { display: flex; flex-direction: column; gap: 10px; }
+  .fx-row { display: flex; gap: 14px; padding: 14px 16px; border: 1px solid var(--line);
+    border-radius: var(--r-md); background: var(--panel); }
+  .fx-when { flex: 0 0 112px; }
+  .fx-clock { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .fx-dur { font-size: 17px; font-weight: 700; letter-spacing: -.3px; margin-top: 2px; }
+  .fx-main { flex: 1; min-width: 0; }
+  .fx-title { font-size: 14.5px; font-weight: 600; }
+  .fx-title.none { color: var(--muted); font-weight: 500; font-style: italic; }
+  .fx-out { display: flex; gap: 8px; margin-top: 8px; font-size: 13px; line-height: 1.45; }
+  .fx-out .k { flex: 0 0 auto; color: var(--muted); }
+  .fx-out.next .k { color: var(--accent); }
+  .fx-tag { display: inline-block; margin-top: 8px; font-size: 11px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 99px; padding: 2px 9px; }
+  .fx-deep { border-color: color-mix(in srgb, var(--accent) 38%, var(--line)); }
+
   .wr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
   .wr-sec { background: var(--panel); border: 1px solid var(--line); border-radius: 15px; padding: 18px 19px; }
   .wr-sec.wide { grid-column: 1 / -1; }
@@ -1426,9 +1470,11 @@
   @media (max-width: 720px) { .tm-links { grid-template-columns: 1fr; } }
 
   /* ==================== RESPONSIVE ==================== */
-  @media (max-width: 860px) {
-    /* A hidden horizontal scroller is a poor way to reach half the app, so on
-       narrow windows the nav wraps onto as many rows as it needs. */
+  /* A hidden horizontal scroller is a poor way to reach half the app, so once
+     the row cannot hold every tab it wraps onto as many rows as it needs.
+     This used to trigger at 860px, which was well below the width the tabs
+     actually need — between the two, tabs simply vanished off the right. */
+  @media (max-width: 1100px) {
     .mainnav { flex-wrap: wrap; overflow-x: visible; }
     .nav-btn { flex: 1 1 auto; justify-content: center; }
   }
@@ -2669,6 +2715,8 @@
 <symbol id="i-reminders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
   <path d="M18 8.5a6 6 0 10-12 0c0 4.2-1.4 5.6-2 6.3-.3.3-.1.9.4.9h15.2c.5 0 .7-.6.4-.9-.6-.7-2-2.1-2-6.3z"/>
   <path d="M10 19.2a2.2 2.2 0 004 0"/></symbol>
+<symbol id="i-focus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.6"/><path d="M12 3.5V1.4M12 22.6v-2.1M20.5 12h2.1M1.4 12h2.1"/></symbol>
 <symbol id="i-review" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
   <path d="M4 20V4M4 20h16"/><path d="M7.5 16.5l3.5-4.5 3 2.5L20 7"/></symbol>
 </svg>
@@ -2680,11 +2728,12 @@
     <button class="nav-btn" data-page="projects"><svg class="ico" viewBox="0 0 24 24"><use href="#i-projects"/></svg>Projects</button>
     <button class="nav-btn" data-page="learning"><svg class="ico" viewBox="0 0 24 24"><use href="#i-learning"/></svg>Learning</button>
     <button class="nav-btn" data-page="inbox"><svg class="ico" viewBox="0 0 24 24"><use href="#i-inbox"/></svg>Inbox</button>
-    <button class="nav-btn" data-page="docs"><svg class="ico" viewBox="0 0 24 24"><use href="#i-docs"/></svg>Documents</button>
+    <button class="nav-btn" data-page="docs"><svg class="ico" viewBox="0 0 24 24"><use href="#i-docs"/></svg>Docs</button>
     <button class="nav-btn" data-page="ideas"><svg class="ico" viewBox="0 0 24 24"><use href="#i-ideas"/></svg>Ideas</button>
     <button class="nav-btn" data-page="calendar"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendar"/></svg>Calendar</button>
     <button class="nav-btn" data-page="reminders"><svg class="ico" viewBox="0 0 24 24"><use href="#i-reminders"/></svg>Reminders</button>
-    <button class="nav-btn" data-page="review"><svg class="ico" viewBox="0 0 24 24"><use href="#i-review"/></svg>Weekly Review</button>
+    <button class="nav-btn" data-page="focus"><svg class="ico" viewBox="0 0 24 24"><use href="#i-focus"/></svg>Focus</button>
+    <button class="nav-btn" data-page="review"><svg class="ico" viewBox="0 0 24 24"><use href="#i-review"/></svg>Review</button>
   </nav>
 
   <div class="datebar">
@@ -3184,6 +3233,23 @@
 </div>
 
 <!-- ============ WEEKLY REVIEW ============ -->
+<div class="page hidden" id="page-focus">
+  <div class="page-inner wide">
+    <div class="page-head">
+      <div><h2>🎯 Focus Log</h2><p class="page-sub">Every session you ran, and what came out of it.</p></div>
+      <button class="page-close" title="Back to today">✕</button>
+    </div>
+    <div class="wr-nav">
+      <button class="navbtn" id="fxPrev" title="Previous day">‹</button>
+      <div class="wr-when"><div class="wr-label" id="fxLabel">Today</div><div class="wr-range" id="fxRange"></div></div>
+      <button class="navbtn" id="fxNext" title="Next day">›</button>
+      <button class="today-pill" id="fxToday">Today</button>
+      <input type="date" id="fxDate" class="fx-date" aria-label="Jump to a day" />
+    </div>
+    <div class="fx-history" id="fxHistory"></div>
+    <div id="fxBody"></div>
+  </div>
+</div>
 <div class="page hidden" id="page-review">
   <div class="page-inner wide">
     <div class="page-head">
@@ -3315,6 +3381,7 @@
     <textarea class="ld-input" id="fwDid" rows="2" placeholder="Added retry logic and started tests"></textarea>
     <label class="ld-label" for="fwNext">What should happen next?</label>
     <textarea class="ld-input" id="fwNext" rows="2" placeholder="Investigate backpressure — goes to your inbox"></textarea>
+    <div class="fw-where">Kept on this session — read it back any time in the Focus Log.</div>
     <div class="fw-acts">
       <button class="btn-ghost" id="fwSkip">Skip</button>
       <button class="btn-primary" id="fwSave">Save</button>
@@ -4734,7 +4801,7 @@ function projectById(id) { return projects.find((p) => p.id === id); }
 // =====================================================================
 // PAGE ROUTING — each area is a full-screen surface over the Today board.
 // =====================================================================
-const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders'];
+const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders', 'focus'];
 let activePage = null;
 
 async function openPage(name) {
@@ -4753,6 +4820,7 @@ async function openPage(name) {
   if (name === 'review') renderReviewPage();
   if (name === 'calendar') renderCalendarPage();
   if (name === 'reminders') renderRemindersPage();
+  if (name === 'focus') renderFocusPage();
 }
 function closePage() {
   PAGES.forEach((p) => $('#page-' + p).classList.add('hidden'));
@@ -7342,7 +7410,247 @@ async function saveFocusWrap() {
   closeFocusWrap();
   flash(did || next ? '✍️ Saved' : '');
   renderTodayExtras();
+  if (activePage === 'focus') renderFocusPage();
 }
+
+// =====================================================================
+// FOCUS LOG — the sessions themselves, and what came out of them.
+//
+// Every wrap-up you fill in after a session is written onto the session
+// record in that day's meta file, and until now nothing ever read it back:
+// you could answer "what did you accomplish?" and never see the answer
+// again. This is where it lives.
+// =====================================================================
+const FX_HISTORY_DAYS = 28;
+let fxDay = null;                       // ISO date being shown
+const fxCache = new Map();              // date -> { sessions, focusSeconds }
+
+// A session that was never ended keeps accruing for as long as the clock
+// runs, so one abandoned on Sep 1 claimed nine days of focus and flattened
+// every other bar on the chart. Only a session started today is still live;
+// anything older is worth what it managed to accumulate.
+const fxSecs = (s) => {
+  if (s.end != null) return s.seconds || s.accumulatedSec || 0;
+  const live = s.start && iso(new Date(s.start)) === iso(new Date());
+  return live ? sessionSeconds(s) : (s.accumulatedSec || 0);
+};
+// Anything shorter than a minute is a mis-click, not a session. It is still
+// counted at the bottom of the list, just never in the numbers.
+const FX_MIN = 60;
+
+// prettySub() falls back to the year, which is right under a big date and
+// useless as a headline. This says how far back you are looking.
+function fxDayLabel(d) {
+  if (isToday(d)) return 'Today';
+  // Both ends normalised to midnight. Subtracting a noon-anchored date from
+  // midnight gives -0.5 for yesterday, and Math.round(-0.5) is -0, so the
+  // day before today read as today and everything shifted by one.
+  const t0 = new Date(new Date().toDateString());
+  const d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = Math.round((d0 - t0) / 86400000);
+  if (diff === -1) return 'Yesterday';
+  if (diff === 1) return 'Tomorrow';
+  if (diff < 0 && diff >= -13) return Math.abs(diff) + ' days ago';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function fxShift(dayISO, delta) {
+  const d = new Date(dayISO + 'T12:00:00');
+  d.setDate(d.getDate() + delta);
+  return iso(d);
+}
+
+// One fetch covers the day and the whole history strip behind it.
+async function fxLoad(dayISO) {
+  const from = fxShift(dayISO, -(FX_HISTORY_DAYS - 1));
+  let days = [];
+  try {
+    days = (await (await fetch('/api/alldays?from=' + from + '&to=' + dayISO)).json()).days || [];
+  } catch { return false; }
+  days.forEach((d) => fxCache.set(d.date, {
+    sessions: Array.isArray(d.sessions) ? d.sessions : [],
+    focusSeconds: d.focusSeconds || 0,
+  }));
+  // Days with no file at all still belong on the strip, as gaps.
+  for (let i = 0; i < FX_HISTORY_DAYS; i++) {
+    const d = fxShift(dayISO, -i);
+    if (!fxCache.has(d)) fxCache.set(d, { sessions: [], focusSeconds: 0 });
+  }
+  return true;
+}
+
+function fxSessions(dayISO) {
+  const hit = fxCache.get(dayISO);
+  // Today is live: the running session is not on disk yet.
+  if (dayISO === iso(new Date())) return (meta.sessions || []).slice();
+  return hit ? hit.sessions.slice() : [];
+}
+
+function fxTotalFor(dayISO) {
+  return fxSessions(dayISO).filter((s) => fxSecs(s) >= FX_MIN)
+    .reduce((a, s) => a + fxSecs(s), 0);
+}
+
+function fxTitle(s) {
+  if (s.taskText) return s.taskText;
+  const p = s.projectId && projects.find((x) => x.id === s.projectId);
+  if (p) return p.name;
+  return '';
+}
+
+async function renderFocusPage() {
+  if (!fxDay) fxDay = iso(new Date());
+  if (!fxCache.has(fxDay)) {
+    $('#fxBody').innerHTML = '<div class="empty"><div class="empty-t">Loading…</div></div>';
+    await fxLoad(fxDay);
+  }
+  const d = new Date(fxDay + 'T12:00:00');
+  $('#fxLabel').textContent = fxDayLabel(d);
+  $('#fxRange').textContent = prettyDate(d);
+  $('#fxDate').value = fxDay;
+  $('#fxNext').disabled = fxDay >= iso(new Date());
+  renderFxHistory();
+  renderFxBody();
+}
+
+function renderFxHistory() {
+  const el = $('#fxHistory');
+  const days = [];
+  for (let i = FX_HISTORY_DAYS - 1; i >= 0; i--) {
+    const day = fxShift(fxDay, -i);
+    days.push({ day, secs: fxTotalFor(day) });
+  }
+  const peak = Math.max(1, ...days.map((x) => x.secs));
+  el.innerHTML = days.map((x) => {
+    const h = x.secs ? Math.max(6, Math.round((x.secs / peak) * 100)) : 0;
+    const dd = new Date(x.day + 'T12:00:00');
+    return '<button class="fx-hbar' + (x.day === fxDay ? ' on' : '') + '" data-day="' + x.day + '"'
+      + ' title="' + prettyDate(dd) + ' · ' + (x.secs ? fmtDur(x.secs) : 'nothing') + '">'
+      + '<span class="fx-htrack"><span class="fx-hfill" style="height:' + h + '%"></span></span>'
+      + '<span class="fx-hd">' + dd.getDate() + '</span></button>';
+  }).join('');
+}
+
+function renderFxBody() {
+  const el = $('#fxBody');
+  const all = fxSessions(fxDay).slice().sort((a, b) => (a.start || 0) - (b.start || 0));
+  const real = all.filter((s) => fxSecs(s) >= FX_MIN);
+  const tiny = all.length - real.length;
+
+  if (!real.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-ic">🎯</div>'
+      + '<div class="empty-t">No focus sessions on this day.</div>'
+      + '<div class="empty-s">' + (tiny ? tiny + ' start' + (tiny > 1 ? 's' : '') + ' under a minute.'
+        : 'Start a timer on a task and it will show up here.') + '</div></div>';
+    return;
+  }
+
+  const total = real.reduce((a, s) => a + fxSecs(s), 0);
+  const longest = real.reduce((a, s) => (fxSecs(s) > fxSecs(a) ? s : a), real[0]);
+  const deep = real.filter((s) => fxSecs(s) >= 25 * 60).length;
+  const first = Math.min(...real.map((s) => s.start));
+  const last = Math.max(...real.map((s) => (s.end || Date.now())));
+  const span = Math.max(1, (last - first) / 1000);
+
+  // Against the same weekday-agnostic recent average, so "a good day" means
+  // something relative to your own days rather than an invented target.
+  const prior = [];
+  for (let i = 1; i < FX_HISTORY_DAYS; i++) {
+    const t = fxTotalFor(fxShift(fxDay, -i));
+    if (t) prior.push(t);
+  }
+  // Median rather than mean: a single three-and-a-half-hour day would
+  // otherwise make every ordinary day look like a failure.
+  prior.sort((a, b) => a - b);
+  const avg = prior.length ? prior[Math.floor(prior.length / 2)] : 0;
+  const delta = avg ? Math.round(((total - avg) / avg) * 100) : 0;
+
+  const stats = '<div class="stat-grid fx-stats">'
+    + '<div class="stat"><div class="big">' + fmtDur(total) + '</div><div class="lbl">Focused</div>'
+      + '<div class="sub">' + (avg ? (delta >= 0 ? '+' : '') + delta + '% vs your last '
+          + prior.length + ' active day' + (prior.length > 1 ? 's' : '') : 'first day on record') + '</div></div>'
+    + '<div class="stat"><div class="big">' + real.length + '</div><div class="lbl">Session'
+      + (real.length > 1 ? 's' : '') + '</div><div class="sub">' + deep + ' of 25 minutes or more</div></div>'
+    + '<div class="stat"><div class="big">' + fmtDur(fxSecs(longest)) + '</div><div class="lbl">Longest</div>'
+      + '<div class="sub">' + (fxTitle(longest) ? escapeHtml(fxTitle(longest).slice(0, 34)) : 'Free focus') + '</div></div>'
+    + '<div class="stat"><div class="big">' + Math.round((total / span) * 100) + '%</div>'
+      + '<div class="lbl">Of the stretch</div><div class="sub">' + hhmm(new Date(first)) + ' – '
+      + hhmm(new Date(last)) + '</div></div>'
+    + '</div>';
+
+  el.innerHTML = stats + fxTimeline(real, first, last) + '<div class="fx-list">'
+    + real.map(fxRow).join('') + '</div>'
+    + (tiny ? '<div class="page-sub" style="margin-top:14px">' + tiny + ' more start'
+        + (tiny > 1 ? 's' : '') + ' under a minute, not counted.</div>' : '');
+}
+
+// The day as a strip: where the focus actually sat, not just how much of it
+// there was. Two hours of it in one block reads very differently from two
+// hours in eight pieces.
+function fxTimeline(real, first, last) {
+  const startH = new Date(first).getHours();
+  const endD = new Date(last);
+  const endH = endD.getHours() + (endD.getMinutes() || endD.getSeconds() ? 1 : 0);
+  const t0 = new Date(first); t0.setHours(startH, 0, 0, 0);
+  const t1 = new Date(last); t1.setHours(endH, 0, 0, 0);
+  const span = Math.max(1, t1 - t0);
+  const pct = (t) => ((t - t0) / span) * 100;
+
+  let ticks = '';
+  for (let h = startH + 1; h < endH; h++) {
+    const at = new Date(t0); at.setHours(h, 0, 0, 0);
+    const x = pct(at);
+    ticks += '<span class="fx-tl-hr" style="left:' + x + '%"></span>'
+      + '<span class="fx-tl-lab" style="left:' + x + '%">' + h + '</span>';
+  }
+  const blocks = real.map((s) => {
+    const end = s.end || Date.now();
+    const a = pct(s.start), b = pct(end);
+    // A block is the *window* the session was open for, which is not the same
+    // as the time inside it — one can sit paused for hours. Rather than draw
+    // an hour of pause as an hour of work, the block fades in proportion to
+    // how much of its window was actually focused.
+    const elapsed = Math.max(1, (end - s.start) / 1000);
+    const density = Math.min(1, fxSecs(s) / elapsed);
+    const paused = elapsed - fxSecs(s);
+    return '<span class="fx-tl-block" style="left:' + a + '%;width:' + Math.max(0.4, b - a)
+      + '%;opacity:' + (0.22 + density * 0.68).toFixed(2) + '"'
+      + ' title="' + escapeHtml(fxTitle(s) || 'Free focus') + ' · ' + fmtDur(fxSecs(s)) + ' focused'
+      + (paused > 120 ? ', ' + fmtDur(paused) + ' paused' : '') + '"></span>';
+  }).join('');
+  return '<div class="fx-tl" aria-hidden="true">' + ticks + blocks + '</div>'
+    + '<div class="fx-tl-cap">When sessions were open — fainter means more of that window was paused.</div>';
+}
+
+function fxRow(s) {
+  const t = fxTitle(s);
+  const deep = fxSecs(s) >= 25 * 60;
+  return '<div class="fx-row' + (deep ? ' fx-deep' : '') + '">'
+    + '<div class="fx-when"><div class="fx-clock">' + hhmm(new Date(s.start))
+      + (s.end ? ' – ' + hhmm(new Date(s.end)) : ' – now') + '</div>'
+      + '<div class="fx-dur">' + fmtDur(fxSecs(s)) + '</div></div>'
+    + '<div class="fx-main">'
+      + '<div class="fx-title' + (t ? '' : ' none') + '">' + escapeHtml(t || 'Free focus') + '</div>'
+      + (s.accomplished ? '<div class="fx-out"><span class="k">✓</span><span>'
+          + escapeHtml(s.accomplished) + '</span></div>' : '')
+      + (s.nextStep ? '<div class="fx-out next"><span class="k">→</span><span>'
+          + escapeHtml(s.nextStep) + '</span></div>' : '')
+      + (!s.accomplished && !s.nextStep ? '<span class="fx-tag">no wrap-up</span>' : '')
+    + '</div></div>';
+}
+
+function bindFocusPage() {
+  const go = async (day) => { fxDay = day; await renderFocusPage(); };
+  $('#fxPrev').onclick = () => go(fxShift(fxDay, -1));
+  $('#fxNext').onclick = () => { if (fxDay < iso(new Date())) go(fxShift(fxDay, 1)); };
+  $('#fxToday').onclick = () => go(iso(new Date()));
+  $('#fxDate').onchange = (e) => { if (e.target.value) go(e.target.value); };
+  $('#fxHistory').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-day]');
+    if (b) go(b.dataset.day);
+  });
+}
+bindFocusPage();
 
 // =====================================================================
 // TASK DEPENDENCIES UI

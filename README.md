@@ -160,6 +160,20 @@ It's the *same* session — one timer, one music player. Pause in the mini windo
 
 The **+** (or `N`) turns the card into a one-line note field: type the thought, press Enter, and it lands in your inbox without leaving the session. It stays open for the next one; `Esc` goes back to the timer.
 
+When a session ends you're asked what you got done and what should happen next. The answer is kept on the session itself, in that day's file — and the **Focus Log** is where you read it back.
+
+<br>
+
+## Focus Log
+
+Pick a day and see every session you ran on it: when it started and ended, how long you actually focused, what it was on, and the wrap-up you wrote afterwards.
+
+Above the list, the day in numbers — total focused, how many sessions, the longest one, and how much of the stretch between your first start and your last stop was real focus — with the total set against the **median** of your recent active days, so one unusually long day doesn't make every ordinary one look like a failure.
+
+A strip of the last four weeks sits at the top; click any bar to jump to that day. Below the stats, the day as a timeline: where the sessions actually sat, with each block fading in proportion to how much of its window was paused, because two hours in one block is not the same as two hours in eight pieces.
+
+Starts under a minute are counted at the bottom and kept out of the numbers.
+
 <br>
 
 ## Your real calendar
