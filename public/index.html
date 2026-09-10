@@ -3467,6 +3467,7 @@ function normalize(t) {
     // again" from "a new task that happens to be worded the same".
     srcId: t.srcId || null,
     carriedAs: t.carriedAs || null,
+    carriedNote: t.carriedNote != null ? t.carriedNote : null,
   };
 }
 function taskFocusedSeconds(id) {
@@ -3940,6 +3941,15 @@ async function carrySourceDay(days) {
 // everything still open on the previous day exists here, nothing open there is
 // missing, and a copy you have not started yet keeps up with edits to the
 // original. It never touches a task you have already worked on.
+// A copy is untouched while it still holds the status and the note it was
+// handed. Comparing the note against the original would be wrong the moment
+// the original picks up a note of its own — that is not you writing on the
+// copy — so the copy remembers what it arrived with. Copies made before it
+// remembered fall back to the original's note, which is what they inherited.
+const carryBaseNote = (mine, s) => (mine.carriedNote != null ? mine.carriedNote : ((s && s.note) || ''));
+const carryUntouched = (mine, s) => mine.status === (mine.carriedAs || 'todo')
+  && (mine.note || '') === carryBaseNote(mine, s);
+
 async function reconcileCarry(days) {
   const src = await carrySourceDay(days);
   if (!src) return false;
@@ -3955,18 +3965,28 @@ async function reconcileCarry(days) {
     const mine = tasks.find((t) => matches(t, s));
     if (!mine) {
       tasks.push(normalize({
-        ...s, id: uid(), srcId: s.id, carried: true, carriedAs: s.status,
+        ...s, id: uid(), srcId: s.id, carried: true, carriedAs: s.status, carriedNote: s.note || '',
         carryCount: (s.carryCount || 0) + 1, createdAt: Date.now(), doneAt: null,
       }));
       changed = true;
       return;
     }
-    if (!mine.srcId) { mine.srcId = s.id; mine.carriedAs = mine.status; changed = true; }
+    if (!mine.srcId) {
+      mine.srcId = s.id; mine.carriedAs = mine.status; mine.carriedNote = mine.note || ''; changed = true;
+    }
     // An untouched copy follows the original; once you have changed its status
     // or written a note against it, it is yours and is left alone.
-    const untouched = mine.status === mine.carriedAs && !mine.note;
+    const untouched = carryUntouched(mine, s);
     if (untouched && mine.text !== s.text) { mine.text = s.text; changed = true; }
-    if (untouched && (mine.note || '') !== (s.note || '')) { mine.note = s.note || ''; changed = true; }
+    if (untouched && (mine.note || '') !== (s.note || '')) {
+      mine.note = s.note || ''; mine.carriedNote = s.note || ''; changed = true;
+    }
+    // ...including which column it sits in. Moving something to In Progress
+    // yesterday and finding it back under To Do today is the same divergence
+    // as a missing task, just harder to spot.
+    if (untouched && mine.status !== s.status) {
+      mine.status = s.status; mine.carriedAs = s.status; changed = true;
+    }
   });
 
   // Dependencies are rewritten onto this day's copies. Left pointing at
@@ -3987,16 +4007,38 @@ async function reconcileCarry(days) {
     if (next.length !== t.dependsOn.length || next.some((v, i) => v !== t.dependsOn[i])) t.dependsOn = next;
   });
 
-  // Finishing something yesterday should not leave it staring at you today —
-  // but only if you have not touched the copy. Tasks carried before lineage
-  // existed are matched on their wording, which is all they have.
+  // The other half of the reconciliation: a copy whose original is no longer
+  // open on the previous day should not still be sitting here.
+  //
+  // That covers two cases. One is finishing something yesterday — it should
+  // not be staring at you again today. The other is the ghost: a copy taken
+  // by the old snapshot carry, from a day further back, whose work never
+  // reached yesterday at all. Nothing removed those, so they accumulated, and
+  // every day quietly carried a couple of to-dos the day before it had never
+  // heard of. That is the Sep 9 / Sep 10 disagreement.
+  //
+  // By this point the loop above has relinked every copy that *does* have an
+  // open original — matching on wording where there is no lineage — so a
+  // carried task still without a srcId is one with nothing behind it.
+  const dependedOnHere = new Set();
+  tasks.forEach((t) => (t.dependsOn || []).forEach((d) => dependedOnHere.add(d)));
+  const worked = (t) => (meta.sessions || []).some((x) => x.taskId === t.id);
+
   for (let i = tasks.length - 1; i >= 0; i--) {
     const t = tasks[i];
-    const untouched = t.carriedAs ? (t.status === t.carriedAs && !t.note) : (t.status === 'todo' && !t.note);
-    if (!untouched) continue;
-    const s = t.srcId ? src.tasks.find((x) => x.id === t.srcId)
-      : (t.carried ? src.tasks.find((x) => (x.text || '').trim() === (t.text || '').trim()) : null);
-    if (s && s.status === 'done') { tasks.splice(i, 1); changed = true; }
+    if (!t.carried && !t.srcId) continue;      // you typed this one here
+    if (t.status === 'done') continue;         // never take away finished work
+    if (worked(t) || dependedOnHere.has(t.id)) continue;
+
+    const s = t.srcId ? src.tasks.find((x) => x.id === t.srcId) : null;
+    // A copy with a live original is judged against it; a ghost has only the
+    // status it arrived with, since any note it carries came with the copy.
+    const untouched = s ? carryUntouched(t, s)
+      : (t.status === (t.carriedAs || 'todo')
+         && (t.carriedNote == null || (t.note || '') === t.carriedNote));
+    if (!untouched) continue;                  // you have made it yours
+
+    if (!s || !CARRY_OPEN(s)) { tasks.splice(i, 1); changed = true; }
   }
   return changed;
 }
