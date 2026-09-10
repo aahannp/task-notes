@@ -11500,11 +11500,16 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'c' && !activePage) { e.preventDefault(); openCaptureBar('today'); }
 });
 
-// The native shell can push a capture straight into the store.
+// A little window — Quick Capture, or the Focus companion — has written a
+// capture straight to the store. This side must *reload* rather than add its
+// own: both write the whole array, so adding a second copy here overwrote the
+// one already on disk, and two notes in quick succession could lose one.
 if (window.tn && window.tn.onCapture) {
   window.tn.onCapture(async (payload) => {
-    await loadStores();
-    const c = addCapture(payload.text, payload.context || 'quick capture');
+    captures = ((await loadStore('captures')) || []).map(normCapture);
+    let c = payload.id ? captures.find((x) => x.id === payload.id) : null;
+    if (c) logActivity('capture-created', 'Captured “' + c.text.slice(0, 60) + '”', { captureId: c.id });
+    else c = addCapture(payload.text, payload.context || 'quick capture');
     if (c && payload.kind) await processCapture(c.id, payload.kind);
     renderTodayExtras();
     if (activePage === 'inbox') renderInboxPage();

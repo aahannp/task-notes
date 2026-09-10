@@ -16,8 +16,8 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased; color: var(--text); }
   /* The whole card is the drag handle; controls opt out below. */
-  .card { height: 100%; display: flex; flex-direction: column; padding: 13px 15px 12px;
-    background: linear-gradient(160deg, rgba(23,26,35,.94), rgba(14,16,22,.96));
+  .card { position: relative; overflow: hidden; height: 100%; display: flex; flex-direction: column; padding: 11px 14px 7px;
+    background: rgba(18,21,28,.95);
     border: 1px solid var(--line); border-radius: 15px;
     box-shadow: 0 14px 40px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.13);
     backdrop-filter: saturate(150%) blur(18px); -webkit-backdrop-filter: saturate(150%) blur(18px);
@@ -29,17 +29,17 @@
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(63,178,127,.5)} 70%{box-shadow:0 0 0 7px rgba(63,178,127,0)} 100%{box-shadow:0 0 0 0 rgba(63,178,127,0)} }
   .label { font-size: 9.5px; font-weight: 750; letter-spacing: .9px; text-transform: uppercase; color: var(--muted); }
   /* Sits in the drag region, so it opts out of dragging itself. */
-  .x { -webkit-app-region: no-drag; margin-left: auto; width: 20px; height: 20px; min-width: 20px;
+  .x { -webkit-app-region: no-drag; margin-left: 2px; width: 20px; height: 20px; min-width: 20px;
     padding: 0; font-size: 10px; line-height: 1; background: none; border: none; color: var(--muted);
     border-radius: 6px; opacity: .55; }
   .x:hover { opacity: 1; color: #ff8f8f; background: rgba(255,107,129,.14); }
   .x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
   .timer { font-size: 34px; font-weight: 250; letter-spacing: -1.4px; font-variant-numeric: tabular-nums;
-    text-align: center; margin: 5px 0 2px; line-height: 1.08; }
-  .task { font-size: 11.5px; color: var(--muted); text-align: center; margin-bottom: 8px;
+    text-align: center; margin: 2px 0 1px; line-height: 1.02; }
+  .task { font-size: 11.5px; color: var(--muted); text-align: center; margin-bottom: 6px; flex-shrink: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .track { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted);
-    padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,.05); margin-bottom: 9px; min-height: 27px; }
+    padding: 5px 8px; border-radius: 8px; background: rgba(255,255,255,.05); margin-bottom: 6px; min-height: 25px; }
   .track.hidden { display: none; }
   .track-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Says something is playing. It is not analysing audio — Spotify plays in
@@ -53,7 +53,7 @@
   .eq.paused i { animation-play-state: paused; }
   @keyframes eqBar { from { height: 20%; } to { height: 100%; } }
   @media (prefers-reduced-motion: reduce) { .eq.on i { animation: none; height: 60%; } }
-  .vol { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; -webkit-app-region: no-drag; }
+  .vol { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; -webkit-app-region: no-drag; }
   .vol.hidden { display: none; }
   .vol button { min-width: 26px; height: 24px; padding: 0; font-size: 11px; background: none; border: none; }
   .vol button:hover { background: rgba(255,255,255,.1); }
@@ -66,7 +66,7 @@
   .ctrls { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: auto; -webkit-app-region: no-drag; }
   button { -webkit-app-region: no-drag; background: rgba(255,255,255,.07); border: 1px solid var(--line);
     color: var(--text); font-family: inherit; font-size: 12px; border-radius: 8px; cursor: pointer;
-    height: 30px; min-width: 34px; padding: 0 9px; transition: .13s; display: grid; place-items: center; }
+    height: 28px; min-width: 34px; padding: 0 9px; transition: .13s; display: grid; place-items: center; }
   button:hover { background: rgba(255,255,255,.14); }
   button:active { transform: scale(.94); }
   .primary { background: var(--accent); border-color: transparent; color: #fff; min-width: 42px; }
@@ -75,6 +75,40 @@
   .end:hover { background: rgba(255,107,129,.16); border-color: rgba(255,107,129,.4); }
   .sep { width: 1px; height: 17px; background: var(--line); margin: 0 2px; }
   .idle { flex: 1; display: grid; place-items: center; font-size: 11.5px; color: var(--muted); text-align: center; }
+
+  /* Jotting something down mid-session. It covers the card rather than
+     growing the window: the companion is a fixed little thing, and a window
+     that resizes itself would also persist the taller size to disk. */
+  .jotbtn { -webkit-app-region: no-drag; margin-left: auto; width: 20px; height: 20px; min-width: 20px;
+    padding: 0; font-size: 14px; line-height: 1; background: none; border: none; color: var(--muted);
+    border-radius: 6px; opacity: .6; }
+  .jotbtn:hover { opacity: 1; color: var(--text); background: rgba(255,255,255,.12); }
+  .jotbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
+  .jot { position: absolute; inset: 0; z-index: 3; -webkit-app-region: no-drag;
+    display: flex; flex-direction: column; justify-content: center; gap: 9px;
+    padding: 14px 15px; border-radius: 15px;
+    /* Opaque, and with no blur of its own: the card already frosts the
+       desktop behind the window, and this only has to cover the card. */
+    background: #10131a;
+    animation: jotIn .13s ease-out; }
+  .jot.hidden { display: none; }
+  @keyframes jotIn { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .jot { animation: none; } }
+  .jot-top { display: flex; align-items: center; gap: 7px; }
+  .jot-top .x { margin-left: auto; }
+  .jot-row { display: flex; align-items: center; gap: 7px; }
+  .jot input { flex: 1; min-width: 0; -webkit-app-region: no-drag;
+    -webkit-user-select: text; user-select: text;
+    background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 9px;
+    color: var(--text); font-family: inherit; font-size: 13px; padding: 8px 10px; outline: none; }
+  .jot input::placeholder { color: #5d6478; }
+  .jot input:focus { border-color: var(--accent); background: rgba(255,255,255,.09); }
+  .jot-add { background: var(--accent); border-color: transparent; color: #fff;
+    font-size: 16px; height: 32px; min-width: 32px; padding: 0; }
+  .jot-add:hover { background: var(--accent); filter: brightness(1.1); }
+  .jot-hint { font-size: 10px; color: #5d6478; min-height: 12px; }
+  .jot-hint.ok { color: var(--green); }
+  .jot-hint.bad { color: #ff8f8f; }
 </style>
 </head>
 <body>
@@ -82,6 +116,7 @@
   <div class="top">
     <span class="dot" id="dot"></span>
     <span class="label" id="label">Focusing</span>
+    <button class="jotbtn" id="jotOpen" title="Note to inbox (N)" aria-label="Note to inbox">+</button>
     <button class="x" id="close" title="Close (⌘W) — the timer keeps running" aria-label="Close">✕</button>
   </div>
   <div class="timer" id="timer">00:00</div>
@@ -98,6 +133,17 @@
     <button id="prev" title="Previous track">⏮</button>
     <button id="play" title="Play / Pause music">▶</button>
     <button id="next" title="Next track">⏭</button>
+  </div>
+  <div class="jot hidden" id="jot">
+    <div class="jot-top">
+      <div class="label">Note to inbox</div>
+      <button class="x" id="jotClose" title="Back (esc)" aria-label="Back">✕</button>
+    </div>
+    <div class="jot-row">
+      <input id="jotText" placeholder="Jot it down…" autocomplete="off" spellcheck="false" aria-label="Note to inbox" />
+      <button class="jot-add" id="jotAdd" title="Add to inbox (⏎)" aria-label="Add to inbox">+</button>
+    </div>
+    <div class="jot-hint" id="jotHint">⏎ adds it · esc goes back</div>
   </div>
 </div>
 <script>
@@ -145,6 +191,68 @@
     }
   }
   setInterval(paint, 1000);
+
+  // ---- Jot to inbox -----------------------------------------------------
+  // A thought that arrives mid-session should not cost you the session. This
+  // writes to the same capture store the Quick Capture window uses, over the
+  // same local HTTP API, so it lands in the inbox whether or not the main
+  // window is looking.
+  const jot = $('#jot'), jotText = $('#jotText'), jotHint = $('#jotHint');
+  const REST = '⏎ adds it · esc goes back';
+  let hintTimer = null;
+  function setHint(t, cls) {
+    jotHint.textContent = t;
+    jotHint.className = 'jot-hint' + (cls ? ' ' + cls : '');
+  }
+  function openJot() { jot.classList.remove('hidden'); jotText.focus(); jotText.select(); }
+  function closeJot() {
+    jot.classList.add('hidden');
+    jotText.blur();
+    jotText.value = '';
+    clearTimeout(hintTimer);
+    setHint(REST);
+  }
+  async function addNote() {
+    const text = jotText.value.trim();
+    if (!text) { jotText.focus(); return; }
+    try {
+      const list = (await (await fetch('/api/store?name=captures')).json()).value || [];
+      const item = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        text, note: '', context: 'focus timer',
+        status: 'open', becameKind: null, becameId: null,
+        createdAt: Date.now(), processedAt: null,
+      };
+      list.unshift(item);
+      await fetch('/api/store?name=captures', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(list),
+      });
+      // Tell an open app, so the inbox count moves now rather than on reload.
+      if (window.tn && window.tn.captureSaved) window.tn.captureSaved({ text, id: item.id, context: 'focus timer' });
+    } catch (e) {
+      setHint('Could not save — is Task Notes running?', 'bad');
+      return;
+    }
+    jotText.value = '';
+    clearTimeout(hintTimer);
+    setHint('✓ In your inbox', 'ok');
+    hintTimer = setTimeout(() => setHint(REST), 1600);
+    jotText.focus();                       // stay open: thoughts arrive in twos
+  }
+  $('#jotOpen').onclick = () => (jot.classList.contains('hidden') ? openJot() : closeJot());
+  $('#jotAdd').onclick = addNote;
+  $('#jotClose').onclick = closeJot;
+  // Registered before the shell's own handler below, so Escape while jotting
+  // closes the note rather than dismissing the whole companion.
+  addEventListener('keydown', (e) => {
+    const open = !jot.classList.contains('hidden');
+    if (open && e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); closeJot(); return; }
+    if (open && e.key === 'Enter') { e.preventDefault(); addNote(); return; }
+    const typing = e.target && e.target.tagName === 'INPUT';
+    if (!open && !typing && !e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === 'n') {
+      e.preventDefault(); openJot();
+    }
+  });
 
   if (window.tn) {
     window.tn.onState((s) => { state = s || state; paint(); });

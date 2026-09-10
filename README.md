@@ -149,7 +149,7 @@ On macOS, starting a focus session also opens a small **always-on-top companion 
 
 ```
 ┌──────────────────────────┐
-│ ● FOCUSING               │
+│ ● FOCUSING          +  ✕ │
 │         42:18            │
 │  🎧 Bloody Samaritan     │
 │    ⏸    ■    ⏮ ▶ ⏭      │
@@ -157,6 +157,8 @@ On macOS, starting a focus session also opens a small **always-on-top companion 
 ```
 
 It's the *same* session — one timer, one music player. Pause in the mini window and the main app pauses; resume in the app and the mini window follows. It remembers where you put it, survives app reloads, and because the timer is derived from timestamps rather than ticks, it stays correct across sleep/wake.
+
+The **+** (or `N`) turns the card into a one-line note field: type the thought, press Enter, and it lands in your inbox without leaving the session. It stays open for the next one; `Esc` goes back to the timer.
 
 <br>
 
