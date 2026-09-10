@@ -1622,6 +1622,18 @@
      Tables still size to their content and scroll. */
   .be-surface { max-width: 76rem; }
 
+  /* The read view has styled links since it was written; the editor never had
+     an `a` rule at all, so the same document showed browser-default electric
+     blue with a full underline on one side and this on the other. */
+  .be-surface a { color: #9db4ff; text-decoration: none;
+    border-bottom: 1px solid rgba(157,180,255,.35); overflow-wrap: anywhere; }
+  .be-surface a:hover { border-bottom-color: #9db4ff; }
+  .be-surface a.wikilink { color: #c9a6ff; border-bottom-color: rgba(201,166,255,.4); }
+  .be-surface a.wikilink.missing { color: #f5a623; border-bottom-style: dashed;
+    border-bottom-color: rgba(245,166,35,.5); }
+  /* A hundred-character share URL should wrap, not shoulder the line open. */
+  .be-text { overflow-wrap: anywhere; }
+
   /* Chrome inside the editor stays in the interface font — a serif button is
      fancy dress, not typography. */
   .be-gutter, .be-codehead, .be-tacts, .be-check, .be-lang, .be-langpill,
@@ -5243,9 +5255,11 @@ function mdInline(src, ctx) {
     const ext = /^https?:/i.test(u);
     return '<a href="' + u + '"' + (ext ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + text + '</a>';
   });
-  // bare autolink
+  // bare autolink. The class marks it as one whose visible text is the URL
+  // itself, which the read view is then free to shorten — see prettyUrl().
   s = s.replace(/(^|[\s(])(https?:\/\/[^\s<>()]+)/g,
-    (m, pre, url) => pre + '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>');
+    (m, pre, url) => pre + '<a class="autolink" href="' + url
+      + '" target="_blank" rel="noopener noreferrer">' + url + '</a>');
 
   s = s.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -5813,12 +5827,35 @@ function renderDocSurface() {
   $('#docMore').onclick = openDocMenu;
 }
 
+// A share URL is mostly machinery. Reading view shows enough of one to tell it
+// apart from the next one and hides the rest; the full thing stays in the
+// title, in the href, and in the markdown.
+const URL_BUDGET = 48;
+function prettyUrl(u) {
+  let t = String(u || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+  if (t.length <= URL_BUDGET) return t.replace(/\/$/, '');
+  return t.slice(0, URL_BUDGET).replace(/[\/?&#=._-]+$/, '') + '…';
+}
+// Only ever applied to links whose text *is* their href — a link with words
+// already says what it is.
+function shortenAutolinks(root) {
+  root.querySelectorAll('a.autolink').forEach((a) => {
+    const href = a.getAttribute('href') || '';
+    if (a.textContent.trim() !== href) return;
+    const short = prettyUrl(href);
+    if (short === a.textContent) return;
+    a.textContent = short;
+    a.title = href;
+  });
+}
+
 function renderDocPreview() {
   if (!docActive) return;
   const content = $('#docEditor').value;
   const html = renderMarkdown(content, { resolve: (name) => docByTitle(name) });
   const target = $('#docRender');
   target.innerHTML = html;
+  shortenAutolinks(target);
   renderMermaidIn(target);
   // Tables get a scroll container so a wide one is scrollable rather than
   // crushed into the prose measure.
