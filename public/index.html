@@ -2163,7 +2163,7 @@
      Content-first: the writing surface is a plain calm sheet, not a stack of
      decorative cards. Chrome lives at the edges.
      ===================================================================== */
-  #page-docs .ws { display: grid; grid-template-columns: 250px minmax(0, 1fr) 224px;
+  #page-docs .ws { position: relative; display: grid; grid-template-columns: 250px minmax(0, 1fr) 224px;
     height: 100vh; max-height: 100vh; overflow: hidden; }
   #page-docs { padding: 0; overflow: hidden; }
   .ws-side, .ws-rail { display: flex; flex-direction: column; min-height: 0;
@@ -2191,6 +2191,17 @@
   .ws-side-title { font-size: 11px; font-weight: 750; text-transform: uppercase;
     letter-spacing: .7px; color: var(--muted); flex: 1; }
   .ws-side-toggle { display: none; }
+  /* Hiding the sidebar with ⌘\ was a one-way door. The ☰ that brings it back
+     only existed under 760px — on a normal window the documents list simply
+     went away with nothing on screen to explain it or undo it. Whenever the
+     sidebar is hidden, the way back is visible. */
+  #page-docs .ws.side-hidden .ws-side-toggle {
+    display: grid; place-items: center; position: absolute; top: 12px; left: 12px;
+    z-index: 10; width: 34px; height: 34px; background: var(--panel);
+    border: 1px solid var(--line); color: var(--text); border-radius: 9px; cursor: pointer; }
+  #page-docs .ws.side-hidden .ws-side-toggle:hover { border-color: var(--accent); }
+  #page-docs .ws.side-hidden .ws-tabs { padding-left: 56px; }
+  #page-docs .ws.zen .ws-side-toggle { display: none; }
   .ws-search { position: relative; display: flex; align-items: center; gap: 7px; margin: 0 12px 10px;
     padding: 7px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; color: var(--muted); }
   .ws-search:focus-within { border-color: var(--accent); }
@@ -6310,7 +6321,13 @@ $('#docNewBtn').onclick = () => newBlankDocument();
 $('#docImportBtn').onclick = () => $('#docMdPicker').click();
 $('#docMdPicker').onchange = (e) => { importMarkdownFiles(e.target.files); e.target.value = ''; };
 $('#docEmptyNew').onclick = () => newBlankDocument();
-$('#wsSideToggle').onclick = () => wsEl().classList.toggle('side-open');
+// ⌘\ sets `side-hidden`; the narrow-window drawer uses `side-open`. The
+// button only ever touched the second, so it could not undo the first.
+$('#wsSideToggle').onclick = () => {
+  const ws = wsEl();
+  if (ws.classList.contains('side-hidden')) ws.classList.remove('side-hidden');
+  else ws.classList.toggle('side-open');
+};
 document.querySelectorAll('.ws-rail-tabs button').forEach((b) => {
   b.onclick = () => { railTab = b.dataset.rail; renderRail(); };
 });
