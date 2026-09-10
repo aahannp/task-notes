@@ -248,6 +248,7 @@ const COLLECTIONS = {
   reviews: 'reviews.json',
   captures: 'captures.json',
   reminders: 'reminders.json',
+  backlog: 'backlog.json',
 };
 // reviews is an object keyed by week-start; everything else is an array.
 const OBJECT_COLLECTIONS = new Set(['reviews']);

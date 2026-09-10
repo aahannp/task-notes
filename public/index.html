@@ -1373,6 +1373,45 @@
     border: 1px solid rgba(124,155,255,.24); border-radius: 15px; padding: 19px 16px; }
   .wr-hero-n b { display: block; font-size: 27px; font-weight: 750; letter-spacing: -.9px; }
   .wr-hero-n span { font-size: 12px; color: var(--muted); }
+  /* ---- Backlog ---- */
+  .bl { margin: 26px 0 4px; }
+  .bl-head { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+    background: none; border: none; padding: 10px 2px; cursor: pointer; color: var(--muted);
+    font-family: var(--ui); font-size: 13px; font-weight: 650; letter-spacing: .3px; }
+  .bl-head:hover { color: var(--text); }
+  .bl-caret { display: inline-block; transition: transform var(--t-fast); font-size: 15px; opacity: .7; }
+  .bl-head.open .bl-caret { transform: rotate(90deg); }
+  .bl-n { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; }
+  .bl-ready { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .bl-body { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel);
+    padding: 12px; margin-top: 2px; }
+  .bl-add { display: flex; gap: 8px; }
+  .bl-add input { flex: 1; }
+  .bl-when { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 11px;
+    padding: 11px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel-2); }
+  .bl-when-q { font-size: 12.5px; color: var(--muted); margin-right: 2px; }
+  .bl-when button { font-family: var(--ui); font-size: 12px; padding: 5px 10px; border-radius: 99px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+  .bl-when button:hover { border-color: var(--accent); }
+  .bl-when button.skip { color: var(--muted); border-style: dashed; }
+  .bl-when input[type="date"] { font-size: 12px; padding: 4px 8px; }
+  .bl-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .bl-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px;
+    border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel-2); }
+  .bl-row .bl-x { flex: 1; min-width: 0; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bl-date { font-size: 11.5px; color: var(--muted); border: 1px solid var(--line);
+    border-radius: 99px; padding: 2px 9px; background: none; cursor: pointer; font-family: var(--ui); flex-shrink: 0; }
+  .bl-date:hover { border-color: var(--accent); color: var(--text); }
+  .bl-date.due { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .bl-date.none { border-style: dashed; }
+  .bl-row .bl-pull, .bl-row .bl-del { flex-shrink: 0; font-family: var(--ui); font-size: 11.5px;
+    padding: 4px 9px; border-radius: var(--r-sm); border: 1px solid var(--line);
+    background: var(--panel); color: var(--muted); cursor: pointer; }
+  .bl-row .bl-pull:hover { color: var(--text); border-color: var(--accent); }
+  .bl-row .bl-del:hover { color: #ff8f8f; border-color: rgba(255,107,129,.4); }
+  .bl-empty { font-size: 12.5px; color: var(--muted); padding: 10px 2px; }
+
   /* ---- Focus log ---- */
   .fx-date { margin-left: auto; font-size: 12.5px; padding: 7px 10px; }
   .fx-history { display: flex; align-items: flex-end; gap: 4px; height: 74px; margin-bottom: 26px;
@@ -2885,6 +2924,25 @@
   <div class="learn-today" id="learnTodayCard"></div>
 
   <div class="board" id="board"></div>
+
+  <!-- Later, not now. Collapsed by default: the point of a backlog is that it
+       is not in your face until you go looking for it. -->
+  <div class="bl" id="backlog">
+    <button class="bl-head" id="blToggle" aria-expanded="false" aria-controls="blBody">
+      <span class="bl-caret" aria-hidden="true">›</span>
+      <span class="bl-t">Backlog</span>
+      <span class="bl-n hidden" id="blCount"></span>
+      <span class="bl-ready hidden" id="blReady"></span>
+    </button>
+    <div class="bl-body hidden" id="blBody">
+      <div class="bl-add">
+        <input id="blNew" placeholder="Something for later…" autocomplete="off" aria-label="Add to backlog" />
+        <button class="addbtn" id="blAdd" title="Add to backlog">+</button>
+      </div>
+      <div class="bl-when hidden" id="blWhen"></div>
+      <div class="bl-list" id="blList"></div>
+    </div>
+  </div>
 </div>
 
 <div class="focusmode hidden" id="focusMode">
@@ -3675,6 +3733,7 @@ async function load() {
 
   renderReminders();
   startReminderWatch();
+  backlogNotify();
 
   // The agenda belongs to the day being viewed, so it has to follow a day
   // change. Nothing was doing that: the only thing refreshing it was the 60s
@@ -4696,12 +4755,13 @@ const saveReviews  = () => saveStore('reviews', reviews);
 
 async function loadStores(force) {
   if (storesLoaded && !force) return;
-  const [p, l, i, a, r, cap, rem] = await Promise.all([
+  const [p, l, i, a, r, cap, rem, bl] = await Promise.all([
     loadStore('projects'), loadStore('learning'), loadStore('ideas'),
     loadStore('activity'), loadStore('reviews'), loadStore('captures'),
-    loadStore('reminders'),
+    loadStore('reminders'), loadStore('backlog'),
   ]);
   reminders = (rem || []).map(normReminder);
+  backlog = (bl || []).map(normBacklog);
   projects = (p || []).map(normProject);
   learnItems = (l || []).map(normLearn);
   ideas = (i || []).map(normIdea);
@@ -7172,6 +7232,7 @@ function renderTodayExtras() {
   renderDayHints();
   renderResurfaceCard();
   renderInboxNudge();
+  renderBacklog();
 }
 function renderContinueStrip() {
   const el = $('#continueStrip'); if (!el) return;
@@ -7449,6 +7510,220 @@ async function saveFocusWrap() {
   renderTodayExtras();
   if (activePage === 'focus') renderFocusPage();
 }
+
+// =====================================================================
+// BACKLOG — work you have decided on but are not doing yet.
+//
+// Its own store rather than a day file, because a backlog item has no day.
+// Parking one in a future day file would also put it in the path of the
+// carry-forward reconciliation, which would then start dragging it between
+// days as though it were live work.
+//
+// Nothing is deleted on promotion: the item records the task it became, so
+// the backlog is a record of what came out of it and not just what is left.
+// =====================================================================
+let backlog = [];
+function normBacklog(b) {
+  return {
+    id: b.id || uid(),
+    text: b.text || '',
+    note: b.note || '',
+    pickupDate: b.pickupDate || null,
+    projectId: b.projectId || null,
+    estimateMin: b.estimateMin || null,
+    createdAt: b.createdAt || Date.now(),
+    promotedTo: b.promotedTo || null,     // the task it became
+    promotedOn: b.promotedOn || null,
+    notifiedOn: b.notifiedOn || null,     // the day it last told you it was due
+  };
+}
+const saveBacklog = () => saveStore('backlog', backlog);
+const backlogOpen = () => backlog.filter((b) => !b.promotedTo);
+const backlogReady = () => {
+  const today = iso(new Date());
+  return backlogOpen().filter((b) => b.pickupDate && b.pickupDate <= today);
+};
+
+function blShift(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return iso(d);
+}
+function blNextMonth() {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return iso(d);
+}
+
+// A date is asked for, never demanded. Refusing the question is a fair
+// answer — but an undated item says so plainly, so it cannot quietly become
+// something that never comes back.
+let blPending = null;        // { text } waiting for a date, or { id } re-dating
+function blAskWhen(pending, label) {
+  blPending = pending;
+  const el = $('#blWhen');
+  el.classList.remove('hidden');
+  el.innerHTML =
+    '<span class="bl-when-q">When should ' + (label ? '“' + escapeHtml(label.slice(0, 44)) + '”' : 'it') + ' come back?</span>'
+    + '<button data-w="1">Tomorrow</button>'
+    + '<button data-w="7">Next week</button>'
+    + '<button data-w="month">Next month</button>'
+    + '<input type="date" id="blWhenDate" aria-label="Pick a date" />'
+    + '<button class="skip" data-w="none">No date yet</button>';
+  el.querySelectorAll('[data-w]').forEach((b) => {
+    b.onclick = () => {
+      const w = b.dataset.w;
+      blResolve(w === 'none' ? null : w === 'month' ? blNextMonth() : blShift(+w));
+    };
+  });
+  $('#blWhenDate').onchange = (e) => { if (e.target.value) blResolve(e.target.value); };
+}
+function blCloseWhen() { blPending = null; $('#blWhen').classList.add('hidden'); $('#blWhen').innerHTML = ''; }
+
+function blResolve(dateISO) {
+  const p = blPending;
+  blCloseWhen();
+  if (!p) return;
+  if (p.id) {
+    const b = backlog.find((x) => x.id === p.id);
+    if (b) { b.pickupDate = dateISO; b.notifiedOn = null; saveBacklog(); }
+  } else {
+    const text = (p.text || '').trim();
+    if (!text) return;
+    backlog.unshift(normBacklog({ text, pickupDate: dateISO }));
+    saveBacklog();
+    logActivity('backlog-added', 'Backlog: ' + text.slice(0, 60));
+    $('#blNew').value = '';
+    $('#blNew').focus();
+  }
+  renderBacklog();
+}
+
+function blAdd() {
+  const text = $('#blNew').value.trim();
+  if (!text) { $('#blNew').focus(); return; }
+  blAskWhen({ text }, text);
+}
+
+async function blPromote(id) {
+  const b = backlog.find((x) => x.id === id);
+  if (!b) return;
+  const t = await createTaskOn(iso(current), b.text, {
+    note: b.note || '', estimateMin: b.estimateMin || null, projectId: b.projectId || null,
+  });
+  b.promotedTo = t.id;
+  b.promotedOn = iso(current);
+  saveBacklog();
+  logActivity('backlog-pulled', 'Pulled “' + b.text.slice(0, 60) + '” out of the backlog', { taskId: t.id });
+  renderBacklog();
+  flash('📥 On the board');
+}
+
+function blDelete(id) {
+  backlog = backlog.filter((x) => x.id !== id);
+  saveBacklog();
+  renderBacklog();
+}
+
+function blDateLabel(b) {
+  if (!b.pickupDate) return 'no date';
+  const d = new Date(b.pickupDate + 'T12:00:00');
+  const today = iso(new Date());
+  if (b.pickupDate < today) return 'due ' + fmtPickup(b.pickupDate);
+  if (b.pickupDate === today) return 'today';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function renderBacklog() {
+  const wrap = $('#backlog');
+  if (!wrap) return;
+  const items = backlogOpen().slice().sort((a, b) => {
+    // Ready first, oldest pick-up date leading; then the rest by date; undated last.
+    const ak = a.pickupDate || '9999-12-31', bk = b.pickupDate || '9999-12-31';
+    if (ak !== bk) return ak < bk ? -1 : 1;
+    return (a.createdAt || 0) - (b.createdAt || 0);
+  });
+  const ready = backlogReady().length;
+
+  const n = $('#blCount');
+  n.textContent = items.length;
+  n.classList.toggle('hidden', !items.length);
+  const r = $('#blReady');
+  r.textContent = ready ? '· ' + ready + ' ready' : '';
+  r.classList.toggle('hidden', !ready);
+
+  const list = $('#blList');
+  if (!list) return;
+  if (!items.length) {
+    list.innerHTML = '<div class="bl-empty">Nothing waiting. Anything you add here stays out of the way until its day.</div>';
+    return;
+  }
+  const today = iso(new Date());
+  list.innerHTML = items.map((b) => {
+    const due = b.pickupDate && b.pickupDate <= today;
+    return '<div class="bl-row">'
+      + '<span class="bl-x" title="' + escapeHtml(b.text) + '">' + escapeHtml(b.text) + '</span>'
+      + '<button class="bl-date' + (due ? ' due' : '') + (b.pickupDate ? '' : ' none') + '" data-date="' + b.id
+        + '" title="Change when this comes back">' + escapeHtml(blDateLabel(b)) + '</button>'
+      + '<button class="bl-pull" data-pull="' + b.id + '" title="Put it on the board for the day you are viewing">Pull in</button>'
+      + '<button class="bl-del" data-del="' + b.id + '" title="Remove from backlog">✕</button>'
+      + '</div>';
+  }).join('');
+  list.querySelectorAll('[data-pull]').forEach((el) => { el.onclick = () => blPromote(el.dataset.pull); });
+  list.querySelectorAll('[data-del]').forEach((el) => { el.onclick = () => blDelete(el.dataset.del); });
+  list.querySelectorAll('[data-date]').forEach((el) => {
+    el.onclick = () => {
+      const b = backlog.find((x) => x.id === el.dataset.date);
+      blAskWhen({ id: el.dataset.date }, b && b.text);
+    };
+  });
+}
+
+// Which items have not been announced today — and marking them announced in
+// the same breath, so a fifteen-second poll cannot become fifteen-second
+// nagging. Separate from the sending so the rule can be tested without a
+// desktop shell to send through.
+function backlogClaimDueNotice() {
+  const today = iso(new Date());
+  const due = backlogOpen().filter((b) => b.pickupDate && b.pickupDate <= today && b.notifiedOn !== today);
+  if (!due.length) return [];
+  due.forEach((b) => { b.notifiedOn = today; });
+  saveBacklog();
+  return due;
+}
+
+// One native notification on the day an item comes due, and only one.
+function backlogNotify() {
+  if (!(DESKTOP && window.tn && window.tn.notify)) return;
+  const due = backlogClaimDueNotice();
+  if (!due.length) return;
+  const first = due[0].text.slice(0, 70);
+  try {
+    window.tn.notify({
+      title: due.length === 1 ? 'A backlog item is due' : due.length + ' backlog items are due',
+      body: due.length === 1 ? first : first + ' + ' + (due.length - 1) + ' more',
+    });
+  } catch {}
+}
+
+function bindBacklog() {
+  const t = $('#blToggle');
+  if (!t) return;
+  t.onclick = () => {
+    const body = $('#blBody');
+    const open = body.classList.contains('hidden');
+    body.classList.toggle('hidden', !open);
+    t.classList.toggle('open', open);
+    t.setAttribute('aria-expanded', String(open));
+    if (open) { renderBacklog(); $('#blNew').focus(); } else { blCloseWhen(); }
+  };
+  $('#blAdd').onclick = blAdd;
+  $('#blNew').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); blAdd(); }
+    else if (e.key === 'Escape' && blPending) { e.preventDefault(); e.stopPropagation(); blCloseWhen(); }
+  });
+}
+bindBacklog();
 
 // =====================================================================
 // FOCUS LOG — the sessions themselves, and what came out of them.
@@ -9616,6 +9891,7 @@ function startReminderWatch() {
     const anyDue = remindersDue(day).length > 0;
     const anyQuiet = reminders.some((r) => r.status === 'open' && r.date <= day && r.quietUntil);
     if (anyDue !== showing || anyQuiet) renderReminders();
+    backlogNotify();
   }, 15000);
 }
 

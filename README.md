@@ -97,6 +97,18 @@ On macOS, **⌘⇧Space** opens a tiny always-on-top capture window from anywher
 
 <br>
 
+## Backlog
+
+Work you have decided on but are not doing yet. It sits collapsed under the board as a single line — `› Backlog 7 · 2 ready` — and stays out of the way until you click it.
+
+Adding something always asks when it should come back: **Tomorrow · Next week · Next month**, a date, or **No date yet**. You are never refused — a half-formed thought still lands — but an undated item says so plainly on its row rather than quietly becoming something that never returns.
+
+On the day an item comes due you get one native notification, once. **Pull in** puts it on the board for the day you're looking at; the backlog keeps the record of which task it became, so it reads as what came out of it, not just what's left.
+
+Backlog items live in their own store rather than in a day file — a backlog item has no day, and parking one in a future day file would put it in the path of the carry-forward reconciliation, which would then drag it between days as though it were live work.
+
+<br>
+
 ## Knowledge that comes back
 
 Marking something "Learned" usually means never seeing it again. Learned topics resurface on a widening schedule (5 → 13 → 30 → 60 → 120 days), pulled in sooner if you keep postponing them or flagged them high priority.
@@ -296,6 +308,7 @@ Everything lives in `data/`, which is git-ignored:
 | `reviews.json` | weekly reflections and frozen week snapshots |
 | `captures.json` | the capture inbox |
 | `reminders.json` | reminders, and how many times each has been waved away |
+| `backlog.json` | work parked for later, and the task each item became |
 | `documents.json` | document metadata (never bodies) |
 | `docs/<id>.md` | one plain markdown file per document — readable outside the app |
 | `docs/<id>.versions.json` | recent version history for that document |
