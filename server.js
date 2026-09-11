@@ -150,6 +150,7 @@ function spotifySearch(q, cb) {
 const PORT = process.env.PORT || 4321;
 // Data dir is overridable (the desktop app points this at a writable folder outside the app bundle).
 const DATA_DIR = process.env.TASKNOTES_DATA || path.join(__dirname, 'data');
+const sync = require('./sync/git');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -202,8 +203,38 @@ function writeAtomic(file, str) {
   fs.renameSync(tmp, file);
 }
 
+// When did each record last actually change?
+//
+// Nothing recorded this, which means two copies of the same task from two
+// laptops could not be told apart — there was no way to say which one was
+// newer. Stamped here rather than at the hundred places in the UI that mutate
+// something, so it holds for every writer: the app, the MCP server, and the
+// sync when it merges.
+//
+// Key order differs between a record read from disk and one rebuilt in the
+// browser, so the comparison is on sorted keys, not raw JSON.
+function canon(o) {
+  if (o === null || typeof o !== 'object') return JSON.stringify(o);
+  if (Array.isArray(o)) return '[' + o.map(canon).join(',') + ']';
+  return '{' + Object.keys(o).filter((k) => k !== 'updatedAt').sort()
+    .map((k) => JSON.stringify(k) + ':' + canon(o[k])).join(',') + '}';
+}
+function stampUpdated(prev, next) {
+  if (!Array.isArray(next)) return next;
+  const before = new Map();
+  (Array.isArray(prev) ? prev : []).forEach((r) => { if (r && r.id) before.set(r.id, r); });
+  const now = Date.now();
+  next.forEach((r) => {
+    if (!r || typeof r !== 'object' || !r.id) return;
+    const old = before.get(r.id);
+    if (!old) { r.updatedAt = r.updatedAt || r.createdAt || now; return; }
+    r.updatedAt = canon(old) === canon(r) ? (old.updatedAt || r.createdAt || now) : now;
+  });
+  return next;
+}
+
 function writeTasks(date, tasks) {
-  writeAtomic(fileFor(date), JSON.stringify(tasks, null, 2));
+  writeAtomic(fileFor(date), JSON.stringify(stampUpdated(readTasks(date), tasks), null, 2));
 }
 
 function isoDate(d) {
@@ -284,7 +315,8 @@ function readCollection(name) {
   } catch { return empty; }
 }
 function writeCollection(name, value) {
-  writeAtomic(collectionFile(name), JSON.stringify(value, null, 2));
+  const next = OBJECT_COLLECTIONS.has(name) ? value : stampUpdated(readCollection(name), value);
+  writeAtomic(collectionFile(name), JSON.stringify(next, null, 2));
 }
 
 // One-time migration: the old projects.json held projects, learning items and
@@ -1193,6 +1225,23 @@ const server = http.createServer((req, res) => {
     return res.end('Method not allowed');
   }
 
+  // Data sync state, and a way to ask for one now.
+  if (u.pathname === '/api/sync') {
+    if (req.method === 'GET') {
+      return sync.refresh().then(() => sendJSON(res, 200, {
+        sync: sync.status(), setup: sync.setupHint(DATA_DIR),
+      })).catch(() => sendJSON(res, 200, { sync: sync.status(), setup: sync.setupHint(DATA_DIR) }));
+    }
+    if (req.method === 'POST') {
+      const act = u.searchParams.get('do');
+      const run = act === 'ack' ? sync.ackConflict() : sync.syncNow('manual');
+      return run.then((st) => sendJSON(res, 200, { sync: st }))
+        .catch((e) => sendJSON(res, 500, { error: String(e.message || e) }));
+    }
+    res.writeHead(405);
+    return res.end('Method not allowed');
+  }
+
   // MCP health. The log is written by the MCP server, one JSON line per call;
   // the aggregation happens here so the panel stays a renderer.
   if (u.pathname === '/api/mcp' && req.method === 'GET') {
@@ -1289,6 +1338,7 @@ const server = http.createServer((req, res) => {
 // Required as a module (the Electron desktop app): just export the server so
 // the caller can listen on any free port.
 if (require.main === module) {
+  sync.init(DATA_DIR);
   server.listen(PORT, () => {
     writePortFile(PORT);
     console.log(`\n  ✅ Task Notes running at  http://localhost:${PORT}`);

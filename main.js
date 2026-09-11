@@ -12,6 +12,10 @@ if (!process.env.TASKNOTES_DATA) {
 }
 
 const server = require('./server');
+const sync = require('./sync/git');
+const SYNC_EVERY_MS = 5 * 60 * 1000;
+let syncTimer = null;
+let quitting = false;
 
 let win;          // main application window
 let mini;         // floating Focus companion
@@ -53,6 +57,9 @@ function createWindow(port) {
   });
 
   win.on('closed', () => { win = null; destroyMini(); });
+  // Stepping away from the machine is the moment the other laptop might be
+  // picked up, so it is the moment worth pushing.
+  win.on('blur', () => { if (!quitting) sync.syncNow('blur'); });
 }
 
 function createMini() {
@@ -212,7 +219,15 @@ ipcMain.on('capture:saved', (_e, payload) => {
   if (win && !win.isDestroyed()) win.webContents.send('capture:new', payload);
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Pull BEFORE anything reads a file. server.js caches nothing, but the
+  // renderer loads the day as soon as the window opens and then writes the
+  // whole array back — so a pull that landed a second late would be read over
+  // and lost. Time-boxed: starting with yesterday's data is recoverable,
+  // starting ten seconds late just looks broken.
+  sync.init(process.env.TASKNOTES_DATA);
+  await sync.pullFirst(8000);
+
   // Listen on a random free port bound to localhost only.
   const listener = server.listen(0, '127.0.0.1', () => {
     appPort = listener.address().port;
@@ -221,6 +236,8 @@ app.whenReady().then(() => {
     // removed on quit, so a stale file means "not running".
     if (server.writePortFile) server.writePortFile(appPort);
     createWindow(appPort);
+    clearInterval(syncTimer);
+    syncTimer = setInterval(() => { if (!quitting) sync.syncNow('timer'); }, SYNC_EVERY_MS);
   });
 
   app.on('activate', () => {
@@ -242,6 +259,22 @@ app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch {} });
 
 app.on('before-quit', saveMiniState);
 app.on('will-quit', () => { if (server.clearPortFile) server.clearPortFile(); });
+
+// The important one: closing the lid here has to leave everything pushed
+// before the other laptop is opened.
+app.on('before-quit', (e) => {
+  if (quitting) return;
+  const st = sync.status();
+  if (!st.ready || !st.remote) return;
+  quitting = true;
+  e.preventDefault();
+  clearInterval(syncTimer);
+  const done = () => app.exit(0);
+  Promise.race([
+    sync.syncNow('quit'),
+    new Promise((r) => setTimeout(r, 6000)),      // never hold the app hostage
+  ]).then(done, done);
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

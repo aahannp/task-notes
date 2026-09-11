@@ -330,6 +330,40 @@ The log lives in `data/mcp-log.jsonl`, one line per call, appended by the MCP se
 
 <br>
 
+## Two laptops
+
+The data folder can be a git repository of its own. Committing is the offline copy and pushing is the sync — which is the whole reason for git rather than something bespoke: an edit made on a plane is just a commit that has not been pushed yet.
+
+```bash
+cd ~/task-notes/data
+git init -b main
+git add -A && git commit -m "task notes data"
+git remote add origin <your private repo url>
+git push -u origin main
+```
+
+Nothing in the app creates a repository or a remote on its own — where your work goes is a decision, not a side effect of launching something. Until you do the above, the **Sync** pill says *not set up* and behaves exactly as before.
+
+Once it is set up: the app **pulls before the server starts**, pushes when you leave the window, every five minutes, and on quit. That last one is what makes switching machines work — closing the lid leaves everything pushed before you open the other laptop. Offline, edits still commit locally and go up next time.
+
+**Four things never travel.** `port.json` most of all: it says where *this* machine's server is listening, and a synced copy would have one laptop's MCP server dialling the other's port. Also `mini-window.json` (window position), `mcp-log.jsonl` (append-only, would conflict every time) and `.sync-ack`.
+
+**The Spotify token is handled specially.** `spotify-user.json` is rewritten whenever the access token refreshes — roughly hourly — so committing it naively would mean a commit an hour, each carrying a live credential into history that outlives any later rotation. It is only committed when the *refresh* token actually changes.
+
+**Commit hooks are turned off in the data repo.** Cloning it on a work machine picks up whatever hooks are configured globally, which on ours means a secret scanner — and it would block the sync outright on a folder that deliberately holds an OAuth token. The repo gets its own empty hooks directory rather than a `--no-verify` on a scanner doing its job somewhere it was never meant to run.
+
+### When both machines changed
+
+Nothing is ever merged automatically. Every write in this app rewrites a whole file, so a three-way merge would produce something neither machine wrote. Instead the local side is parked on a `local-<timestamp>` branch, the remote is taken as canonical, and the app says so until you have looked:
+
+> **Both machines changed things.** Your local work is safe on the branch `local-2026-09-11T23-16-08`, and the version from the other machine is what you are looking at now.
+
+The branch is never deleted. *I've looked at it* only stops the warning, and it survives quitting the app — the warning is read back off the repository rather than remembered, so closing the lid cannot quietly clear a notice about work still sitting unread on a branch.
+
+Every record now carries `updatedAt`, stamped server-side by comparing against what was on disk, so a future merge can tell two versions of the same task apart. It is set once per real change and never by a no-op save.
+
+<br>
+
 ## Your data
 
 Everything lives in `data/`, which is git-ignored:
@@ -350,6 +384,7 @@ Everything lives in `data/`, which is git-ignored:
 | `docs/<id>.md` | one plain markdown file per document — readable outside the app |
 | `port.json` | where the app is listening, so the MCP server can find it; removed on quit |
 | `mcp-log.jsonl` | one line per MCP call — what was asked, what changed, how long it took |
+| `.gitignore`, `.sync-ack` | written by the sync; the things that must never travel, and the conflict you have already seen |
 | `docs/<id>.versions.json` | recent version history for that document |
 | `assets/<id>/…` | images embedded in that document |
 

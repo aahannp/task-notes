@@ -1415,6 +1415,14 @@
   .mcp-hint code { font-family: var(--mono); font-size: 11px; background: var(--panel-2);
     border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
 
+  .sync-conflict { border: 1px solid rgba(245,166,35,.4); background: rgba(245,166,35,.08);
+    border-radius: var(--r-md); padding: 13px 15px; margin-bottom: 20px; font-size: 13px; line-height: 1.55; }
+  .sync-conflict b { color: #f5a623; }
+  .sync-acts { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; align-items: center; }
+  .sync-pre { font-family: var(--mono); font-size: 11.5px; line-height: 1.75; color: var(--muted);
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r-sm);
+    padding: 12px 14px; white-space: pre; overflow-x: auto; margin-top: 10px; }
+
   /* ---- Backlog ---- */
   .bl { margin: 26px 0 4px; }
   .bl-head { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
@@ -2790,6 +2798,7 @@
       </div>
       <span class="count" id="count"></span>
       <button class="summary-btn" id="calendarBtn" style="display:none">📅 Calendar</button>
+      <button class="mcp-pill" id="syncPill" title="Data sync"><span class="mcp-dot" id="syncDot"></span><span id="syncLabel">Sync</span></button>
       <button class="mcp-pill" id="mcpPill" title="MCP health"><span class="mcp-dot" id="mcpDot"></span>MCP</button>
       <button class="summary-btn" id="summaryBtn">📊 Summary</button>
     </div>
@@ -3027,6 +3036,17 @@
       <button class="fm-spot-play" id="fmSpotPlay" title="Play / Pause">▶</button>
       <button id="fmSpotNext" title="Next">⏭</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="syncPanel">
+  <div class="modal mcp-modal">
+    <div class="modal-head">
+      <h2>Sync</h2>
+      <span class="mcp-state" id="syncState"></span>
+      <button class="modal-close" id="syncClose" title="Close">✕</button>
+    </div>
+    <div class="modal-body" id="syncBody"></div>
   </div>
 </div>
 
@@ -3800,6 +3820,7 @@ async function load() {
   startReminderWatch();
   backlogNotify();
   fetchMcp().then(renderMcpPill);
+  fetchSync().then(renderSyncPill);
 
   // The agenda belongs to the day being viewed, so it has to follow a day
   // change. Nothing was doing that: the only thing refreshing it was the 60s
@@ -7638,6 +7659,132 @@ async function saveFocusWrap() {
 }
 
 // =====================================================================
+// DATA SYNC — the same data on more than one machine.
+//
+// The folder is a git repo; committing is the offline copy and pushing is
+// the sync. This side only reports and asks; all of it happens in sync/git.js.
+// =====================================================================
+let syncData = null;
+let syncPanelTimer = null;
+
+async function fetchSync() {
+  try { syncData = await (await fetch('/api/sync')).json(); } catch { syncData = null; }
+  return syncData;
+}
+
+function syncHealth(d) {
+  const st = d && d.sync;
+  if (!st || !st.ready) return { cls: '', label: 'not set up', short: 'Sync' };
+  if (!st.remote) return { cls: 'warn', label: 'no remote configured', short: 'Sync' };
+  if (st.conflict) return { cls: 'warn', label: 'diverged — your other machine had changes too', short: 'Conflict' };
+  if (st.lastError) return { cls: 'warn', label: st.lastError, short: 'Sync' };
+  if (st.pending || st.ahead) {
+    const n = st.pending || st.ahead;
+    return { cls: 'warn', label: n + ' waiting to go up', short: String(n) + ' up' };
+  }
+  // lastSync only counts this run of the app, so its absence does not mean
+  // out of date — nothing ahead and nothing behind does.
+  if (st.behind) return { cls: 'warn', label: st.behind + ' to pull', short: String(st.behind) + ' down' };
+  return {
+    cls: 'live', short: 'Synced',
+    label: st.lastSync ? 'synced ' + relTime(st.lastSync) : 'up to date',
+  };
+}
+
+function renderSyncPill() {
+  const pill = $('#syncPill');
+  if (!pill) return;
+  const h = syncHealth(syncData);
+  pill.className = 'mcp-pill' + (h.cls ? ' ' + h.cls : '');
+  pill.title = 'Sync — ' + h.label;
+  $('#syncLabel').textContent = h.short;
+}
+
+function renderSyncPanel() {
+  const el = $('#syncBody');
+  if (!el) return;
+  const h = syncHealth(syncData);
+  $('#syncState').textContent = h.label;
+
+  if (!syncData) { el.innerHTML = '<div class="mcp-none">Could not read the sync state.</div>'; return; }
+  const st = syncData.sync || {};
+
+  if (!st.ready || !st.remote) {
+    el.innerHTML = '<div class="mcp-none">'
+      + (st.ready ? 'The data folder is a git repository, but has no remote.' : 'The data folder is not a git repository yet.')
+      + '</div><div class="mcp-hint">Nothing here creates a repository on its own — where your work goes is a decision, '
+      + 'not a side effect of launching the app. To set it up:</div>'
+      + '<div class="sync-pre">' + escapeHtml(syncData.setup || '') + '</div>';
+    return;
+  }
+
+  const stat = (b, l) => '<div class="mcp-stat"><div class="b">' + b + '</div><div class="l">' + l + '</div></div>';
+  let html = '';
+
+  if (st.conflict) {
+    html += '<div class="sync-conflict"><b>Both machines changed things.</b><br>'
+      + 'Your local work is safe on the branch <code>' + escapeHtml(st.conflict.branch) + '</code>, and the version from '
+      + 'the other machine is what you are looking at now. Nothing was merged automatically — a whole-file merge of these '
+      + 'would invent something neither machine wrote.'
+      + '<div class="sync-acts"><button class="btn-ghost sm" id="syncAck">I\u2019ve looked at it</button>'
+      + '<span class="mcp-hint" style="margin:0">Keeps the branch; stops the warning.</span></div></div>';
+  }
+
+  html += '<div class="mcp-sec"><div class="mcp-h">State</div><div class="mcp-grid">'
+    + stat(st.pending || 0, 'file' + (st.pending === 1 ? '' : 's') + ' changed')
+    + stat(st.ahead || 0, 'commit' + (st.ahead === 1 ? '' : 's') + ' to push')
+    + stat(st.behind || 0, 'to pull')
+    + stat(st.lastSync ? relTime(st.lastSync) : '—', 'synced this session')
+    + '</div></div>';
+
+  html += '<div class="mcp-sec"><div class="mcp-h">Where</div><div class="mcp-rows">'
+    + '<div class="mcp-row"><span class="t">remote</span><span class="x">' + escapeHtml(st.remote) + '</span></div>'
+    + '<div class="mcp-row"><span class="t">branch</span><span class="x">' + escapeHtml(st.branch || 'main') + '</span></div>'
+    + '<div class="mcp-row"><span class="t">folder</span><span class="x">' + escapeHtml(st.data || '') + '</span></div>'
+    + '</div>'
+    + (st.lastError ? '<div class="mcp-hint">' + escapeHtml(st.lastError) + '</div>' : '')
+    + '<div class="mcp-hint">Pushes happen when you leave the window, every five minutes, and on quit. '
+    + 'Offline, edits still commit here and go up next time.</div>'
+    + '</div>';
+
+  html += '<div class="sync-acts"><button class="btn-primary" id="syncNow"'
+    + (st.busy ? ' disabled' : '') + '>' + (st.busy ? 'Syncing…' : 'Sync now') + '</button></div>';
+
+  el.innerHTML = html;
+  const ack = $('#syncAck');
+  if (ack) ack.onclick = async () => {
+    ack.disabled = true;
+    try { await fetch('/api/sync?do=ack', { method: 'POST' }); } catch {}
+    await fetchSync(); renderSyncPanel(); renderSyncPill();
+  };
+  const btn = $('#syncNow');
+  if (btn) btn.onclick = async () => {
+    btn.disabled = true; btn.textContent = 'Syncing…';
+    try { syncData = await (await fetch('/api/sync', { method: 'POST' })).json(); } catch {}
+    await fetchSync();
+    renderSyncPanel(); renderSyncPill();
+  };
+}
+
+async function openSync() {
+  $('#syncPanel').classList.remove('hidden');
+  $('#syncBody').innerHTML = '<div class="mcp-none">Checking…</div>';
+  await fetchSync();
+  renderSyncPanel(); renderSyncPill();
+  clearInterval(syncPanelTimer);
+  syncPanelTimer = setInterval(async () => {
+    if ($('#syncPanel').classList.contains('hidden')) return clearInterval(syncPanelTimer);
+    await fetchSync(); renderSyncPanel(); renderSyncPill();
+  }, 8000);
+}
+function closeSync() { $('#syncPanel').classList.add('hidden'); clearInterval(syncPanelTimer); }
+if ($('#syncPill')) {
+  $('#syncPill').onclick = openSync;
+  $('#syncClose').onclick = closeSync;
+  $('#syncPanel').onclick = (e) => { if (e.target === $('#syncPanel')) closeSync(); };
+}
+
+// =====================================================================
 // MCP HEALTH — what Claude has been doing to this data.
 //
 // The counters matter less than the last section: a list of every change
@@ -10188,6 +10335,7 @@ function startReminderWatch() {
     backlogNotify();
     pollExternalChanges();
     fetchMcp().then(renderMcpPill);
+    fetchSync().then(renderSyncPill);
   }, 15000);
 }
 
@@ -11897,6 +12045,7 @@ document.addEventListener('keydown', (e) => {
   // escapable is exactly what it is not.
   if (!$('#remBlock').classList.contains('hidden')) return;
   if (!$('#mcpPanel').classList.contains('hidden')) return closeMcp();
+  if (!$('#syncPanel').classList.contains('hidden')) return closeSync();
   // Inside the block editor, Escape means "leave this block" — it used to fall
   // through to here and close the document, dumping you back on the board.
   if (e.target && e.target.closest && e.target.closest('#beSurface')) return;

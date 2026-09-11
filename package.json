@@ -21,6 +21,7 @@
       "main.js",
       "preload.js",
       "server.js",
+      "sync/**/*",
       "public/**/*",
       "package.json"
     ],
