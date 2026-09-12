@@ -352,6 +352,10 @@ Once it is set up: the app **pulls before the server starts**, pushes when you l
 
 **Commit hooks are turned off in the data repo.** Cloning it on a work machine picks up whatever hooks are configured globally, which on ours means a secret scanner — and it would block the sync outright on a folder that deliberately holds an OAuth token. The repo gets its own empty hooks directory rather than a `--no-verify` on a scanner doing its job somewhere it was never meant to run.
 
+The **⟳** next to the Sync pill does it on demand: pull, push, then re-read the day, the stores and whichever page is open — pulling files that nothing looks at is not syncing.
+
+If a machine has no history at all, the board says which folder it is reading and whether that folder is connected to anything. An empty board on a new laptop looks exactly like an empty board on a new day, and the difference is the whole problem.
+
 ### When both machines changed
 
 Nothing is ever merged automatically. Every write in this app rewrites a whole file, so a three-way merge would produce something neither machine wrote. Instead the local side is parked on a `local-<timestamp>` branch, the remote is taken as canonical, and the app says so until you have looked:
@@ -361,6 +365,14 @@ Nothing is ever merged automatically. Every write in this app rewrites a whole f
 The branch is never deleted. *I've looked at it* only stops the warning, and it survives quitting the app — the warning is read back off the repository rather than remembered, so closing the lid cannot quietly clear a notice about work still sitting unread on a branch.
 
 Every record now carries `updatedAt`, stamped server-side by comparing against what was on disk, so a future merge can tell two versions of the same task apart. It is set once per real change and never by a no-op save.
+
+<br>
+
+## Updating
+
+The version chip in the header checks this repo's releases. It turns amber when there is a newer one, shows the notes, and downloads the `.dmg` into your Downloads folder and reveals it in Finder.
+
+It stops there on purpose. An unsigned app cannot replace itself on disk while it is running, so it tells you what to do — drag it to Applications and reopen — rather than pretending to install something and leaving you with two copies and no idea which one is open. Your data is untouched either way; it lives outside the app.
 
 <br>
 
