@@ -1,6 +1,7 @@
 // Electron main process — wraps the local Task Notes server in a native window,
 // plus a small always-on-top Focus companion window.
-const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut, Notification } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut, Notification, dialog } = require('electron');
+const https = require('https');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -258,6 +259,51 @@ app.whenReady().then(async () => {
 app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch {} });
 
 app.on('before-quit', saveMiniState);
+// Downloading the new build, and then getting out of the way. An unsigned app
+// cannot replace itself on disk while it is running, so this stops at "here it
+// is, in Finder" rather than pretending it can install anything.
+ipcMain.handle('update:download', async (_e, payload) => {
+  const url = payload && payload.url;
+  const name = (payload && payload.name) || 'Task Notes.dmg';
+  if (!/^https:\/\/github\.com\/|^https:\/\/objects\.githubusercontent\.com\//.test(String(url || ''))) {
+    return { ok: false, error: 'refusing to download from an unexpected host' };
+  }
+  const dest = path.join(app.getPath('downloads'), name);
+  try {
+    await new Promise((resolve, reject) => {
+      const get = (u, hops) => {
+        if (hops > 5) return reject(new Error('too many redirects'));
+        https.get(u, { headers: { 'User-Agent': 'task-notes/' + app.getVersion() } }, (r) => {
+          if (r.statusCode >= 300 && r.statusCode < 400 && r.headers.location) {
+            r.resume();
+            return get(r.headers.location, hops + 1);
+          }
+          if (r.statusCode !== 200) { r.resume(); return reject(new Error('HTTP ' + r.statusCode)); }
+          const out = fs.createWriteStream(dest);
+          r.pipe(out);
+          out.on('finish', () => out.close(() => resolve()));
+          out.on('error', reject);
+        }).on('error', reject);
+      };
+      get(url, 0);
+    });
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+  shell.showItemInFolder(dest);
+  if (win && !win.isDestroyed()) {
+    dialog.showMessageBox(win, {
+      type: 'info',
+      title: 'Update downloaded',
+      message: name + ' is in your Downloads folder.',
+      detail: 'Open it, drag Task Notes to Applications and replace the old one, then quit and reopen the app. '
+        + 'Your data is untouched — it lives outside the app.',
+      buttons: ['OK'],
+    });
+  }
+  return { ok: true, path: dest };
+});
+
 app.on('will-quit', () => { if (server.clearPortFile) server.clearPortFile(); });
 
 // The important one: closing the lid here has to leave everything pushed

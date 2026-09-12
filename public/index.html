@@ -1373,12 +1373,29 @@
     border: 1px solid rgba(124,155,255,.24); border-radius: 15px; padding: 19px 16px; }
   .wr-hero-n b { display: block; font-size: 27px; font-weight: 750; letter-spacing: -.9px; }
   .wr-hero-n span { font-size: 12px; color: var(--muted); }
+  .mcp-pill.new { color: #f5a623; border-color: rgba(245,166,35,.45); }
+  .upd-notes { font-size: 12.5px; line-height: 1.6; color: var(--muted); white-space: pre-wrap;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r-sm);
+    padding: 12px 14px; margin-top: 12px; max-height: 240px; overflow-y: auto; }
+
+  .nodata { border: 1px solid rgba(245,166,35,.4); background: rgba(245,166,35,.07);
+    border-radius: var(--r-md); padding: 15px 17px; margin-bottom: 18px; font-size: 13.5px; line-height: 1.6; }
+  .nodata b { color: #f5a623; }
+  .nodata code { font-family: var(--mono); font-size: 12px; background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+  .nodata .nd-acts { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
   /* ---- MCP health ---- */
   .mcp-pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ui);
     font-size: 12px; font-weight: 650; letter-spacing: .3px; color: var(--muted);
     background: var(--panel); border: 1px solid var(--line); border-radius: 99px;
     padding: 6px 11px; cursor: pointer; transition: .15s; }
   .mcp-pill:hover { color: var(--text); border-color: var(--accent); }
+  .mcp-pill.icon { padding: 6px 9px; font-size: 13px; line-height: 1; }
+  .mcp-pill.icon.spin { pointer-events: none; opacity: .7; }
+  .mcp-pill.icon.spin span, .mcp-pill.icon.spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .mcp-pill.icon.spin { animation: none; } }
   .mcp-dot { width: 7px; height: 7px; border-radius: 50%; background: #6b7285; flex-shrink: 0; }
   .mcp-pill.live .mcp-dot { background: var(--green, #3fb27f); }
   .mcp-pill.live { color: var(--text); }
@@ -2799,6 +2816,8 @@
       <span class="count" id="count"></span>
       <button class="summary-btn" id="calendarBtn" style="display:none">📅 Calendar</button>
       <button class="mcp-pill" id="syncPill" title="Data sync"><span class="mcp-dot" id="syncDot"></span><span id="syncLabel">Sync</span></button>
+      <button class="mcp-pill icon" id="syncNowBtn" title="Pull and push now" aria-label="Sync now">⟳</button>
+      <button class="mcp-pill" id="verPill" title="App version">v1.0.0</button>
       <button class="mcp-pill" id="mcpPill" title="MCP health"><span class="mcp-dot" id="mcpDot"></span>MCP</button>
       <button class="summary-btn" id="summaryBtn">📊 Summary</button>
     </div>
@@ -2983,6 +3002,7 @@
   <div class="agenda" id="agenda" style="display:none"></div>
   <div class="resurface" id="resurface" style="display:none"></div>
   <div class="inboxnudge" id="inboxNudge" style="display:none"></div>
+  <div class="nodata" id="noData" style="display:none"></div>
   <div class="dayhints" id="dayHints" style="display:none"></div>
   <div class="learn-today" id="learnTodayCard"></div>
 
@@ -3036,6 +3056,17 @@
       <button class="fm-spot-play" id="fmSpotPlay" title="Play / Pause">▶</button>
       <button id="fmSpotNext" title="Next">⏭</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="updPanel">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Version</h2>
+      <span class="mcp-state" id="updState"></span>
+      <button class="modal-close" id="updClose" title="Close">✕</button>
+    </div>
+    <div class="modal-body" id="updBody"></div>
   </div>
 </div>
 
@@ -3820,7 +3851,8 @@ async function load() {
   startReminderWatch();
   backlogNotify();
   fetchMcp().then(renderMcpPill);
-  fetchSync().then(renderSyncPill);
+  fetchSync().then(() => { renderSyncPill(); renderNoData(); });
+  fetchUpdate().then(renderVerPill);
 
   // The agenda belongs to the day being viewed, so it has to follow a day
   // change. Nothing was doing that: the only thing refreshing it was the 60s
@@ -7380,6 +7412,7 @@ function renderTodayExtras() {
   renderResurfaceCard();
   renderInboxNudge();
   renderBacklog();
+  renderNoData();
 }
 function renderContinueStrip() {
   const el = $('#continueStrip'); if (!el) return;
@@ -7436,6 +7469,34 @@ function renderResurfaceCard() {
   $('#rsSnooze').onclick = () => reviewAction(due.id, 'snooze');
   $('#rsArchive').onclick = () => reviewAction(due.id, 'archive');
 }
+// An empty board on a second machine looks identical to an empty board on a
+// first day, and the difference matters enormously. If there is no history
+// anywhere, say which folder is being read — that one line is the difference
+// between "my data is gone" and "I cloned it to the wrong place".
+function renderNoData() {
+  const el = $('#noData');
+  if (!el) return;
+  const anyHistory = (allDays || []).some((d) => (d.tasks || []).length);
+  const st = (syncData && syncData.sync) || null;
+  if (anyHistory || !st) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = '<b>No tasks on this machine yet.</b><br>'
+    + 'Task Notes is reading <code>' + escapeHtml(st.data || '') + '</code>'
+    + (st.ready && st.remote
+        ? ', which is synced to <code>' + escapeHtml(st.remote) + '</code> — press Sync to pull.'
+        : ', and that folder is not connected to your other machine. '
+          + 'If you cloned the data repo somewhere else, it needs to be at exactly that path.')
+    + '<div class="nd-acts">'
+    + (st.ready && st.remote
+        ? '<button class="btn-primary sm" id="ndSync">Pull now</button>'
+        : '<button class="btn-ghost sm" id="ndHow">How to connect it</button>')
+    + '</div>';
+  const a1 = $('#ndSync');
+  if (a1) a1.onclick = async () => { a1.disabled = true; a1.textContent = 'Pulling…'; await runSync(); };
+  const a2 = $('#ndHow');
+  if (a2) a2.onclick = openSync;
+}
+
 function renderInboxNudge() {
   const el = $('#inboxNudge'); if (!el) return;
   const n = openCaptures().length;
@@ -7659,6 +7720,92 @@ async function saveFocusWrap() {
 }
 
 // =====================================================================
+// VERSION — is there a newer build, and fetching it.
+//
+// It stops at "here it is, in Finder". An unsigned app cannot replace itself
+// on disk while it is running, and pretending otherwise would be the kind of
+// half-working update that leaves you with two copies and no idea which one
+// you are looking at.
+// =====================================================================
+let updData = null;
+
+async function fetchUpdate(force) {
+  try { updData = await (await fetch('/api/update' + (force ? '?force=1' : ''))).json(); } catch { updData = null; }
+  return updData;
+}
+
+function renderVerPill() {
+  const pill = $('#verPill');
+  if (!pill) return;
+  const d = updData;
+  if (!d) { pill.textContent = 'v?'; pill.className = 'mcp-pill'; return; }
+  pill.textContent = d.newer ? 'Update' : 'v' + d.current;
+  pill.className = 'mcp-pill' + (d.newer ? ' new' : '');
+  pill.title = d.newer ? 'Version ' + d.latest + ' is available' : 'Task Notes ' + d.current;
+}
+
+function renderUpdPanel() {
+  const el = $('#updBody');
+  if (!el) return;
+  const d = updData;
+  if (!d) { el.innerHTML = '<div class="mcp-none">Could not check.</div>'; $('#updState').textContent = ''; return; }
+
+  $('#updState').textContent = d.newer ? d.latest + ' available' : 'you are on ' + d.current;
+  let html = '<div class="mcp-rows">'
+    + '<div class="mcp-row"><span class="t">installed</span><span class="x">' + escapeHtml(d.current) + '</span></div>'
+    + '<div class="mcp-row"><span class="t">latest</span><span class="x">'
+      + escapeHtml(d.latest || (d.none ? 'no releases published yet' : d.error || 'unknown')) + '</span></div>'
+    + '</div>';
+
+  if (d.newer && d.asset) {
+    html += '<div class="sync-acts"><button class="btn-primary" id="updGet">Download '
+      + escapeHtml(d.latest) + (d.asset.size ? ' · ' + Math.round(d.asset.size / 1048576) + ' MB' : '') + '</button>'
+      + '<button class="btn-ghost sm" id="updCheck">Check again</button></div>';
+  } else if (d.newer) {
+    html += '<div class="mcp-hint">' + escapeHtml(d.latest) + ' is out, but that release has no .dmg attached.</div>'
+      + '<div class="sync-acts"><button class="btn-ghost sm" id="updOpen">Open the release page</button>'
+      + '<button class="btn-ghost sm" id="updCheck">Check again</button></div>';
+  } else {
+    html += '<div class="mcp-hint">'
+      + (d.none ? 'Nothing has been released on GitHub yet, so there is nothing to compare against.'
+         : d.error ? 'Could not reach GitHub: ' + escapeHtml(d.error)
+         : 'This is the newest build.')
+      + '</div><div class="sync-acts"><button class="btn-ghost sm" id="updCheck">Check again</button></div>';
+  }
+  if (d.notes) html += '<div class="upd-notes">' + escapeHtml(d.notes) + '</div>';
+  el.innerHTML = html;
+
+  const again = $('#updCheck');
+  if (again) again.onclick = async () => {
+    again.disabled = true; again.textContent = 'Checking…';
+    await fetchUpdate(true); renderUpdPanel(); renderVerPill();
+  };
+  const open = $('#updOpen');
+  if (open) open.onclick = () => { if (d.page) window.open(d.page, '_blank'); };
+  const get = $('#updGet');
+  if (get) get.onclick = async () => {
+    if (!(DESKTOP && window.tn && window.tn.downloadUpdate)) { window.open(d.asset.url, '_blank'); return; }
+    get.disabled = true; get.textContent = 'Downloading…';
+    const r = await window.tn.downloadUpdate({ url: d.asset.url, name: d.asset.name });
+    get.textContent = r && r.ok ? 'In your Downloads folder' : 'Failed — ' + ((r && r.error) || 'unknown');
+    if (!r || !r.ok) get.disabled = false;
+  };
+}
+
+async function openUpdate() {
+  $('#updPanel').classList.remove('hidden');
+  $('#updBody').innerHTML = '<div class="mcp-none">Checking…</div>';
+  await fetchUpdate();
+  renderUpdPanel(); renderVerPill();
+}
+function closeUpdate() { $('#updPanel').classList.add('hidden'); }
+if ($('#verPill')) {
+  $('#verPill').onclick = openUpdate;
+  $('#updClose').onclick = closeUpdate;
+  $('#updPanel').onclick = (e) => { if (e.target === $('#updPanel')) closeUpdate(); };
+}
+
+// =====================================================================
 // DATA SYNC — the same data on more than one machine.
 //
 // The folder is a git repo; committing is the offline copy and pushing is
@@ -7760,10 +7907,38 @@ function renderSyncPanel() {
   const btn = $('#syncNow');
   if (btn) btn.onclick = async () => {
     btn.disabled = true; btn.textContent = 'Syncing…';
-    try { syncData = await (await fetch('/api/sync', { method: 'POST' })).json(); } catch {}
-    await fetchSync();
-    renderSyncPanel(); renderSyncPill();
+    await runSync();
+    renderSyncPanel();
   };
+}
+
+// Pull, then push, then bring whatever arrived onto the screen. The reload is
+// the point: pulling files nobody looks at is not syncing.
+let syncRunning = false;
+async function runSync() {
+  if (syncRunning) return;
+  syncRunning = true;
+  const btn = $('#syncNowBtn');
+  if (btn) btn.classList.add('spin');
+  try {
+    syncData = await (await fetch('/api/sync', { method: 'POST' })).json();
+  } catch { syncData = null; }
+  await fetchSync();
+  renderSyncPill();
+  if (!$('#syncPanel').classList.contains('hidden')) renderSyncPanel();
+
+  // Whatever came down is on disk now, and this side is still holding what it
+  // had. Re-read rather than wait for the fifteen-second poll to notice.
+  await refreshDays();
+  await load();
+  await loadStores(true);
+  renderTodayExtras();
+  if (activePage) openPage(activePage);
+
+  const st = (syncData && syncData.sync) || {};
+  flash(st.lastError ? '⚠ ' + st.lastError.slice(0, 60) : '↻ Synced');
+  if (btn) btn.classList.remove('spin');
+  syncRunning = false;
 }
 
 async function openSync() {
@@ -7778,6 +7953,7 @@ async function openSync() {
   }, 8000);
 }
 function closeSync() { $('#syncPanel').classList.add('hidden'); clearInterval(syncPanelTimer); }
+if ($('#syncNowBtn')) $('#syncNowBtn').onclick = runSync;
 if ($('#syncPill')) {
   $('#syncPill').onclick = openSync;
   $('#syncClose').onclick = closeSync;
@@ -10335,7 +10511,7 @@ function startReminderWatch() {
     backlogNotify();
     pollExternalChanges();
     fetchMcp().then(renderMcpPill);
-    fetchSync().then(renderSyncPill);
+    fetchSync().then(() => { renderSyncPill(); renderNoData(); });
   }, 15000);
 }
 
@@ -12046,6 +12222,7 @@ document.addEventListener('keydown', (e) => {
   if (!$('#remBlock').classList.contains('hidden')) return;
   if (!$('#mcpPanel').classList.contains('hidden')) return closeMcp();
   if (!$('#syncPanel').classList.contains('hidden')) return closeSync();
+  if (!$('#updPanel').classList.contains('hidden')) return closeUpdate();
   // Inside the block editor, Escape means "leave this block" — it used to fall
   // through to here and close the document, dumping you back on the board.
   if (e.target && e.target.closest && e.target.closest('#beSurface')) return;

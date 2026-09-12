@@ -1,7 +1,7 @@
 {
   "name": "task-notes",
   "productName": "Task Notes",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Personal daily task board with focus timer, Kanban columns, and daily notes.",
   "author": "Aahan Piplani",
   "license": "MIT",

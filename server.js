@@ -151,6 +151,19 @@ const PORT = process.env.PORT || 4321;
 // Data dir is overridable (the desktop app points this at a writable folder outside the app bundle).
 const DATA_DIR = process.env.TASKNOTES_DATA || path.join(__dirname, 'data');
 const sync = require('./sync/git');
+const APP_REPO = 'aahannp/task-notes';
+let APP_VERSION = '0.0.0';
+try { APP_VERSION = require('./package.json').version || '0.0.0'; } catch {}
+let updateCache = { at: 0, value: null };
+// "1.0.10" is newer than "1.0.9"; a string compare says otherwise.
+function isNewer(a, b) {
+  const pa = String(a).replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b).replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  }
+  return false;
+}
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -1223,6 +1236,46 @@ const server = http.createServer((req, res) => {
 
     res.writeHead(405);
     return res.end('Method not allowed');
+  }
+
+  // Is there a newer build? Checked against the releases on the app's own repo.
+  // The answer is cached for ten minutes: a version check is not worth a round
+  // trip every time a panel opens, and GitHub rate-limits anonymous callers.
+  if (u.pathname === '/api/update' && req.method === 'GET') {
+    const current = APP_VERSION;
+    if (updateCache.at && Date.now() - updateCache.at < 10 * 60 * 1000 && !u.searchParams.get('force')) {
+      return sendJSON(res, 200, Object.assign({ current }, updateCache.value));
+    }
+    return https.get({
+      hostname: 'api.github.com', path: '/repos/' + APP_REPO + '/releases/latest',
+      headers: { 'User-Agent': 'task-notes/' + current, Accept: 'application/vnd.github+json' },
+    }, (r) => {
+      let d = '';
+      r.on('data', (c) => (d += c));
+      r.on('end', () => {
+        let j = null;
+        try { j = JSON.parse(d); } catch {}
+        if (r.statusCode === 404 || !j || !j.tag_name) {
+          const val = { latest: null, newer: false, none: true };
+          updateCache = { at: Date.now(), value: val };
+          return sendJSON(res, 200, Object.assign({ current }, val));
+        }
+        if (r.statusCode >= 400) {
+          return sendJSON(res, 200, { current, error: (j && j.message) || ('HTTP ' + r.statusCode) });
+        }
+        const dmg = (j.assets || []).find((x) => /\.dmg$/i.test(x.name || ''));
+        const val = {
+          latest: j.tag_name,
+          newer: isNewer(j.tag_name, current),
+          notes: String(j.body || '').slice(0, 1200),
+          page: j.html_url,
+          publishedAt: j.published_at,
+          asset: dmg ? { name: dmg.name, url: dmg.browser_download_url, size: dmg.size } : null,
+        };
+        updateCache = { at: Date.now(), value: val };
+        sendJSON(res, 200, Object.assign({ current }, val));
+      });
+    }).on('error', (e) => sendJSON(res, 200, { current, error: String(e.message || e) }));
   }
 
   // Data sync state, and a way to ask for one now.

@@ -34,6 +34,11 @@ contextBridge.exposeInMainWorld('tn', {
   notify: (payload) => ipcRenderer.send('notify', payload),
   onNotifyOpen: (cb) => ipcRenderer.on('notify:open', (_e, p) => cb(p)),
 
+  // Fetching a newer build. The shell does it because the renderer cannot
+  // write to disk, and it stops at revealing the file — an unsigned app cannot
+  // replace itself while it is running.
+  downloadUpdate: (payload) => ipcRenderer.invoke('update:download', payload),
+
   // Quick Capture window
   closeCapture: () => ipcRenderer.send('capture:close'),
   captureSaved: (payload) => ipcRenderer.send('capture:saved', payload),
