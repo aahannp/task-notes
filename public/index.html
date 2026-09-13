@@ -9558,14 +9558,25 @@ function beInlineRaw(root, escapeText) {
   walk(root);
   return out.replace(/ /g, ' ');
 }
-// Serialise, then check the result parses back to the same visible text. If it
-// does not, the text contained something that reads as markup and it is
-// escaped instead. Cheap, because this only runs on structural change.
+// Does this markdown survive a round trip?
+//
+// Serialise it, render that, serialise the result again, and require the same
+// string back. Typed `code` and **bold** survive — they are markdown, and the
+// point of typing them is that they become markdown. A literal "2 * 3 * 4"
+// does not: it renders as italics and comes back "2 _ 3 _ 4", so it is escaped
+// instead, which is what escaping is for.
+//
+// The old test compared the *rendered text* against what was typed. Rendered
+// text differs from source for every piece of markdown there is — `x` renders
+// as x, **b** renders as b — so anything you typed by hand failed the test and
+// got escaped. Backticks came out as \` in the file and never rendered again.
+// It only looked correct on a freshly loaded document, where the DOM already
+// held real <code> elements rather than the characters you typed.
 function beInline(root) {
   const plain = beInlineRaw(root, false);
   const probe = document.createElement('div');
   probe.innerHTML = mdInline(plain, docCtx());
-  if (probe.textContent === root.textContent) return plain;
+  if (beInlineRaw(probe, false) === plain) return plain;
   return beInlineRaw(root, true);
 }
 
