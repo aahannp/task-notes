@@ -2262,24 +2262,30 @@
      only existed under 760px — on a normal window the documents list simply
      went away with nothing on screen to explain it or undo it. Whenever the
      sidebar is hidden, the way back is visible. */
-  #page-docs .ws.side-hidden .ws-side-toggle {
-    display: grid; place-items: center; position: absolute; top: 12px; left: 12px;
-    z-index: 10; width: 34px; height: 34px; background: var(--panel);
-    border: 1px solid var(--line); color: var(--text); border-radius: 9px; cursor: pointer; }
-  #page-docs .ws.side-hidden .ws-side-toggle:hover { border-color: var(--accent); }
-  #page-docs .ws.side-hidden .ws-tabs { padding-left: 56px; }
+  /* These used to be absolutely positioned at top-left and top-right, which on
+     a frameless window put the first one directly on top of the traffic lights
+     and let the second be clipped by the rounded corner. They live in the tab
+     row now, so the layout keeps them clear of both. */
+  .ws-tabrow { display: flex; align-items: flex-end; gap: 6px; padding: 10px 10px 0;
+    flex-shrink: 0; -webkit-app-region: drag; }
+  .ws-tabrow > * { -webkit-app-region: no-drag; }
+  /* Only the sidebar was holding this row clear of the traffic lights. */
+  #page-docs .ws.side-hidden .ws-tabrow { padding-left: 84px; }
+  .ws-side-toggle, .ws-rail-toggle { display: none; }
+  #page-docs .ws.side-hidden .ws-side-toggle,
+  #page-docs .ws.rail-hidden .ws-rail-toggle {
+    display: grid; place-items: center; flex: 0 0 auto; width: 30px; height: 30px;
+    margin-bottom: 3px; padding: 0; font-size: 13px; background: var(--panel);
+    border: 1px solid var(--line); color: var(--muted); border-radius: 8px; cursor: pointer; }
+  #page-docs .ws.side-hidden .ws-side-toggle:hover,
+  #page-docs .ws.rail-hidden .ws-rail-toggle:hover { color: var(--text); border-color: var(--accent); }
   /* Hiding a panel should be possible *from* the panel. Both of these were
      only reachable from the toolbar, which is not where anyone looks. */
   .ws-collapse { flex: 0 0 auto; margin-left: auto; opacity: .5; font-size: 13px; line-height: 1;
     padding: 2px 7px; background: none; border: none; color: var(--muted); cursor: pointer; }
   .ws-collapse:hover { opacity: 1; color: var(--text); }
   .ws-rail-toggle { display: none; }
-  #page-docs .ws.rail-hidden .ws-rail-toggle {
-    display: grid; place-items: center; position: absolute; top: 12px; right: 12px;
-    z-index: 10; width: 34px; height: 34px; background: var(--panel);
-    border: 1px solid var(--line); color: var(--text); border-radius: 9px; cursor: pointer; }
-  #page-docs .ws.rail-hidden .ws-rail-toggle:hover { border-color: var(--accent); }
-  #page-docs .ws.zen .ws-rail-toggle { display: none; }
+  #page-docs .ws.zen .ws-rail-toggle, #page-docs .ws.zen .ws-side-toggle { display: none; }
 
   /* Filing by dragging, and adding straight into a folder */
   .tree-item[draggable="true"] { cursor: grab; }
@@ -2330,7 +2336,7 @@
 
   /* tabs */
   .ws-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-  .ws-tabs { display: flex; gap: 2px; padding: 10px 10px 0; overflow-x: auto; flex-shrink: 0; }
+  .ws-tabs { display: flex; gap: 2px; padding: 0; overflow-x: auto; flex: 1 1 auto; min-width: 0; }
   .ws-tabs::-webkit-scrollbar { height: 0; }
   .ws-tab { display: flex; align-items: center; gap: 7px; max-width: 200px; flex-shrink: 0;
     background: var(--panel); border: 1px solid var(--line); border-bottom-color: transparent;
@@ -2550,7 +2556,11 @@
     .ws-side-toggle { display: grid; place-items: center; position: absolute; top: 12px; left: 12px;
       z-index: 7; width: 34px; height: 34px; background: var(--panel); border: 1px solid var(--line);
       color: var(--text); border-radius: 9px; cursor: pointer; }
-    .ws-tabs { padding-left: 56px; }
+    #page-docs .ws .ws-side-toggle { display: grid; place-items: center; flex: 0 0 auto;
+      width: 30px; height: 30px; margin-bottom: 3px; padding: 0; font-size: 13px;
+      background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+      border-radius: 8px; cursor: pointer; }
+    #page-docs .ws .ws-tabrow { padding-left: 84px; }
     .ws-panes { flex-direction: column; }
     .ws-panes:not(.mode-edit):not(.mode-read) .ws-readwrap { display: none; }
     .ws-panes.mode-write #beWrap { flex: 1 1 auto; }
@@ -3494,12 +3504,13 @@
       </div>
       <div class="ws-tree" id="docTree"></div>
     </aside>
-    <button class="ws-side-toggle" id="wsSideToggle" title="Toggle sidebar (⌘\)">☰</button>
-    <button class="ws-rail-toggle" id="wsRailToggle" title="Show the outline panel">▤</button>
-
     <!-- main -->
     <section class="ws-main">
-      <div class="ws-tabs" id="docTabsBar"></div>
+      <div class="ws-tabrow">
+        <button class="ws-side-toggle" id="wsSideToggle" title="Show the document list (⌘\)">☰</button>
+        <div class="ws-tabs" id="docTabsBar"></div>
+        <button class="ws-rail-toggle" id="wsRailToggle" title="Show the outline panel">▤</button>
+      </div>
       <div class="ws-bar" id="docBar"></div>
       <div class="ws-body" id="docBody">
         <div class="ws-empty" id="docEmpty">
