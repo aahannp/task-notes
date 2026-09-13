@@ -7734,6 +7734,27 @@ async function fetchUpdate(force) {
   return updData;
 }
 
+// A raw network error is a dead end for anyone who is not holding the source.
+// These two account for almost every failure on a work laptop, and both have
+// an answer that is not "try again".
+function explainNetError(d) {
+  const e = String(d.error || '');
+  if (/self.signed|unable to (get|verify)|CERT_|certificate/i.test(e)) {
+    const t = d.trust || {};
+    return 'Your network is inspecting HTTPS — a proxy is presenting its own certificate, and this check '
+      + 'did not trust it.<br><br>The app adds the certificates already in your Mac\u2019s keychain to the ones it '
+      + 'ships with, which normally fixes exactly this'
+      + (t.added ? ' (it added <b>' + t.added + '</b> of them this run)' : ' (it added none this run, which is the problem)')
+      + '. If you are still seeing this, the proxy\u2019s root is not in the System keychain on this machine.'
+      + '<br><br><code>' + escapeHtml(e) + '</code>';
+  }
+  if (/ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNREFUSED|ENETUNREACH/i.test(e)) {
+    return 'No route to GitHub — offline, or the VPN is between you and it. Nothing is wrong with the app; '
+      + 'try again when you are back on a network.<br><br><code>' + escapeHtml(e) + '</code>';
+  }
+  return 'Could not reach GitHub: <code>' + escapeHtml(e) + '</code>';
+}
+
 function renderVerPill() {
   const pill = $('#verPill');
   if (!pill) return;
@@ -7768,7 +7789,7 @@ function renderUpdPanel() {
   } else {
     html += '<div class="mcp-hint">'
       + (d.none ? 'Nothing has been released on GitHub yet, so there is nothing to compare against.'
-         : d.error ? 'Could not reach GitHub: ' + escapeHtml(d.error)
+         : d.error ? explainNetError(d)
          : 'This is the newest build.')
       + '</div><div class="sync-acts"><button class="btn-ghost sm" id="updCheck">Check again</button></div>';
   }

@@ -12,6 +12,14 @@ if (!process.env.TASKNOTES_DATA) {
   process.env.TASKNOTES_DATA = path.join(os.homedir(), 'task-notes', 'data');
 }
 
+// Before anything makes an https call. On a managed Mac the TLS-inspecting
+// proxy's root lives in the keychain, which Node ignores — so this hands Node
+// the machine's roots as well as its own. Without it every network call from
+// the app fails with "self signed certificate in certificate chain" while
+// Safari works perfectly, which is a maddening thing to debug.
+const trust = require('./trust');
+trust.install();
+
 const server = require('./server');
 const sync = require('./sync/git');
 const SYNC_EVERY_MS = 5 * 60 * 1000;

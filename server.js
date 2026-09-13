@@ -151,6 +151,8 @@ const PORT = process.env.PORT || 4321;
 // Data dir is overridable (the desktop app points this at a writable folder outside the app bundle).
 const DATA_DIR = process.env.TASKNOTES_DATA || path.join(__dirname, 'data');
 const sync = require('./sync/git');
+const trust = require('./trust');
+trust.install();
 const APP_REPO = 'aahannp/task-notes';
 let APP_VERSION = '0.0.0';
 try { APP_VERSION = require('./package.json').version || '0.0.0'; } catch {}
@@ -1275,7 +1277,9 @@ const server = http.createServer((req, res) => {
         updateCache = { at: Date.now(), value: val };
         sendJSON(res, 200, Object.assign({ current }, val));
       });
-    }).on('error', (e) => sendJSON(res, 200, { current, error: String(e.message || e) }));
+    }).on('error', (e) => sendJSON(res, 200, {
+      current, error: String(e.message || e), trust: trust.status(),
+    }));
   }
 
   // Data sync state, and a way to ask for one now.
