@@ -2268,6 +2268,28 @@
     border: 1px solid var(--line); color: var(--text); border-radius: 9px; cursor: pointer; }
   #page-docs .ws.side-hidden .ws-side-toggle:hover { border-color: var(--accent); }
   #page-docs .ws.side-hidden .ws-tabs { padding-left: 56px; }
+  /* Hiding a panel should be possible *from* the panel. Both of these were
+     only reachable from the toolbar, which is not where anyone looks. */
+  .ws-collapse { flex: 0 0 auto; margin-left: auto; opacity: .5; font-size: 13px; line-height: 1;
+    padding: 2px 7px; background: none; border: none; color: var(--muted); cursor: pointer; }
+  .ws-collapse:hover { opacity: 1; color: var(--text); }
+  .ws-rail-toggle { display: none; }
+  #page-docs .ws.rail-hidden .ws-rail-toggle {
+    display: grid; place-items: center; position: absolute; top: 12px; right: 12px;
+    z-index: 10; width: 34px; height: 34px; background: var(--panel);
+    border: 1px solid var(--line); color: var(--text); border-radius: 9px; cursor: pointer; }
+  #page-docs .ws.rail-hidden .ws-rail-toggle:hover { border-color: var(--accent); }
+  #page-docs .ws.zen .ws-rail-toggle { display: none; }
+
+  /* Filing by dragging, and adding straight into a folder */
+  .tree-item[draggable="true"] { cursor: grab; }
+  .tree-sec.dropping { background: rgba(124,155,255,.12); border-radius: 9px;
+    outline: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: -1px; }
+  .tf-add { opacity: 0; font-size: 14px; line-height: 1; background: none; border: none;
+    color: var(--muted); cursor: pointer; padding: 0 5px; border-radius: 5px; flex-shrink: 0; }
+  .tree-sec:hover .tf-add, .tf-add:focus-visible { opacity: .8; }
+  .tf-add:hover { opacity: 1; color: var(--text); background: var(--panel-2); }
+  .tree-h { display: flex; align-items: center; }
   #page-docs .ws.zen .ws-side-toggle { display: none; }
   .ws-search { position: relative; display: flex; align-items: center; gap: 7px; margin: 0 12px 10px;
     padding: 7px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; color: var(--muted); }
@@ -3463,6 +3485,7 @@
         <span class="ws-side-title">Documents</span>
         <button class="mini-btn" id="docNewBtn" title="New document">＋ New</button>
         <button class="mini-btn" id="docImportBtn" title="Import a markdown file">📥</button>
+        <button class="mini-btn ws-collapse" id="docSideHide" title="Hide this panel (⌘\)" aria-label="Hide the document list">«</button>
       </div>
       <div class="ws-search">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M20.5 20.5l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -3472,6 +3495,7 @@
       <div class="ws-tree" id="docTree"></div>
     </aside>
     <button class="ws-side-toggle" id="wsSideToggle" title="Toggle sidebar (⌘\)">☰</button>
+    <button class="ws-rail-toggle" id="wsRailToggle" title="Show the outline panel">▤</button>
 
     <!-- main -->
     <section class="ws-main">
@@ -3507,6 +3531,7 @@
         <button data-rail="outline" class="active">Outline</button>
         <button data-rail="info">Info</button>
         <button data-rail="links">Links</button>
+        <button class="ws-collapse" id="docRailHide" title="Hide this panel" aria-label="Hide the outline panel">»</button>
       </div>
       <div class="ws-rail-body" id="railOutline"></div>
       <div class="ws-rail-body hidden" id="railInfo"></div>
@@ -5883,7 +5908,7 @@ function renderDocTree() {
     (n != null ? '<span class="n">' + n + '</span>' : '') + '</div>' + inner + '</div>';
   const row = (d) =>
     '<button class="tree-item' + (d.id === docActive ? ' active' : '') +
-    (d.status === 'archived' ? ' archived' : '') + '" data-doc="' + d.id + '">' +
+    (d.status === 'archived' ? ' archived' : '') + '" draggable="true" data-doc="' + d.id + '">' +
     '<span class="ti-ic">' + (d.status === 'archived' ? '🗄' : '📄') + '</span>' +
     '<span class="ti-t">' + escapeHtml(d.title) + '</span>' +
     (d.pinned ? '<span class="ti-pin">📌</span>' : '') + '</button>';
@@ -5901,14 +5926,21 @@ function renderDocTree() {
     }
     folders.forEach((f) => {
       const kids = live.filter((d) => d.folder === f);
-      html += '<div class="tree-sec"><button class="tree-folder" data-folder="' + escapeHtml(f) + '">📁 ' +
-        escapeHtml(f) + '<span class="n" style="margin-left:auto;opacity:.6">' + kids.length + '</span></button>' +
+      html += '<div class="tree-sec" data-drop="' + escapeHtml(f) + '">' +
+        '<button class="tree-folder" data-folder="' + escapeHtml(f) + '">📁 ' + escapeHtml(f) +
+        '<span class="n" style="margin-left:auto;opacity:.6">' + kids.length + '</span></button>' +
+        '<button class="tf-add" data-newin="' + escapeHtml(f) + '" title="New document in ' + escapeHtml(f) + '"' +
+        ' aria-label="New document in ' + escapeHtml(f) + '">＋</button>' +
         '<div class="tree-kids">' + kids.map(row).join('') + '</div></div>';
     });
     const shown = docTagFilter ? live.filter((d) => (d.tags || []).includes(docTagFilter)) : loose;
     // Only worth a section when it has something in it — every document being
     // filed in a folder is a good outcome, not an empty state.
-    if (shown.length) html += sec(docTagFilter ? '#' + docTagFilter : 'Unfiled', shown.length, shown.map(row).join(''));
+    if (shown.length) {
+      const body = sec(docTagFilter ? '#' + docTagFilter : 'Unfiled', shown.length, shown.map(row).join(''));
+      // Dropping here takes a document back out of whatever folder it was in.
+      html += docTagFilter ? body : body.replace('<div class="tree-sec">', '<div class="tree-sec" data-drop="">');
+    }
     else if (docTagFilter) html += sec('#' + docTagFilter, 0, '<div class="tree-none">Nothing tagged that.</div>');
     html += '<div class="tree-sec"><button class="tree-folder" id="docArchToggle">' +
       (docShowArchived ? '☑' : '☐') + ' Show archived</button></div>';
@@ -5937,8 +5969,65 @@ async function renderDocSearchResults(tree, q) {
   wireTree(tree);
 }
 
+let treeDragId = null;
+
 function wireTree(tree) {
-  tree.querySelectorAll('[data-doc]').forEach((b) => { b.onclick = () => openDocument(b.dataset.doc); });
+  tree.querySelectorAll('[data-doc]').forEach((b) => {
+    b.onclick = () => openDocument(b.dataset.doc);
+    // Filing something should be a drag, not a trip to a text field in the
+    // right-hand panel.
+    b.addEventListener('dragstart', (e) => {
+      treeDragId = b.dataset.doc;
+      b.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', b.dataset.doc); } catch {}
+    });
+    b.addEventListener('dragend', () => {
+      treeDragId = null;
+      b.classList.remove('dragging');
+      tree.querySelectorAll('.tree-sec.dropping').forEach((x) => x.classList.remove('dropping'));
+    });
+  });
+
+  tree.querySelectorAll('[data-drop]').forEach((sec) => {
+    sec.addEventListener('dragover', (e) => {
+      if (!treeDragId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      sec.classList.add('dropping');
+    });
+    sec.addEventListener('dragleave', (e) => {
+      if (!sec.contains(e.relatedTarget)) sec.classList.remove('dropping');
+    });
+    sec.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      sec.classList.remove('dropping');
+      const id = treeDragId;
+      treeDragId = null;
+      if (!id) return;
+      const folder = sec.dataset.drop || '';
+      const d = docById(id);
+      if (!d || (d.folder || '') === folder) return;
+      await saveDoc(id, { folder });
+      renderDocTree();
+      if (id === docActive) renderDocSurface();
+      flash(folder ? '📁 Filed in ' + folder : '📤 Out of the folder');
+    });
+  });
+
+  // A new document, already in that folder.
+  tree.querySelectorAll('[data-newin]').forEach((b) => {
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      const folder = b.dataset.newin;
+      const d = await createDoc({ title: 'Untitled', content: '', folder });
+      if (!d) return;
+      renderDocTree();
+      openDocument(d.id);
+      flash('📄 New document in ' + folder);
+    };
+  });
+
   tree.querySelectorAll('[data-tag]').forEach((b) => {
     b.onclick = () => { docTagFilter = docTagFilter === b.dataset.tag ? '' : b.dataset.tag; renderDocTree(); };
   });
@@ -6115,7 +6204,7 @@ function renderDocPreview() {
 // ---------- right rail ----------
 let railTab = 'outline';
 function renderRail() {
-  document.querySelectorAll('.ws-rail-tabs button').forEach((b) =>
+  document.querySelectorAll('.ws-rail-tabs button[data-rail]').forEach((b) =>
     b.classList.toggle('active', b.dataset.rail === railTab));
   ['outline', 'info', 'links'].forEach((k) =>
     $('#rail' + k[0].toUpperCase() + k.slice(1)).classList.toggle('hidden', k !== railTab));
@@ -6490,7 +6579,27 @@ $('#wsSideToggle').onclick = () => {
   if (ws.classList.contains('side-hidden')) ws.classList.remove('side-hidden');
   else ws.classList.toggle('side-open');
 };
-document.querySelectorAll('.ws-rail-tabs button').forEach((b) => {
+// Both panels can be closed from the panel itself, and both have a way back.
+// Bound here rather than in renderDocSurface(), which returns early when no
+// document is open — so the buttons did nothing until you opened one.
+$('#docSideHide').onclick = () => {
+  const ws = wsEl();
+  ws.classList.remove('side-open');
+  ws.classList.add('side-hidden');
+};
+$('#docRailHide').onclick = () => {
+  const ws = wsEl();
+  ws.classList.remove('rail-open');
+  if (innerWidth > 1080) ws.classList.add('rail-hidden');
+  const b = $('#docRailBtn'); if (b) b.classList.remove('on');
+};
+$('#wsRailToggle').onclick = () => {
+  wsEl().classList.remove('rail-hidden');
+  const b = $('#docRailBtn'); if (b) b.classList.add('on');
+};
+// [data-rail] only — the collapse button lives in this row too, and without
+// the qualifier it was being wired up as a fourth tab.
+document.querySelectorAll('.ws-rail-tabs button[data-rail]').forEach((b) => {
   b.onclick = () => { railTab = b.dataset.rail; renderRail(); };
 });
 
@@ -10172,9 +10281,29 @@ function beSyncToolbar() {
   bar.style.top = Math.max(8, box.top - bar.offsetHeight - 8) + 'px';
 }
 
+// Markdown you type only became markdown the next time the document was
+// opened. A paragraph is deliberately never redrawn while the caret is in it —
+// pulling the DOM out from under someone mid-word is the worst thing an editor
+// can do — but nothing redrew it afterwards either, so `code` and **bold** sat
+// there as the characters you typed until a reload.
+//
+// Leaving the block is the first moment it is safe, so that is when it happens.
+function beRepaintInline(i) {
+  const root = $('#beSurface');
+  if (root == null || i == null) return;
+  const b = beBlocks[i];
+  if (!b || b.type === 'code' || b.type === 'raw' || b.type === 'table') return;
+  root.querySelectorAll('.be-text[data-i="' + i + '"]').forEach((el) => {
+    if (el === document.activeElement) return;          // still in it — leave it alone
+    const html = b.text ? mdInline(b.text, docCtx()) : '';
+    if (html !== el.innerHTML) el.innerHTML = html;
+  });
+}
+
 // ---- binding ----
 let beTypeTimer = null;
 let beComposing = false;
+let beLastBlock = null;      // the block the caret was in, so it can be repainted on the way out
 function beBind() {
   const root = $('#beSurface');
   if (!root) return;
@@ -10225,13 +10354,24 @@ function beBind() {
     }
     beKeydown(e);
   };
-  root.onblur = () => { beHarvest(); beSync(); };
+  root.onblur = () => {
+    beHarvest(); beSync();
+    beRepaintInline(beLastBlock);
+    beLastBlock = null;
+  };
   // Track which block holds the caret, so the hint appears there and nowhere
   // else. Without this every blank line advertised itself at once.
   root.addEventListener('focusin', (e) => {
     const el = e.target.closest('.be-text');
     root.querySelectorAll('.be-text.be-here').forEach((x) => x.classList.remove('be-here'));
     if (el) el.classList.add('be-here');
+    // Moving between blocks is a departure from the old one.
+    const now = el ? +el.dataset.i : null;
+    if (beLastBlock != null && beLastBlock !== now) {
+      beHarvest(); beSync();
+      beRepaintInline(beLastBlock);
+    }
+    beLastBlock = now;
   });
 
   root.querySelectorAll('[data-check]').forEach((btn) => {
