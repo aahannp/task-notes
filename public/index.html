@@ -332,6 +332,14 @@
   .fm-task { font-size: 21px; font-weight: 600; color: var(--text); max-width: 640px; word-break: break-word; }
   .fm-pickwrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
   .fm-pick-label { font-size: 13px; color: var(--muted); }
+  /* Twenty-odd chips is a wall to read. Typing two letters is faster than
+     finding the one you meant. */
+  .fm-search { display: block; width: min(420px, 80vw); margin: 16px auto 4px;
+    text-align: center; font-size: 14px; padding: 9px 14px; border-radius: 99px;
+    background: var(--panel); border: 1px solid var(--line); color: var(--text); outline: none; }
+  .fm-search:focus { border-color: var(--accent); background: var(--panel-2); }
+  .fm-search::placeholder { color: var(--muted); }
+  .fm-none { font-size: 13px; color: var(--muted); padding: 18px 0; text-align: center; }
   .fm-picker { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 640px; }
   .fm-chip {
     background: var(--panel); border: 1px solid var(--line); color: var(--muted);
@@ -3076,6 +3084,8 @@
       <div class="fm-pick-label">What are you focusing on?</div>
       <button class="fm-targetbtn" id="fmTargetBtn">Choose something…</button>
       <div id="fmContext" style="margin-top:10px"></div>
+      <input class="fm-search" id="fmSearch" placeholder="Search tasks…" autocomplete="off"
+        spellcheck="false" aria-label="Search your open tasks" />
       <div class="fm-picker" id="fmPicker"></div>
     </div>
     <div class="fm-controls">
@@ -4069,23 +4079,91 @@ function openFocusMode() {
   const s = openSession();
   if (s) fmSelectedTask = s.taskId || null;
   $('#focusMode').classList.remove('hidden');
+  fmQuery = '';
+  const box = $('#fmSearch');
+  if (box) box.value = '';
   renderFmPicker();
   updateFocusUI();
+  if (box) setTimeout(() => box.focus(), 60);
 }
 function closeFocusMode() { $('#focusMode').classList.add('hidden'); }
 
+let fmQuery = '';
+
 function renderFmPicker() {
   const el = $('#fmPicker');
-  const opts = [{ id: '', text: '○ No specific task' }].concat(
-    tasks.filter((t) => t.status !== 'done').map((t) => ({ id: t.id, text: t.text }))
-  );
+  const q = fmQuery.trim().toLowerCase();
+  const open = tasks.filter((t) => t.status !== 'done');
+  // The note counts too — half of these are only distinguishable by it.
+  //
+  // Ranked, not just filtered. Typing "gin" was matching "sta(gin)g pod"
+  // ahead of the task actually called "gin functions", and Enter takes the
+  // first one — so the order is the feature, not a nicety.
+  const score = (t) => {
+    const text = (t.text || '').toLowerCase();
+    const hay = (text + ' ' + (t.note || '').toLowerCase());
+    if (!hay.includes(q)) return -1;
+    if (text.startsWith(q)) return 3;                          // the title begins with it
+    if (new RegExp('\\b' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(text)) return 2;  // a word in the title
+    if (text.includes(q)) return 1;                            // somewhere in the title
+    return 0;                                                  // only in the note
+  };
+  const hits = q
+    ? open.map((t) => ({ t, s: score(t) })).filter((x) => x.s >= 0)
+        .sort((a, b) => b.s - a.s).map((x) => x.t)
+    : open;
+  // "No specific task" is a choice, not a search result, so it steps aside
+  // once you are searching.
+  const opts = (q ? [] : [{ id: '', text: '○ No specific task' }])
+    .concat(hits.map((t) => ({ id: t.id, text: t.text })));
+
+  if (!opts.length) {
+    el.innerHTML = '<div class="fm-none">Nothing open matches “' + escapeHtml(fmQuery.trim()) + '”.</div>';
+    return;
+  }
   el.innerHTML = opts.map((o) =>
     `<button class="fm-chip ${(o.id || null) === fmSelectedTask ? 'sel' : ''}" data-id="${o.id}">${escapeHtml(o.text)}</button>`
   ).join('');
   el.querySelectorAll('.fm-chip').forEach((c) => {
-    c.onclick = () => { fmSelectedTask = c.dataset.id || null; fmProject = null; renderFmPicker(); updateFocusUI(); };
+    c.onclick = () => {
+      fmSelectedTask = c.dataset.id || null;
+      fmProject = null;
+      // The chips and the "Choose something…" button were two separate
+      // selections that never told each other anything, so picking a chip
+      // left the button still saying it had nothing.
+      const t = fmSelectedTask ? tasks.find((x) => x.id === fmSelectedTask) : null;
+      fmTarget = t ? { kind: 'task', id: t.id, title: t.text } : null;
+      const btn = $('#fmTargetBtn');
+      if (btn) btn.textContent = t ? '✓ ' + t.text : 'Choose something…';
+      if (typeof renderFocusContext === 'function') renderFocusContext();
+      renderFmPicker();
+      updateFocusUI();
+    };
   });
 }
+
+function bindFmSearch() {
+  const box = $('#fmSearch');
+  if (!box) return;
+  box.oninput = () => { fmQuery = box.value; renderFmPicker(); };
+  box.onkeydown = (e) => {
+    // Enter takes the first match — the whole point of typing two letters is
+    // not to then reach for the mouse.
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const first = $('#fmPicker').querySelector('.fm-chip');
+      if (first) first.click();
+      return;
+    }
+    // Escape clears the search before it leaves focus mode.
+    if (e.key === 'Escape' && box.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      box.value = ''; fmQuery = ''; renderFmPicker();
+    }
+  };
+}
+bindFmSearch();
 
 function renderSessionLog() {
   const el = $('#sessionLog');
