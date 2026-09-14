@@ -63,12 +63,18 @@
   .ambient i:nth-child(1) { width: 46vw; height: 46vw; top: -14vw; left: -8vw;  background: #2a3a7a; }
   .ambient i:nth-child(2) { width: 38vw; height: 38vw; top: 8vw;   right: -10vw; background: #4a2f6e; }
   .ambient i:nth-child(3) { width: 40vw; height: 40vw; bottom: -16vw; left: 26vw; background: #17415c; }
-  @media (prefers-reduced-motion: no-preference) {
-    .ambient i { animation: drift 34s var(--ease-in-out) infinite alternate; }
-    .ambient i:nth-child(2) { animation-duration: 44s; animation-delay: -8s; }
-    .ambient i:nth-child(3) { animation-duration: 52s; animation-delay: -18s; }
-  }
-  @keyframes drift { to { transform: translate3d(4vw, 3vw, 0) scale(1.12); } }
+  /* These used to drift, forever, on a 34-second loop. Measured on an idle
+     window with nothing else happening: the GPU process sat at 98.5% CPU, and
+     turning this one animation off took it to 0.0%.
+     
+     Two things make it that expensive rather than merely wasteful. Scaling a
+     blurred element means the 150px blur cannot be cached as a texture — it is
+     recomputed every frame. And 35 elements in this app use backdrop-filter,
+     all of them above this layer, so every frame it moves they all have to
+     resample what is behind them.
+     
+     The motion was a 46vw blob travelling 4vw over half a minute. Nobody could
+     see it. It cost a core. */
   .wrap { max-width: 1060px; margin: 0 auto; padding: 44px 28px 120px; animation: fadeIn .4s ease; }
   /* Maximised, the board and cards deserve the room rather than leaving half
      the window empty. */
@@ -7954,6 +7960,7 @@ if ($('#verPill')) {
 // =====================================================================
 let syncData = null;
 let syncPanelTimer = null;
+let syncTick = 0;
 
 async function fetchSync() {
   try { syncData = await (await fetch('/api/sync')).json(); } catch { syncData = null; }
@@ -10694,7 +10701,10 @@ function startReminderWatch() {
     backlogNotify();
     pollExternalChanges();
     fetchMcp().then(renderMcpPill);
-    fetchSync().then(() => { renderSyncPill(); renderNoData(); });
+    // Every fourth pass. Reading sync status means six git subprocesses, and
+    // nothing about a remote changes fast enough to be worth 240 of those an
+    // hour. The ⟳ button and the real syncs are unaffected.
+    if ((syncTick = (syncTick + 1) % 4) === 0) fetchSync().then(() => { renderSyncPill(); renderNoData(); });
   }, 15000);
 }
 
