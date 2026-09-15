@@ -1402,6 +1402,15 @@
   .upd-notes { font-size: 12.5px; line-height: 1.6; color: var(--muted); white-space: pre-wrap;
     background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r-sm);
     padding: 12px 14px; margin-top: 12px; max-height: 240px; overflow-y: auto; }
+  .upd-prog { margin-top: 14px; }
+  .upd-prog .bar { height: 6px; }
+  .upd-prog-meta { display: flex; justify-content: space-between; align-items: baseline;
+    margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+  .upd-prog-meta b { color: var(--text); font-size: 12.5px; font-weight: 700;
+    font-variant-numeric: tabular-nums; }
+  .upd-prog-meta span { font-variant-numeric: tabular-nums; }
+  .upd-prog.failed .bar-fill { background: #e5534b; }
+  .upd-prog.done .bar-fill { background: #3fb950; }
 
   .nodata { border: 1px solid rgba(245,166,35,.4); background: rgba(245,166,35,.07);
     border-radius: var(--r-md); padding: 15px 17px; margin-bottom: 18px; font-size: 13.5px; line-height: 1.6; }
@@ -8124,6 +8133,59 @@ function renderVerPill() {
   pill.title = d.newer ? 'Version ' + d.latest + ' is available' : 'Task Notes ' + d.current;
 }
 
+// A download with no feedback is indistinguishable from a hung one. The shell
+// streams byte counts over `update:progress`; this turns them into a bar, a
+// percentage and a live rate. `expect` is GitHub's own asset size, used until
+// the real Content-Length lands so the bar never starts out blank.
+function updProgress(expect) {
+  const acts = $('#updBody .sync-acts');
+  if (!acts) return { tick() {}, settle() {} };
+  const wrap = document.createElement('div');
+  wrap.className = 'upd-prog';
+  wrap.innerHTML = '<div class="bar"><div class="bar-fill"></div></div>'
+    + '<div class="upd-prog-meta"><b>0%</b><span>starting\u2026</span></div>';
+  acts.after(wrap);
+  const fill = wrap.querySelector('.bar-fill');
+  const pct = wrap.querySelector('b');
+  const note = wrap.querySelector('span');
+  const mb = (n) => (n / 1048576).toFixed(1);
+  let lastT = 0, lastB = 0, rate = 0;
+
+  return {
+    tick(p) {
+      const total = (p && p.total) || expect || 0;
+      const got = (p && p.received) || 0;
+      const now = Date.now();
+      if (lastT && now > lastT) {
+        // Smoothed, or it flickers between 0.4 and 9 MB/s on every frame.
+        const inst = (got - lastB) / ((now - lastT) / 1000);
+        rate = rate ? rate * 0.7 + inst * 0.3 : inst;
+      }
+      lastT = now; lastB = got;
+      if (total > 0) {
+        const f = Math.max(0, Math.min(1, got / total));
+        fill.style.width = (f * 100).toFixed(1) + '%';
+        pct.textContent = Math.round(f * 100) + '%';
+        note.textContent = mb(got) + ' / ' + mb(total) + ' MB'
+          + (rate > 0 ? '  \u00b7  ' + mb(rate) + ' MB/s' : '');
+      } else {
+        // No Content-Length: a percentage would be a guess, so don't show one.
+        fill.style.width = '100%';
+        wrap.querySelector('.bar').style.opacity = '.25';
+        pct.textContent = mb(got) + ' MB';
+        note.textContent = rate > 0 ? mb(rate) + ' MB/s' : 'downloading\u2026';
+      }
+    },
+    settle(ok, err) {
+      wrap.classList.add(ok ? 'done' : 'failed');
+      wrap.querySelector('.bar').style.opacity = '1';
+      fill.style.width = '100%';
+      if (ok) { pct.textContent = '100%'; note.textContent = 'saved to Downloads'; }
+      else { pct.textContent = 'stopped'; note.textContent = err || 'download failed'; }
+    },
+  };
+}
+
 function renderUpdPanel() {
   const el = $('#updBody');
   if (!el) return;
@@ -8166,9 +8228,15 @@ function renderUpdPanel() {
   if (get) get.onclick = async () => {
     if (!(DESKTOP && window.tn && window.tn.downloadUpdate)) { window.open(d.asset.url, '_blank'); return; }
     get.disabled = true; get.textContent = 'Downloading…';
-    const r = await window.tn.downloadUpdate({ url: d.asset.url, name: d.asset.name });
-    get.textContent = r && r.ok ? 'In your Downloads folder' : 'Failed — ' + ((r && r.error) || 'unknown');
-    if (!r || !r.ok) get.disabled = false;
+    const bar = updProgress(d.asset.size || 0);
+    const off = window.tn.onUpdateProgress ? window.tn.onUpdateProgress(bar.tick) : null;
+    let r;
+    try { r = await window.tn.downloadUpdate({ url: d.asset.url, name: d.asset.name }); }
+    finally { if (off) off(); }
+    const ok = !!(r && r.ok);
+    bar.settle(ok, ok ? '' : ((r && r.error) || 'unknown'));
+    get.textContent = ok ? 'In your Downloads folder' : 'Failed — ' + ((r && r.error) || 'unknown');
+    if (!ok) get.disabled = false;
   };
 }
 

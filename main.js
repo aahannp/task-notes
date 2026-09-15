@@ -270,7 +270,7 @@ app.on('before-quit', saveMiniState);
 // Downloading the new build, and then getting out of the way. An unsigned app
 // cannot replace itself on disk while it is running, so this stops at "here it
 // is, in Finder" rather than pretending it can install anything.
-ipcMain.handle('update:download', async (_e, payload) => {
+ipcMain.handle('update:download', async (evt, payload) => {
   const url = payload && payload.url;
   const name = (payload && payload.name) || 'Task Notes.dmg';
   if (!/^https:\/\/github\.com\/|^https:\/\/objects\.githubusercontent\.com\//.test(String(url || ''))) {
@@ -287,9 +287,27 @@ ipcMain.handle('update:download', async (_e, payload) => {
             return get(r.headers.location, hops + 1);
           }
           if (r.statusCode !== 200) { r.resume(); return reject(new Error('HTTP ' + r.statusCode)); }
+          // The renderer cannot see the socket, so the shell reports progress.
+          // Throttled: 20 MB arrives as thousands of chunks and a bar only
+          // needs to move a few times a second.
+          const total = Number(r.headers['content-length'] || 0);
+          const send = (received, done) => {
+            try {
+              if (!evt.sender.isDestroyed()) evt.sender.send('update:progress', { received, total, done: !!done });
+            } catch {}
+          };
+          let got = 0, last = 0;
+          send(0, false);
+          r.on('data', (c) => {
+            got += c.length;
+            const now = Date.now();
+            if (now - last < 120) return;
+            last = now;
+            send(got, false);
+          });
           const out = fs.createWriteStream(dest);
           r.pipe(out);
-          out.on('finish', () => out.close(() => resolve()));
+          out.on('finish', () => out.close(() => { send(got, true); resolve(); }));
           out.on('error', reject);
         }).on('error', reject);
       };

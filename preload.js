@@ -38,6 +38,13 @@ contextBridge.exposeInMainWorld('tn', {
   // write to disk, and it stops at revealing the file — an unsigned app cannot
   // replace itself while it is running.
   downloadUpdate: (payload) => ipcRenderer.invoke('update:download', payload),
+  // Byte counts while that download runs. Returns an unsubscribe — the panel
+  // is opened and closed repeatedly and listeners must not pile up.
+  onUpdateProgress: (cb) => {
+    const h = (_e, p) => cb(p);
+    ipcRenderer.on('update:progress', h);
+    return () => ipcRenderer.removeListener('update:progress', h);
+  },
 
   // Quick Capture window
   closeCapture: () => ipcRenderer.send('capture:close'),
