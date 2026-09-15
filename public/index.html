@@ -1454,6 +1454,22 @@
     background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r-sm);
     padding: 12px 14px; white-space: pre; overflow-x: auto; margin-top: 10px; }
 
+  /* Settings hides rather than deletes. Two reasons for the shape of this:
+     an inline style set by a render function would beat a plain rule, hence
+     !important; and it is an attribute rather than a class because several of
+     these sections rebuild their own className on every render, which would
+     silently drop a class but cannot touch an attribute. */
+  [data-hide="1"] { display: none !important; }
+  .set-row { display: flex; align-items: center; gap: 11px; padding: 9px 2px; font-size: 13.5px;
+    cursor: pointer; border-bottom: 1px solid var(--line); }
+  .set-row:last-child { border-bottom: none; }
+  .set-row input { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+  .set-row .sr-t { flex: 1; min-width: 0; }
+  .set-row .sr-s { font-size: 11.5px; color: var(--muted); }
+  .set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
+  @media (max-width: 640px) { .set-grid { grid-template-columns: 1fr; } }
+  .set-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+
   /* ---- Backlog ---- */
   .bl { margin: 26px 0 4px; }
   .bl-head { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
@@ -2860,6 +2876,7 @@
       <button class="summary-btn" id="calendarBtn" style="display:none">📅 Calendar</button>
       <button class="mcp-pill" id="syncPill" title="Data sync"><span class="mcp-dot" id="syncDot"></span><span id="syncLabel">Sync</span></button>
       <button class="mcp-pill icon" id="syncNowBtn" title="Pull and push now" aria-label="Sync now">⟳</button>
+      <button class="mcp-pill icon" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
       <button class="mcp-pill" id="verPill" title="App version">v1.0.0</button>
       <button class="mcp-pill" id="mcpPill" title="MCP health"><span class="mcp-dot" id="mcpDot"></span>MCP</button>
       <button class="summary-btn" id="summaryBtn">📊 Summary</button>
@@ -3003,7 +3020,7 @@
         </div>
       </div>
     </div>
-    <div class="cell focus-cell">
+    <div class="cell focus-cell" id="focusCell">
       <span class="cell-label">Focus · <b id="focusTotal">0m</b> / <span id="focusGoal">4h</span> goal</span>
       <div class="focus-controls">
         <svg class="goal-ring" viewBox="0 0 36 36" width="34" height="34" title="Daily focus goal">
@@ -3100,6 +3117,17 @@
       <button class="fm-spot-play" id="fmSpotPlay" title="Play / Pause">▶</button>
       <button id="fmSpotNext" title="Next">⏭</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="setPanel">
+  <div class="modal mcp-modal">
+    <div class="modal-head">
+      <h2>Settings</h2>
+      <span class="mcp-state" id="setState"></span>
+      <button class="modal-close" id="setClose" title="Close">✕</button>
+    </div>
+    <div class="modal-body" id="setBody"></div>
   </div>
 </div>
 
@@ -5021,7 +5049,9 @@ let storesLoaded = false;
 
 async function loadStore(name) {
   try { return (await (await fetch('/api/store?name=' + name)).json()).value; }
-  catch { return name === 'reviews' ? {} : []; }
+  // The two object-shaped stores need an object back, not an array — normSettings
+  // would cope, but the next one added might not.
+  catch { return (name === 'reviews' || name === 'settings') ? {} : []; }
 }
 const storeTimers = {};
 function saveStore(name, value) {
@@ -5044,11 +5074,13 @@ const saveReviews  = () => saveStore('reviews', reviews);
 
 async function loadStores(force) {
   if (storesLoaded && !force) return;
-  const [p, l, i, a, r, cap, rem, bl] = await Promise.all([
+  const [p, l, i, a, r, cap, rem, bl, st] = await Promise.all([
     loadStore('projects'), loadStore('learning'), loadStore('ideas'),
     loadStore('activity'), loadStore('reviews'), loadStore('captures'),
-    loadStore('reminders'), loadStore('backlog'),
+    loadStore('reminders'), loadStore('backlog'), loadStore('settings'),
   ]);
+  settings = normSettings(st);
+  applySettings();
   reminders = (rem || []).map(normReminder);
   backlog = (bl || []).map(normBacklog);
   projects = (p || []).map(normProject);
@@ -7562,6 +7594,7 @@ function renderTodayExtras() {
   renderInboxNudge();
   renderBacklog();
   renderNoData();
+  applySettings();
 }
 function renderContinueStrip() {
   const el = $('#continueStrip'); if (!el) return;
@@ -7856,6 +7889,144 @@ async function saveFocusWrap() {
   flash(did || next ? '✍️ Saved' : '');
   renderTodayExtras();
   if (activePage === 'focus') renderFocusPage();
+}
+
+// =====================================================================
+// SETTINGS — what this app is, for you.
+//
+// Everything on the Today page above the board is a suggestion about how to
+// work, and not everybody wants the suggestion. Turning a section off hides
+// it; nothing is deleted, and turning it back on restores it exactly.
+//
+// It lives in the synced store rather than localStorage on purpose: "I want
+// the simple version" should follow you to the other laptop.
+// =====================================================================
+const SETTING_SECTIONS = [
+  { k: 'encourage', sel: '#encourage',      label: 'Encouragement line',  sub: '“You’re on a roll”' },
+  { k: 'spotify',   sel: '#spotBar',        label: 'Music player',        sub: 'Spotify card' },
+  { k: 'workcells', sel: '#workCells',      label: 'Location & hours',    sub: 'Home/office, clock in and out' },
+  { k: 'focus',     sel: '#focusCell',      label: 'Focus timer',         sub: 'Timer and daily goal' },
+  { k: 'sessions',  sel: '#sessionLog',     label: 'Focus session log',   sub: 'Today’s finished sessions' },
+  { k: 'agenda',    sel: '#agenda',         label: 'Calendar agenda',     sub: 'Today’s meetings' },
+  { k: 'resurface', sel: '#resurface',      label: 'Learning resurface',  sub: 'Something to revisit' },
+  { k: 'inbox',     sel: '#inboxNudge',     label: 'Inbox nudge',         sub: 'Unprocessed captures' },
+  { k: 'learn',     sel: '#learnTodayCard', label: 'Learn today',         sub: 'One thing to understand' },
+  { k: 'backlog',   sel: '#backlog',        label: 'Backlog strip',       sub: 'Work parked for later' },
+];
+const SETTING_PAGES = [
+  ['tasks', 'Tasks'], ['projects', 'Projects'], ['learning', 'Learning'], ['docs', 'Docs'],
+  ['ideas', 'Ideas'], ['inbox', 'Inbox'], ['calendar', 'Calendar'], ['reminders', 'Reminders'],
+  ['focus', 'Focus'], ['review', 'Review'],
+];
+
+let settings = null;
+function defaultSettings() {
+  const s = { sections: {}, pages: {} };
+  SETTING_SECTIONS.forEach((x) => { s.sections[x.k] = true; });
+  SETTING_PAGES.forEach(([k]) => { s.pages[k] = true; });
+  return s;
+}
+function normSettings(v) {
+  const d = defaultSettings();
+  if (!v || typeof v !== 'object') return d;
+  SETTING_SECTIONS.forEach((x) => {
+    if (v.sections && v.sections[x.k] === false) d.sections[x.k] = false;
+  });
+  SETTING_PAGES.forEach(([k]) => {
+    if (v.pages && v.pages[k] === false) d.pages[k] = false;
+  });
+  return d;
+}
+const saveSettings = () => saveStore('settings', settings);
+
+const setHidden = (el, hide) => {
+  if (!el) return;
+  if (hide) el.setAttribute('data-hide', '1');
+  else el.removeAttribute('data-hide');
+};
+
+function applySettings() {
+  if (!settings) return;
+  SETTING_SECTIONS.forEach((x) => {
+    document.querySelectorAll(x.sel).forEach((el) => setHidden(el, !settings.sections[x.k]));
+  });
+  // The day bar is only a container. With both halves off it is an empty box.
+  setHidden($('#daybar'), !settings.sections.workcells && !settings.sections.focus);
+
+  SETTING_PAGES.forEach(([k]) => {
+    document.querySelectorAll('.nav-btn[data-page="' + k + '"]').forEach((b) =>
+      setHidden(b, !settings.pages[k]));
+  });
+  // Standing on a page you have just hidden is a dead end.
+  if (activePage && settings.pages[activePage] === false) closePage();
+}
+
+const SIMPLE = { sections: false, pages: ['tasks', 'docs'] };
+function applyPreset(kind) {
+  settings = defaultSettings();
+  if (kind === 'simple') {
+    Object.keys(settings.sections).forEach((k) => { settings.sections[k] = false; });
+    Object.keys(settings.pages).forEach((k) => { settings.pages[k] = SIMPLE.pages.includes(k); });
+  }
+  saveSettings();
+  applySettings();
+  renderSettings();
+  if (settings.sections.agenda) renderAgenda();
+  flash(kind === 'simple' ? '⬜ Simple' : '◻ Everything back');
+}
+
+function renderSettings() {
+  const el = $('#setBody');
+  if (!el || !settings) return;
+  const offSec = SETTING_SECTIONS.filter((x) => !settings.sections[x.k]).length;
+  const offPg = SETTING_PAGES.filter(([k]) => !settings.pages[k]).length;
+  $('#setState').textContent = (offSec + offPg)
+    ? (offSec + offPg) + ' hidden' : 'everything showing';
+
+  const row = (id, on, label, sub) =>
+    '<label class="set-row"><input type="checkbox" data-set="' + id + '"' + (on ? ' checked' : '') + '>'
+    + '<span class="sr-t">' + escapeHtml(label)
+    + (sub ? '<br><span class="sr-s">' + escapeHtml(sub) + '</span>' : '') + '</span></label>';
+
+  el.innerHTML =
+    '<div class="mcp-sec"><div class="mcp-h">Start from</div><div class="set-presets">'
+      + '<button class="btn-ghost sm" id="setSimple">Just tasks and notes</button>'
+      + '<button class="btn-ghost sm" id="setAll">Show everything</button>'
+      + '</div><div class="mcp-hint">The first turns off every panel above the board and every page '
+      + 'except Tasks and Docs. You can still change anything below afterwards.</div></div>'
+    + '<div class="mcp-sec"><div class="mcp-h">On the Today page</div><div class="set-grid">'
+      + SETTING_SECTIONS.map((x) => row('sec:' + x.k, settings.sections[x.k], x.label, x.sub)).join('')
+      + '</div></div>'
+    + '<div class="mcp-sec"><div class="mcp-h">Pages in the menu</div><div class="set-grid">'
+      + SETTING_PAGES.map(([k, label]) => row('pg:' + k, settings.pages[k], label, '')).join('')
+      + '</div><div class="mcp-hint">Today is always there.</div></div>';
+
+  el.querySelectorAll('[data-set]').forEach((box) => {
+    box.onchange = () => {
+      const [kind, key] = box.dataset.set.split(':');
+      if (kind === 'sec') settings.sections[key] = box.checked;
+      else settings.pages[key] = box.checked;
+      saveSettings();
+      applySettings();
+      renderSettings();
+      // The agenda skips its fetch while hidden, so switching it back on has
+      // to ask for the meetings it never loaded.
+      if (kind === 'sec' && key === 'agenda' && box.checked) renderAgenda();
+    };
+  });
+  $('#setSimple').onclick = () => applyPreset('simple');
+  $('#setAll').onclick = () => applyPreset('all');
+}
+
+function openSettings() {
+  $('#setPanel').classList.remove('hidden');
+  renderSettings();
+}
+function closeSettings() { $('#setPanel').classList.add('hidden'); }
+if ($('#settingsBtn')) {
+  $('#settingsBtn').onclick = openSettings;
+  $('#setClose').onclick = closeSettings;
+  $('#setPanel').onclick = (e) => { if (e.target === $('#setPanel')) closeSettings(); };
 }
 
 // =====================================================================
@@ -8994,6 +9165,13 @@ function setAgendaOpen(v) {
 
 async function renderAgenda() {
   const el = $('#agenda'); if (!el) return;
+  // Turned off in settings: stay out of the way, and do not go near the
+  // calendar helper for a panel nobody is looking at. Every branch below
+  // assigns className wholesale, which would drop the class anyway.
+  if (settings && settings.sections && settings.sections.agenda === false) {
+    setHidden(el, true);
+    return;
+  }
   const day = iso(current);
   const seq = ++calRenderSeq;
 
@@ -12447,6 +12625,7 @@ document.addEventListener('keydown', (e) => {
   if (!$('#mcpPanel').classList.contains('hidden')) return closeMcp();
   if (!$('#syncPanel').classList.contains('hidden')) return closeSync();
   if (!$('#updPanel').classList.contains('hidden')) return closeUpdate();
+  if (!$('#setPanel').classList.contains('hidden')) return closeSettings();
   // Inside the block editor, Escape means "leave this block" — it used to fall
   // through to here and close the document, dumping you back on the board.
   if (e.target && e.target.closest && e.target.closest('#beSurface')) return;

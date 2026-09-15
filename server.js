@@ -316,9 +316,10 @@ const COLLECTIONS = {
   captures: 'captures.json',
   reminders: 'reminders.json',
   backlog: 'backlog.json',
+  settings: 'settings.json',
 };
 // reviews is an object keyed by week-start; everything else is an array.
-const OBJECT_COLLECTIONS = new Set(['reviews']);
+const OBJECT_COLLECTIONS = new Set(['reviews', 'settings']);
 
 function collectionFile(name) { return path.join(DATA_DIR, COLLECTIONS[name]); }
 function readCollection(name) {
