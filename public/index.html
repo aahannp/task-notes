@@ -2640,16 +2640,6 @@
   .cont-card .cc-s { display: block; font-size: 11px; color: var(--muted); margin-top: 3px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .dayhints { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 11px 15px;
-    margin-bottom: 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel);
-    animation: riseIn .25s var(--ease-out) backwards; }
-  .dayhints.off { border-color: rgba(245,166,35,.3); background: rgba(245,166,35,.06); }
-  .dayhints.wfh { border-color: rgba(124,155,255,.28); background: rgba(124,155,255,.055); }
-  .dh-line { font-size: 13px; color: var(--text); font-weight: 600; }
-  .dh-items { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
-  .dh-items button { background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
-    font-family: inherit; font-size: 11.5px; padding: 5px 11px; border-radius: 20px; cursor: pointer; }
-  .dh-items button:hover { color: var(--text); border-color: var(--accent); }
 
   .resurface { padding: 14px 16px; margin-bottom: 16px; border-radius: 13px;
     background: rgba(199,146,234,.10);
@@ -2766,7 +2756,6 @@
   .capture-fab:hover { transform: scale(1.07); }
   body.page-open .capture-fab { display: none; }
   @media (max-width: 720px) {
-    .dh-items { margin-left: 0; }
     .sr-acts { flex-wrap: wrap; }
   }
 
@@ -2781,6 +2770,14 @@
     color: #a8bcff; white-space: nowrap; }
   .ag-msg { font-size: 13px; color: var(--muted); flex: 1; min-width: 160px; }
   .ag-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 9px; }
+  .ag-fold { background: none; border: none; color: var(--muted); cursor: pointer; padding: 0 2px;
+    font-size: 15px; line-height: 1; opacity: .65; }
+  .ag-fold:hover { opacity: 1; color: var(--text); }
+  .ag-caret { display: inline-block; transition: transform var(--t-fast); }
+  .agenda:not(.folded) .ag-caret { transform: rotate(90deg); }
+  /* Folded, the header alone still says how many and what is next. */
+  .agenda.folded .ag-list, .agenda.folded .ag-allday { display: none; }
+  .agenda.folded .ag-head { margin-bottom: 0; }
   .ag-sum { font-size: 12px; color: var(--muted); }
   .ag-next { font-size: 11.5px; color: #f5c26b; margin-left: auto;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46%; }
@@ -3049,7 +3046,6 @@
   <div class="resurface" id="resurface" style="display:none"></div>
   <div class="inboxnudge" id="inboxNudge" style="display:none"></div>
   <div class="nodata" id="noData" style="display:none"></div>
-  <div class="dayhints" id="dayHints" style="display:none"></div>
   <div class="learn-today" id="learnTodayCard"></div>
 
   <div class="board" id="board"></div>
@@ -7277,56 +7273,6 @@ async function openContinue(item) {
   else if (item.kind === 'task') { closePage(); jumpToTask(item.date || iso(new Date()), item.id); }
 }
 
-// =====================================================================
-// DAY-AWARE SUGGESTIONS — recommendations, never a schedule.
-// =====================================================================
-function dayShape() {
-  const off = isOffDay();
-  const wfh = meta.location === 'home';
-  if (off) return { key: 'off', line: 'You have some breathing room today.' };
-  if (wfh) return { key: 'wfh', line: 'Working from home — more uninterrupted time than usual.' };
-  return { key: 'office', line: 'Keep today execution-focused.' };
-}
-function daySuggestions() {
-  const shape = dayShape();
-  // A day already full of meetings is not the day to suggest deep work.
-  const packed = meetingMinutes(calEvents) >= 240;
-  if (packed) {
-    const quick = tasks.filter((t) => t.status === 'todo' && (!t.estimateMin || t.estimateMin <= 30));
-    return { shape: { key: shape.key, line: 'Meeting-heavy day — keep it light.' },
-      items: [
-        quick.length ? { icon: '✓', text: quick.length + ' quick task' + (quick.length > 1 ? 's' : '') + ' between calls', run: () => closePage() } : null,
-        { icon: '📥', text: 'Clear your inbox', run: () => openPage('inbox') },
-      ].filter(Boolean) };
-  }
-  const out = [];
-  const push = (icon, text, run) => { if (out.length < 3) out.push({ icon, text, run }); };
-
-  if (shape.key === 'off') {
-    const pool = pullPool();
-    if (pool.length) push('🧠', 'Pull something from your learning bag', async () => { await openPage('learning'); });
-    const idea = ideas.find((i) => i.status === 'promising' || i.status === 'exploring');
-    if (idea) push('💡', 'Explore “' + idea.title + '”', async () => { await openPage('ideas'); });
-    const d = activeDocs()[0];
-    if (d) push('📄', 'Continue “' + d.title + '”', async () => { await openPage('docs'); openDocument(d.id); });
-  } else if (shape.key === 'wfh') {
-    const L = meta.learning || {};
-    if (L.learnId && !L.done) push('🧠', 'Learn “' + L.text + '”', async () => { await openPage('learning'); });
-    const deep = projects.filter((p) => p.status === 'active')
-      .sort((a, b) => projectStats(b).remaining - projectStats(a).remaining)[0];
-    if (deep) push('🚀', 'Deep work on ' + deep.title, async () => { await openPage('projects'); openProjectDetail(deep.id); });
-    const doc = activeDocs()[0];
-    if (doc) push('📄', 'Write up “' + doc.title + '”', async () => { await openPage('docs'); openDocument(doc.id); });
-  } else {
-    const quick = tasks.filter((t) => t.status === 'todo' && (!t.estimateMin || t.estimateMin <= 45));
-    if (quick.length) push('✓', quick.length + ' small task' + (quick.length > 1 ? 's' : '') + ' you could clear', () => closePage());
-    const blocked = tasks.filter((t) => t.status === 'blocked');
-    if (blocked.length) push('⛔', 'Unblock “' + blocked[0].text.slice(0, 34) + '”', () => closePage());
-    const due = topDueReview();
-    if (due) push('↻', 'Quick revisit: ' + due.name, async () => { await openPage('learning'); });
-  }
-  return { shape, items: out };
-}
 
 
 // =====================================================================
@@ -7612,7 +7558,6 @@ function renderInboxPage() {
 // Compact strips, not another dashboard.
 // =====================================================================
 function renderTodayExtras() {
-  renderDayHints();
   renderResurfaceCard();
   renderInboxNudge();
   renderBacklog();
@@ -7628,16 +7573,6 @@ function renderContinueStrip() {
       '<span class="cc-ic">' + it.icon + '</span><span class="cc-t">' + escapeHtml(it.title) + '</span>' +
       '<span class="cc-s">' + escapeHtml(it.sub) + '</span></button>').join('') + '</div>';
   el.querySelectorAll('[data-i]').forEach((b) => { b.onclick = () => openContinue(items[+b.dataset.i]); });
-}
-function renderDayHints() {
-  const el = $('#dayHints'); if (!el) return;
-  const { shape, items } = daySuggestions();
-  if (!items.length) { el.innerHTML = ''; el.style.display = 'none'; return; }
-  el.style.display = '';
-  el.className = 'dayhints ' + shape.key;
-  el.innerHTML = '<div class="dh-line">' + escapeHtml(shape.line) + '</div><div class="dh-items">' +
-    items.map((s, i) => '<button data-s="' + i + '">' + s.icon + ' ' + escapeHtml(s.text) + '</button>').join('') + '</div>';
-  el.querySelectorAll('[data-s]').forEach((b) => { b.onclick = () => items[+b.dataset.s].run(); });
 }
 function renderResurfaceCard() {
   const el = $('#resurface'); if (!el) return;
@@ -9043,6 +8978,20 @@ function agendaLoading(el, day) {
     '</span><span class="ag-msg">Checking your calendar…</span>';
   calShownDay = day;
 }
+// Four meetings is four rows every time you open the app, and most days you
+// only want to know the next one. The header keeps the summary either way.
+let agendaOpen = true;
+try { agendaOpen = localStorage.getItem('tasknotes.agendaOpen') !== '0'; } catch {}
+
+function setAgendaOpen(v) {
+  agendaOpen = !!v;
+  try { localStorage.setItem('tasknotes.agendaOpen', agendaOpen ? '1' : '0'); } catch {}
+  const el = $('#agenda');
+  if (el) el.classList.toggle('folded', !agendaOpen);
+  const f = $('#agFold');
+  if (f) { f.setAttribute('aria-expanded', String(agendaOpen)); f.title = agendaOpen ? 'Collapse' : 'Expand'; }
+}
+
 async function renderAgenda() {
   const el = $('#agenda'); if (!el) return;
   const day = iso(current);
@@ -9137,10 +9086,12 @@ async function renderAgenda() {
   const allDay = calEvents.filter((e) => e.allDay);
 
   el.style.display = '';
-  el.className = 'agenda';
+  el.className = 'agenda' + (agendaOpen ? '' : ' folded');
   calShownDay = day;
   el.innerHTML =
     '<div class="ag-head">' +
+      '<button class="ag-fold" id="agFold" title="' + (agendaOpen ? 'Collapse' : 'Expand') + '" ' +
+        'aria-expanded="' + agendaOpen + '"><span class="ag-caret">›</span></button>' +
       '<span class="ag-badge">📅 ' + (isToday(current) ? 'Today' : fmtShort(day)) + '</span>' +
       '<span class="ag-sum">' + calEvents.length + ' event' + (calEvents.length > 1 ? 's' : '') +
         (mins ? ' · ' + fmtDur(mins * 60) + ' in meetings' : '') + '</span>' +
@@ -9168,6 +9119,8 @@ async function renderAgenda() {
 
   $('#agPick').onclick = openCalendarPicker;
   $('#agNew').onclick = agendaNewEvent;
+  const fold = $('#agFold');
+  if (fold) fold.onclick = () => setAgendaOpen(!agendaOpen);
   el.querySelectorAll('[data-ev]').forEach((b) => {
     b.onclick = () => {
       const e = calEvents.find((x) => evKey(x) === b.dataset.ev);
