@@ -328,6 +328,18 @@ Every row is clickable and goes to the thing itself — the day, the document, t
 
 The log lives in `data/mcp-log.jsonl`, one line per call, appended by the MCP server rather than sent to the app — so a call that failed *because the app was closed* is recorded too. It keeps the last 2000 lines.
 
+### Priority
+
+Every task carries one: **High**, **Normal** or **Low**, set from the task panel or over MCP. The three open columns lead with High and sink Low, and because the sort is stable, any order you set by dragging survives inside a band.
+
+**Finished is deliberately not sorted this way.** Once something is done its priority is history; the useful order is the one you did them in, oldest first, so the column reads as the story of the day.
+
+<br>
+
+## Keeping it current by itself
+
+`skills/` holds a Claude Code skill that watches the conversation you are already having and records what is durable — a learning becomes a document, a piece of work becomes a project, a next step becomes a task — deduping against what is there and staying quiet when nothing qualifies. It reaches the app through the MCP server. See `skills/README.md` to install it.
+
 <br>
 
 ## Two laptops

@@ -109,6 +109,12 @@ function need(a, k) {
   return typeof v === 'string' ? v.trim() : v;
 }
 const STATUSES = ['todo', 'progress', 'blocked', 'done'];
+const PRIORITIES = ['high', 'normal', 'low'];
+function thePriority(v) {
+  if (v == null) return undefined;
+  if (!PRIORITIES.includes(v)) throw new Error('priority must be one of ' + PRIORITIES.join(', '));
+  return v;
+}
 function theStatus(v) {
   if (v == null) return undefined;
   if (!STATUSES.includes(v)) throw new Error('status must be one of ' + STATUSES.join(', '));
@@ -116,7 +122,7 @@ function theStatus(v) {
 }
 const mins = (s) => (s >= 3600 ? Math.floor(s / 3600) + 'h ' + Math.round((s % 3600) / 60) + 'm'
   : Math.round(s / 60) + 'm');
-const line = (t) => '- [' + t.status + '] ' + t.text
+const line = (t) => '- [' + t.status + (t.priority && t.priority !== 'normal' ? ' · ' + t.priority : '') + '] ' + t.text
   + (t.note ? '  — ' + t.note : '')
   + (t.estimateMin ? '  (' + t.estimateMin + 'm)' : '');
 
@@ -147,6 +153,7 @@ const TOOLS = [
         note: { type: 'string' },
         estimateMin: { type: 'number', description: 'Estimate in minutes.' },
         status: { type: 'string', enum: STATUSES, description: 'Defaults to todo.' },
+        priority: { type: 'string', enum: PRIORITIES, description: 'Defaults to normal. Open columns sort high first.' },
         projectId: { type: 'string', description: 'Attach to a project — see list_projects.' },
       },
     },
@@ -155,6 +162,7 @@ const TOOLS = [
       const r = await api('POST', '/api/tasks?date=' + date, {
         text: need(a, 'text'),
         status: theStatus(a.status) || 'todo',
+        priority: thePriority(a.priority) || 'normal',
         note: a.note || '',
         estimateMin: a.estimateMin || null,
         projectId: a.projectId || null,
@@ -173,6 +181,7 @@ const TOOLS = [
         id: { type: 'string' },
         date: { type: 'string', description: 'The day the task is on. Defaults to today.' },
         status: { type: 'string', enum: STATUSES },
+        priority: { type: 'string', enum: PRIORITIES },
         text: { type: 'string' },
         note: { type: 'string' },
         estimateMin: { type: 'number' },
@@ -183,6 +192,7 @@ const TOOLS = [
       const date = theDate(a);
       const patch = {};
       if (a.status != null) patch.status = theStatus(a.status);
+      if (a.priority != null) patch.priority = thePriority(a.priority);
       ['text', 'note', 'estimateMin', 'projectId'].forEach((k) => { if (a[k] != null) patch[k] = a[k]; });
       if (!Object.keys(patch).length) throw new Error('nothing to change');
       const r = await api('PATCH', '/api/tasks?date=' + date + '&id=' + encodeURIComponent(need(a, 'id')), patch);

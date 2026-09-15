@@ -384,6 +384,17 @@
   .kcol.wip-over { border-color: rgba(245,166,35,.4); }
   .kcol-count.over { color: #f5a623; background: rgba(245,166,35,.14); border-color: rgba(245,166,35,.35); }
 
+  .prio-tag { display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 700;
+    letter-spacing: .3px; padding: 2px 7px; border-radius: 20px; border: 1px solid transparent; }
+  .prio-tag.high { color: #ff8f8f; background: rgba(255,107,129,.13); border-color: rgba(255,107,129,.32); }
+  .prio-tag.low { color: #7f8798; background: rgba(127,135,152,.12); border-color: rgba(127,135,152,.25); }
+  .tm-prio { display: flex; gap: 6px; margin-bottom: 4px; }
+  .tm-prio button { flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+    font-family: inherit; font-size: 12.5px; padding: 7px 10px; border-radius: 9px; cursor: pointer; }
+  .tm-prio button:hover { color: var(--text); }
+  .tm-prio button.on { color: var(--text); border-color: var(--accent); background: var(--panel); }
+  .tm-prio button.on[data-p="high"] { color: #ff8f8f; border-color: rgba(255,107,129,.5); }
+  .tm-prio button.on[data-p="low"] { color: #7f8798; }
   .age-tag {
     display: inline-flex; align-items: center; font-size: 11px; color: var(--accent);
     background: rgba(108,140,255,.12); border: 1px solid rgba(108,140,255,.28);
@@ -3224,6 +3235,12 @@
         <button data-s="blocked">Blocked</button>
         <button data-s="done">Finished</button>
       </div>
+      <label class="tm-label">Priority</label>
+      <div class="tm-prio" id="tmPrio">
+        <button data-p="high">▲ High</button>
+        <button data-p="normal">Normal</button>
+        <button data-p="low">▼ Low</button>
+      </div>
       <label class="tm-label">Title</label>
       <textarea id="tmTitle" class="tm-input" rows="2" placeholder="Task title"></textarea>
       <label class="tm-label">Note</label>
@@ -3780,6 +3797,7 @@ function normalize(t) {
     text: t.text || '',
     status: t.status || (t.done ? 'done' : 'todo'),
     people: Array.isArray(t.people) ? t.people : [],
+    priority: PRIO_RANK[t.priority] !== undefined ? t.priority : 'normal',
     carried: !!t.carried,
     carryCount: t.carryCount || 0,
     estimateMin: t.estimateMin || null,
@@ -4582,6 +4600,11 @@ function matchesSearch(t) {
   return hay.includes(searchQuery);
 }
 
+// Three levels is enough to sort by and few enough to choose without thinking.
+const PRIORITIES = ['high', 'normal', 'low'];
+const PRIO_RANK = { high: 0, normal: 1, low: 2 };
+const PRIO_LABEL = { high: 'High', normal: 'Normal', low: 'Low' };
+
 const BOARD_ORDER = ['todo', 'progress', 'blocked', 'done'];
 const COL_TITLE = { todo: 'To Do', progress: 'In Progress', blocked: 'Blocked', done: 'Finished' };
 const COL_COLOR = { todo: '#aab2c4', progress: '#f5a623', blocked: '#ff6b6b', done: '#3fb27f' };
@@ -4597,6 +4620,18 @@ function render(animate) {
 
   BOARD_ORDER.forEach((statusKey) => {
     const colTasks = tasks.map((t, i) => ({ t, i })).filter(({ t }) => t.status === statusKey && matchesSearch(t));
+
+    // Open columns lead with what matters most. Array.sort is stable, so any
+    // order you set by dragging survives inside a priority band.
+    //
+    // Finished is deliberately not sorted this way — once something is done
+    // its priority is history, and the useful order is the one you did them
+    // in. Oldest first, so the column reads as the story of the day.
+    if (statusKey === 'done') {
+      colTasks.sort((a, b) => (a.t.doneAt || a.t.createdAt || 0) - (b.t.doneAt || b.t.createdAt || 0));
+    } else {
+      colTasks.sort((a, b) => PRIO_RANK[a.t.priority] - PRIO_RANK[b.t.priority]);
+    }
 
     const wip = statusKey === 'progress' && colTasks.length > WIP_LIMIT;
     const col = document.createElement('div');
@@ -4666,7 +4701,11 @@ function buildCard(t, animate, ci) {
     const warn = t.carryCount >= 2;
     ageBadge = `<span class="age-tag ${warn ? 'warn' : ''}" title="Carried over ${t.carryCount} time${t.carryCount === 1 ? '' : 's'}">${warn ? '⚠ ' : '↩ '}${days}d old</span>`;
   }
-  const footParts = [ageBadge, chips].filter(Boolean).join('');
+  const prioBadge = t.priority && t.priority !== 'normal'
+    ? '<span class="prio-tag ' + t.priority + '" title="' + PRIO_LABEL[t.priority] + ' priority">'
+      + (t.priority === 'high' ? '▲ High' : '▼ Low') + '</span>'
+    : '';
+  const footParts = [prioBadge, ageBadge, chips].filter(Boolean).join('');
   const waiting = (typeof blockersFor === 'function' && t.dependsOn && t.dependsOn.length) ? blockersFor(t) : [];
   const waitLine = waiting.length
     ? `<div class="card-wait" title="Waiting on ${escapeHtml(waiting.map((w) => w.text).join(', '))}">⚠ waiting on ${escapeHtml(waiting[0].text.slice(0, 28))}${waiting.length > 1 ? ' +' + (waiting.length - 1) : ''}</div>`
@@ -4742,6 +4781,7 @@ function closeTaskModal() {
 }
 function renderTaskModalStatus(t) {
   document.querySelectorAll('#tmStatus button').forEach((b) => b.classList.toggle('on', b.dataset.s === t.status));
+  document.querySelectorAll('#tmPrio button').forEach((b) => b.classList.toggle('on', b.dataset.p === (t.priority || 'normal')));
 }
 function renderTaskModalPeople(t) {
   const el = $('#tmPeople');
@@ -5007,6 +5047,15 @@ $('#tmDelete').onclick = () => {
   };
   if (card) leaveThen(card, removeIt); else removeIt();
 };
+document.querySelectorAll('#tmPrio button').forEach((b) => {
+  b.onclick = () => {
+    const t = editingTask(); if (!t) return;
+    t.priority = b.dataset.p;
+    document.querySelectorAll('#tmPrio button').forEach((x) => x.classList.toggle('on', x === b));
+    render();
+    save();
+  };
+});
 document.querySelectorAll('#tmStatus button').forEach((b) => {
   b.onclick = () => {
     const t = editingTask(); if (!t) return;
