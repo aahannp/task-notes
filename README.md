@@ -83,6 +83,12 @@ Markdown is rendered by a small purpose-built engine — GFM tables, task lists,
 
 **Images** paste, drop, or pick from a file dialog. They're stored on disk beside the document and served from the app — never a temporary blob URL, so they survive reload and packaging. Existing `.md` files can be imported and kept.
 
+Click one and it gets a frame, a drag corner and a small bar: four widths, three alignments. The size is written into the markdown the way Obsidian writes it — `![alt|480|center](src)` — so it is still a plain image link anywhere else, and a document that leaves this app does not leave its layout behind. Nothing writes to the file directly: the controls set attributes on the image and the ordinary harvest turns those into markdown, so drafts, undo and the source view all agree.
+
+**The editor stays out of the way.** The sidebar and the tab bar redraw only when something they show has actually moved — a title, a folder, a pin — rather than after every autosave, and the save indicator sits at a dim dot instead of flashing *Saving… Saved* over your shoulder once a second. It speaks up for the two states that matter: work not yet safe, and work that failed to save.
+
+**Rename where the name is.** Double-click a title in the tab or the sidebar and type; Enter commits, Escape reverts. **Folders fold**, with a caret and a count, and each one remembers whether it was open. Dropping a document onto a closed folder opens it, so nothing disappears into a drawer you can't see.
+
 **One document, many contexts.** A document links to a Project, a Task, a Learning item and an Idea, and shows up in each of them — the same record, never a copy. Creating a document from any of those carries the context automatically.
 
 <br>

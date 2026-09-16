@@ -2391,7 +2391,37 @@
     color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 650; padding: 6px 9px;
     border-radius: 7px; cursor: pointer; }
   .tree-folder:hover { background: var(--panel-2); color: var(--text); }
-  .tree-kids { margin-left: 10px; border-left: 1px solid var(--line); padding-left: 4px; }
+  .md-img { max-width: 100%; height: auto; border-radius: 8px; }
+  .md-img[data-align="center"] { display: block; margin-left: auto; margin-right: auto; }
+  .md-img[data-align="right"] { display: block; margin-left: auto; margin-right: 0; }
+  .md-img[data-align="left"] { display: block; margin-right: auto; margin-left: 0; }
+  .md-img.img-on { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #beSurface img { cursor: pointer; }
+  .img-tool { position: fixed; z-index: 90; display: flex; align-items: center; gap: 2px;
+    background: var(--panel-3, var(--panel)); border: 1px solid var(--line); border-radius: 9px;
+    padding: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.4);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .img-tool button { background: none; border: none; color: var(--muted); font-family: inherit;
+    font-size: 11.5px; font-weight: 600; padding: 5px 9px; border-radius: 6px; cursor: pointer; }
+  .img-tool button:hover { background: var(--panel-2); color: var(--text); }
+  .img-tool button.on { background: rgba(124,155,255,.18); color: #cdd8ff; }
+  .img-tool .sep { width: 1px; height: 16px; background: var(--line); margin: 0 3px; }
+  .img-grip { position: fixed; z-index: 91; width: 14px; height: 14px; border-radius: 4px;
+    background: var(--accent); border: 2px solid var(--panel); cursor: nwse-resize; }
+  .img-tool.hidden, .img-grip.hidden { display: none; }
+
+  .tree-kids { margin-left: 10px; border-left: 1px solid var(--line); padding-left: 4px;
+    overflow: hidden; }
+  .tf-caret { display: inline-block; width: 10px; font-size: 9px; opacity: .55;
+    transition: transform var(--t-fast, .12s) ease; transform: rotate(90deg); }
+  .tree-sec.folded .tf-caret { transform: rotate(0deg); }
+  .tree-sec.folded .tree-kids { display: none; }
+  .tree-sec.folded.dropping .tree-kids { display: block; }
+  .tf-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .renaming-text { outline: 1px solid rgba(124,155,255,.55); border-radius: 4px;
+    padding: 0 3px; background: var(--panel-2); color: var(--text); cursor: text;
+    white-space: nowrap; overflow: visible; text-overflow: clip; }
+  .tree-item.renaming, .ws-tab.renaming { cursor: text; }
   .tree-snip { font-size: 11px; color: var(--muted); padding: 0 9px 7px 25px; line-height: 1.4;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .tree-tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 8px 6px; }
@@ -2414,7 +2444,9 @@
   .ws-tab .tx { opacity: 0; font-size: 11px; padding: 0 2px; border-radius: 4px; }
   .ws-tab:hover .tx, .ws-tab.active .tx { opacity: .6; }
   .ws-tab .tx:hover { opacity: 1; color: var(--danger); }
-  .ws-tab .dirty { width: 6px; height: 6px; border-radius: 50%; background: #f5a623; flex-shrink: 0; }
+  .ws-tab .dirty { width: 6px; height: 6px; border-radius: 50%; background: #f5a623; flex-shrink: 0;
+    opacity: 0; transition: opacity var(--t-base); }
+  .ws-tab.is-dirty .dirty { opacity: 1; }
 
   /* action bar */
   .ws-bar { display: flex; align-items: center; gap: 8px; padding: 9px 14px;
@@ -2435,8 +2467,9 @@
   .ws-status { font-size: 11px; color: var(--muted); flex-shrink: 0; min-width: 78px; text-align: right;
     transition: color var(--t-base); }
   .ws-status.saving { color: #f5c26b; }
-  .ws-status.saved { color: #6fd6a4; }
-  .ws-status.failed { color: var(--danger); }
+  .ws-status.saved, .ws-status.ok { color: var(--muted); opacity: .55; }
+  .ws-status.dirty { color: #f5a623; opacity: .85; }
+  .ws-status.failed { color: var(--danger); opacity: 1; font-weight: 600; }
 
   /* editor + reader */
   .ws-body { flex: 1; min-height: 0; position: relative; }
@@ -5720,10 +5753,26 @@ function mdInline(src, ctx) {
     return CODE_SLOT + (codes.length - 1) + CODE_SLOT;
   });
 
-  // ![alt](src "title")
+  // ![alt](src "title"), and ![alt|420|center](src) — the same pipe convention
+  // Obsidian uses, because markdown has no width and a document that only
+  // renders here is not worth the trade.
   s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (m, alt, src2) => {
     const u = safeUrl(src2, true);
-    return u ? '<img src="' + u + '" alt="' + alt + '" loading="lazy">' : esc(m);
+    if (!u) return esc(m);
+    // Read the modifiers off the end, not the front: an alt text is allowed to
+    // contain a pipe, and "![diagram | v2](x)" must keep its name.
+    const bits = String(alt).split('|').map((x) => x.trim());
+    let w = '', align = '';
+    while (bits.length > 1) {
+      const last = bits[bits.length - 1];
+      if (!w && /^\d{1,4}$/.test(last)) { w = last; bits.pop(); continue; }
+      if (!align && /^(left|center|right)$/i.test(last)) { align = last.toLowerCase(); bits.pop(); continue; }
+      break;
+    }
+    const label = bits.join('|').trim();
+    return '<img class="md-img" src="' + u + '" alt="' + label + '" loading="lazy"'
+      + (w ? ' data-w="' + w + '" style="width:' + w + 'px"' : '')
+      + (align ? ' data-align="' + align + '"' : '') + '>';
   });
   // [[wiki link]] — a real relationship, resolved against the document store
   s = s.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m, target, label) => {
@@ -6154,8 +6203,11 @@ function renderDocTree() {
     }
     folders.forEach((f) => {
       const kids = live.filter((d) => d.folder === f);
-      html += '<div class="tree-sec" data-drop="' + escapeHtml(f) + '">' +
-        '<button class="tree-folder" data-folder="' + escapeHtml(f) + '">📁 ' + escapeHtml(f) +
+      const open = folderOpen(f);
+      html += '<div class="tree-sec' + (open ? '' : ' folded') + '" data-drop="' + escapeHtml(f) + '">' +
+        '<button class="tree-folder" data-folder="' + escapeHtml(f) + '" aria-expanded="' + open + '">' +
+        '<span class="tf-caret">▸</span><span class="tf-ic">' + (open ? '📂' : '📁') + '</span>' +
+        '<span class="tf-name">' + escapeHtml(f) + '</span>' +
         '<span class="n" style="margin-left:auto;opacity:.6">' + kids.length + '</span></button>' +
         '<button class="tf-add" data-newin="' + escapeHtml(f) + '" title="New document in ' + escapeHtml(f) + '"' +
         ' aria-label="New document in ' + escapeHtml(f) + '">＋</button>' +
@@ -6174,6 +6226,7 @@ function renderDocTree() {
       (docShowArchived ? '☑' : '☐') + ' Show archived</button></div>';
   }
   tree.innerHTML = html;
+  docTreeLastSig = docTreeSig();
   wireTree(tree);
 }
 
@@ -6197,11 +6250,26 @@ async function renderDocSearchResults(tree, q) {
   wireTree(tree);
 }
 
+// Which folders are open, remembered per machine. A sidebar that forgets is
+// worse than one that never folded.
+const FOLD_KEY = 'tasknotes.docFolders';
+let foldedFolders = new Set();
+try { foldedFolders = new Set(JSON.parse(localStorage.getItem(FOLD_KEY) || '[]')); } catch {}
+const saveFolds = () => { try { localStorage.setItem(FOLD_KEY, JSON.stringify([...foldedFolders])); } catch {} };
+const folderOpen = (f) => !foldedFolders.has(f);
+function openFolder(f) { if (foldedFolders.delete(f)) saveFolds(); }
+function toggleFolder(f) {
+  if (foldedFolders.has(f)) foldedFolders.delete(f); else foldedFolders.add(f);
+  saveFolds();
+  renderDocTree();
+}
+
 let treeDragId = null;
 
 function wireTree(tree) {
   tree.querySelectorAll('[data-doc]').forEach((b) => {
-    b.onclick = () => openDocument(b.dataset.doc);
+    b.onclick = () => { if (!b.classList.contains('renaming')) openDocument(b.dataset.doc); };
+    b.ondblclick = (e) => { e.preventDefault(); startRename(b.dataset.doc, b.querySelector('.ti-t')); };
     // Filing something should be a drag, not a trip to a text field in the
     // right-hand panel.
     b.addEventListener('dragstart', (e) => {
@@ -6237,6 +6305,7 @@ function wireTree(tree) {
       const d = docById(id);
       if (!d || (d.folder || '') === folder) return;
       await saveDoc(id, { folder });
+      if (folder) openFolder(folder);     // never drop something into a drawer you cannot see
       renderDocTree();
       if (id === docActive) renderDocSurface();
       flash(folder ? '📁 Filed in ' + folder : '📤 Out of the folder');
@@ -6256,6 +6325,10 @@ function wireTree(tree) {
     };
   });
 
+  tree.querySelectorAll('[data-folder]').forEach((b) => {
+    b.onclick = (e) => { e.stopPropagation(); toggleFolder(b.dataset.folder); };
+  });
+
   tree.querySelectorAll('[data-tag]').forEach((b) => {
     b.onclick = () => { docTagFilter = docTagFilter === b.dataset.tag ? '' : b.dataset.tag; renderDocTree(); };
   });
@@ -6263,22 +6336,91 @@ function wireTree(tree) {
   if (at) at.onclick = () => { docShowArchived = !docShowArchived; renderDocTree(); };
 }
 
+// Rename where the name is. Renaming a file should not be a trip through a
+// menu — double-click the title, in the tab or in the list, type, Enter.
+let renamingId = null;
+function startRename(id, labelEl) {
+  const d = docById(id);
+  if (!d || !labelEl || renamingId) return;
+  renamingId = id;
+  const was = d.title;
+  const host = labelEl.closest('[data-tab], [data-doc]');
+  if (host) host.classList.add('renaming');
+  labelEl.contentEditable = 'true';
+  labelEl.classList.add('renaming-text');
+  labelEl.focus();
+  const r = document.createRange();
+  r.selectNodeContents(labelEl);
+  const sel = window.getSelection();
+  sel.removeAllRanges(); sel.addRange(r);
+
+  let done = false;
+  const finish = async (commit) => {
+    if (done) return;
+    done = true;
+    labelEl.contentEditable = 'false';
+    labelEl.classList.remove('renaming-text');
+    if (host) host.classList.remove('renaming');
+    renamingId = null;
+    const next = labelEl.textContent.trim();
+    if (!commit || !next || next === was) { labelEl.textContent = was; return; }
+    labelEl.textContent = next;
+    await saveDoc(id, { title: next, baseVersion: (docById(id) || {}).version });
+    if (id === docActive) {
+      const t = $('#docTitle');
+      if (t && t.value !== next) t.value = next;
+    }
+    docTabsSig = null;                 // the label changed; let the bar redraw
+    renderDocTabs(); renderDocTree();
+    flash('✏️ Renamed');
+  };
+  labelEl.onkeydown = (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  };
+  labelEl.onblur = () => finish(true);
+}
+
 // ---------- tabs ----------
+// Tabs are rebuilt only when the set of them changes. Rebuilding on every
+// save replayed the entrance animation on every tab once a second while you
+// typed, which is most of what "it keeps reloading" was.
+let docTabsSig = null;
 function renderDocTabs() {
   const bar = $('#docTabsBar');
+  const sig = docTabs.join(',') + '|' + docActive;
+  if (sig === docTabsSig && bar.children.length === docTabs.length) {
+    // Same tabs, same order: touch only what can have changed.
+    docTabs.forEach((id) => {
+      const d = docById(id); if (!d) return;
+      const el = bar.querySelector('[data-tab="' + id + '"]');
+      if (!el) return;
+      const t = el.querySelector('.tt');
+      if (t && t.textContent !== d.title) t.textContent = d.title;
+      el.classList.toggle('is-dirty', id === docActive && docDirty);
+    });
+    return;
+  }
+  docTabsSig = sig;
   bar.innerHTML = docTabs.map((id, i) => {
     const d = docById(id); if (!d) return '';
-    return '<button class="ws-tab' + (id === docActive ? ' active' : '') + '" data-tab="' + id + '"' +
+    return '<button class="ws-tab' + (id === docActive ? ' active' : '') +
+      (id === docActive && docDirty ? ' is-dirty' : '') + '" data-tab="' + id + '"' +
       ' style="animation-delay:' + Math.min(i * 30, 200) + 'ms">' +
-      (id === docActive && docDirty ? '<span class="dirty" title="Unsaved changes"></span>' : '') +
+      '<span class="dirty" title="Unsaved changes"></span>' +
       '<span class="tt">' + escapeHtml(d.title) + '</span>' +
       '<span class="tx" data-close="' + id + '" title="Close">✕</span></button>';
   }).join('');
   bar.querySelectorAll('[data-tab]').forEach((t) => {
     t.onclick = (e) => {
       if (e.target.dataset.close) { closeDocTab(e.target.dataset.close); return; }
+      if (t.classList.contains('renaming')) return;
       openDocument(t.dataset.tab);
     };
+    // Renaming is what you want from a title far more often than anything in
+    // a menu, so it is where the title is.
+    t.ondblclick = (e) => { e.preventDefault(); startRename(t.dataset.tab, t.querySelector('.tt')); };
   });
 }
 function closeDocTab(id) {
@@ -6564,23 +6706,46 @@ async function flushDocSave() {
   docLastSavedAt = Date.now();
   clearDraft(id);
   indexDocLinks(id, content);
-  setDocStatus('saved', 'Saved');
-  renderDocTabs(); renderDocTree();
+  setDocStatus('saved');
+  renderDocTabs();
+  // The sidebar shows titles, folders, pins and order — nothing else. Redrawing
+  // the whole tree after every autosave rebuilt it under the reader's eyes for
+  // no reason; now it waits until one of those actually moved.
+  const sig = docTreeSig();
+  if (sig !== docTreeLastSig) renderDocTree();
   logDocUpdated(id);
 }
+// What the sidebar can actually show. Anything else changing is none of its
+// business.
+let docTreeLastSig = '';
+function docTreeSig() {
+  return (docList || []).map((d) =>
+    d.id + ':' + d.title + ':' + (d.folder || '') + ':' + (d.pinned ? 1 : 0) + ':' + (d.status || '')).join('|');
+}
+
+// A save indicator that is quiet when there is nothing to say. Routine
+// autosaves are not news: flashing "Saving…" then "Saved" every second while
+// someone is mid-sentence is the editor talking over the writer. It speaks up
+// for the two states that matter — work not yet safe, and work that failed to
+// save — and otherwise sits at a dim dot.
 function setDocStatus(cls, text) {
   const el = $('#docStatus'); if (!el) return;
-  el.className = 'ws-status ' + cls;
-  el.textContent = text;
   clearTimeout(docStatusTimer);
-  if (cls === 'saved') docStatusTimer = setTimeout(updateDocStatus, 2200);
+  if (text) {                       // an explicit message (upload, conflict)
+    el.className = 'ws-status ' + (cls || '');
+    el.textContent = text;
+    if (cls === 'saved') docStatusTimer = setTimeout(updateDocStatus, 1600);
+    return;
+  }
+  updateDocStatus();
 }
 function updateDocStatus() {
   const el = $('#docStatus'); if (!el) return;
-  if (docDirty) { el.className = 'ws-status'; el.textContent = 'Unsaved'; return; }
+  if (docDirty) { el.className = 'ws-status dirty'; el.textContent = '•  Unsaved'; return; }
   if (!docLastSavedAt) { el.className = 'ws-status'; el.textContent = ''; return; }
-  el.className = 'ws-status';
-  el.textContent = 'Saved ' + relTime(docLastSavedAt);
+  el.className = 'ws-status ok';
+  el.textContent = '•  Saved';
+  el.title = 'Last saved ' + relTime(docLastSavedAt);
 }
 // Activity is recorded per meaningful edit, not per keystroke: at most one
 // "updated" entry per document per 10 minutes.
@@ -10092,13 +10257,24 @@ function beInlineRaw(root, escapeText) {
       if (n.nodeType !== 1) return;
       const tag = n.tagName.toLowerCase();
       if (tag === 'br') { out += '  \n'; return; }
+      // Splitting a line inside bold text leaves an empty <strong> on each
+      // side of the cut. Serialised literally that is "****" — the asterisks
+      // you see land on the new line when you press Enter at the end of a
+      // bolded sentence. An empty wrapper is not emphasis; it is nothing.
+      const FORMAT = { strong: 1, b: 1, em: 1, i: 1, del: 1, s: 1, strike: 1, mark: 1, code: 1 };
+      if (FORMAT[tag] && !n.textContent) return;
       if (tag === 'strong' || tag === 'b') { out += '**'; walk(n); out += '**'; return; }
       if (tag === 'em' || tag === 'i') { out += '_'; walk(n); out += '_'; return; }
       if (tag === 'del' || tag === 's' || tag === 'strike') { out += '~~'; walk(n); out += '~~'; return; }
       if (tag === 'mark') { out += '=='; walk(n); out += '=='; return; }
       if (tag === 'code') { out += '`' + n.textContent + '`'; return; }
       if (tag === 'img') {
-        out += '![' + (n.getAttribute('alt') || '') + '](' + (n.getAttribute('src') || '') + ')';
+        const bits = [n.getAttribute('alt') || ''];
+        const w = n.getAttribute('data-w');
+        const al = n.getAttribute('data-align');
+        if (w) bits.push(w);
+        if (al) bits.push(al);
+        out += '![' + bits.join('|') + '](' + (n.getAttribute('src') || '') + ')';
         return;
       }
       if (tag === 'a') {
@@ -10462,6 +10638,116 @@ function beSplitAt(el) {
   // Enter start the next block with a stray leading space.
   return [wrap(before.cloneContents()).replace(/\s+$/, ''), wrap(after.cloneContents()).replace(/^\s+/, '')];
 }
+
+// ---- images ----
+//
+// An image you cannot size is a screenshot pasted at whatever width it happened
+// to be captured at. Click one and it gets a frame, a drag corner and a small
+// bar: four widths, three alignments. Nothing here writes to the document
+// directly — it sets attributes on the <img>, and the normal harvest turns
+// those into markdown, so undo, drafts and the source view all stay honest.
+let imgSel = null;
+function imgTool() {
+  let t = $('#imgTool');
+  if (t) return t;
+  t = document.createElement('div');
+  t.id = 'imgTool';
+  t.className = 'img-tool hidden';
+  t.innerHTML =
+    '<button data-w="320">S</button><button data-w="480">M</button>'
+    + '<button data-w="720">L</button><button data-w="0">Full</button>'
+    + '<span class="sep"></span>'
+    + '<button data-a="left" title="Align left">⇤</button>'
+    + '<button data-a="center" title="Centre">⇔</button>'
+    + '<button data-a="right" title="Align right">⇥</button>';
+  document.body.appendChild(t);
+  t.onmousedown = (e) => e.preventDefault();       // never steal the caret
+  t.onclick = (e) => {
+    const b = e.target.closest('button'); if (!b || !imgSel) return;
+    if (b.dataset.w != null) {
+      const w = +b.dataset.w;
+      if (w) { imgSel.setAttribute('data-w', w); imgSel.style.width = w + 'px'; }
+      else { imgSel.removeAttribute('data-w'); imgSel.style.width = ''; }
+    } else if (b.dataset.a) {
+      const cur = imgSel.getAttribute('data-align');
+      if (cur === b.dataset.a) imgSel.removeAttribute('data-align');
+      else imgSel.setAttribute('data-align', b.dataset.a);
+    }
+    imgCommit();
+    imgPlace();
+  };
+  return t;
+}
+function imgGrip() {
+  let g = $('#imgGrip');
+  if (g) return g;
+  g = document.createElement('div');
+  g.id = 'imgGrip';
+  g.className = 'img-grip hidden';
+  g.title = 'Drag to resize';
+  document.body.appendChild(g);
+  g.onmousedown = (e) => {
+    if (!imgSel) return;
+    e.preventDefault(); e.stopPropagation();
+    const startX = e.clientX;
+    const startW = imgSel.getBoundingClientRect().width;
+    const max = (imgSel.parentElement || document.body).getBoundingClientRect().width;
+    const move = (ev) => {
+      const w = Math.max(80, Math.min(Math.round(max), Math.round(startW + (ev.clientX - startX))));
+      imgSel.setAttribute('data-w', w);
+      imgSel.style.width = w + 'px';
+      imgPlace();
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      imgCommit();
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  };
+  return g;
+}
+function imgPlace() {
+  if (!imgSel) return;
+  const r = imgSel.getBoundingClientRect();
+  const t = imgTool(), g = imgGrip();
+  t.classList.remove('hidden'); g.classList.remove('hidden');
+  const tw = t.offsetWidth || 260;
+  t.style.left = Math.max(8, Math.min(window.innerWidth - tw - 8, r.left + r.width / 2 - tw / 2)) + 'px';
+  t.style.top = Math.max(8, r.top - t.offsetHeight - 8) + 'px';
+  g.style.left = (r.right - 7) + 'px';
+  g.style.top = (r.bottom - 7) + 'px';
+  t.querySelectorAll('[data-a]').forEach((b) =>
+    b.classList.toggle('on', imgSel.getAttribute('data-align') === b.dataset.a));
+  const w = +imgSel.getAttribute('data-w') || 0;
+  t.querySelectorAll('[data-w]').forEach((b) => b.classList.toggle('on', +b.dataset.w === w));
+}
+function imgSelect(el) {
+  if (imgSel && imgSel !== el) imgSel.classList.remove('img-on');
+  imgSel = el;
+  el.classList.add('img-on');
+  imgPlace();
+}
+function imgDeselect() {
+  if (!imgSel) return;
+  imgSel.classList.remove('img-on');
+  imgSel = null;
+  const t = $('#imgTool'), g = $('#imgGrip');
+  if (t) t.classList.add('hidden');
+  if (g) g.classList.add('hidden');
+}
+function imgCommit() {
+  beHarvest(); beSync();
+}
+document.addEventListener('mousedown', (e) => {
+  const img = e.target.closest && e.target.closest('#beSurface img');
+  if (img) { imgSelect(img); return; }
+  if (e.target.closest && e.target.closest('#imgTool, #imgGrip')) return;
+  imgDeselect();
+});
+window.addEventListener('scroll', () => { if (imgSel) imgPlace(); }, true);
+window.addEventListener('resize', () => { if (imgSel) imgPlace(); });
 
 // ---- keyboard ----
 function beKeydown(e) {
