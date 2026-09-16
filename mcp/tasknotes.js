@@ -631,8 +631,9 @@ const TOOLS = [
       required: ['id'],
       properties: {
         id: { type: 'string', description: 'The capture — see list_inbox.' },
-        into: { type: 'string', enum: ['task', 'idea', 'learning', 'document', 'nothing'], description: 'What to make of it. "nothing" just marks it processed.' },
+        into: { type: 'string', enum: ['task', 'idea', 'learning', 'document', 'backlog', 'nothing'], description: 'What to make of it. "nothing" just marks it processed.' },
         date: { type: 'string', description: 'For into="task" — which day\'s board. Defaults to today.' },
+        pickupDate: { type: 'string', description: 'For into="backlog" — YYYY-MM-DD it should come back.' },
       },
     },
     async run(a) {
@@ -664,6 +665,14 @@ const TOOLS = [
       } else if (into === 'document') {
         const r = await api('POST', '/api/documents', { title: c.text.slice(0, 120), content: c.note || '' });
         kind = 'doc'; madeId = r.document.id; said = 'Now a document';
+      } else if (into === 'backlog') {
+        const when = theDay(a.pickupDate, 'pickupDate');
+        const r = await addStore('backlog', {
+          text: c.text, note: c.note || '', pickupDate: when, projectId: null,
+          estimateMin: null, fromTaskId: null, promotedTo: null, promotedOn: null, notifiedOn: null,
+        });
+        kind = 'backlog'; madeId = r.item.id;
+        said = 'Parked in the backlog' + (when ? ' until ' + when : ' with no date');
       }
       await patchStore('captures', id, { status: 'processed', becameKind: kind, becameId: madeId, processedAt: Date.now() });
       return said + ': ' + c.text + (madeId ? '  #' + madeId : '');
@@ -823,6 +832,29 @@ const TOOLS = [
       });
       await patchStore('backlog', id, { promotedTo: r.task.id, promotedOn: date });
       return 'On the board for ' + date + ': ' + r.task.text + '  #' + r.task.id;
+    },
+  },
+  {
+    name: 'park_task',
+    write: true,
+    description: 'The opposite of promote_backlog: take a task off a day\'s board and park it in the backlog. Nothing is lost — its note, estimate and project go with it, and the backlog entry remembers the task it came from. A carried task parked this way stops coming back.',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'string', description: 'The task — see list_tasks.' },
+        date: { type: 'string', description: 'The day it is on. Defaults to today.' },
+        pickupDate: { type: 'string', description: 'YYYY-MM-DD it should come back. Defaults to the task\'s own pick-up date; without either it only surfaces when you go looking.' },
+      },
+    },
+    async run(a) {
+      const date = theDate(a);
+      const body = {};
+      if (a.pickupDate !== undefined) body.pickupDate = theDay(a.pickupDate, 'pickupDate');
+      const r = await api('POST', '/api/tasks/park?date=' + date + '&id=' + encodeURIComponent(need(a, 'id')), body);
+      return 'Parked off ' + date + ': ' + r.item.text
+        + (r.item.pickupDate ? ' — back on ' + r.item.pickupDate : ' — no date set')
+        + '  #' + r.item.id;
     },
   },
 

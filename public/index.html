@@ -1402,6 +1402,13 @@
   .upd-notes { font-size: 12.5px; line-height: 1.6; color: var(--muted); white-space: pre-wrap;
     background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r-sm);
     padding: 12px 14px; margin-top: 12px; max-height: 240px; overflow-y: auto; }
+  .tm-park { background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+    font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 9px 14px;
+    border-radius: var(--r-sm); cursor: pointer; transition: .15s; margin-left: 8px; }
+  .tm-park:hover { color: var(--text); border-color: rgba(124,155,255,.45); }
+  #tmWhen { margin: 0 20px 12px; }
+  .inbox-item .bl-when { margin-top: 10px; }
+
   .set-choice { display: flex; gap: 8px; flex-wrap: wrap; }
   .set-choice button { flex: 1 1 0; min-width: 140px; background: var(--panel-2);
     border: 1px solid var(--line); color: var(--muted); font-family: inherit;
@@ -3289,8 +3296,10 @@
       <div id="tmContext"></div>
       <div class="tm-info" id="tmInfo"></div>
     </div>
+    <div class="bl-when hidden" id="tmWhen"></div>
     <div class="modal-foot">
       <button class="tm-del" id="tmDelete">Delete task</button>
+      <button class="tm-park" id="tmPark" title="Off the board, into the backlog">📥 Backlog</button>
       <button class="tm-save" id="tmDone">Done</button>
     </div>
   </div>
@@ -5065,6 +5074,35 @@ $('#tmDelete').onclick = () => {
   };
   if (card) leaveThen(card, removeIt); else removeIt();
 };
+// Off the board and into the backlog. Nothing is lost: the text, note,
+// estimate and project go with it, and the backlog item remembers the task it
+// came from.
+function dropParkedTask(t) {
+  forgetCarried(t);
+  tasks = tasks.filter((x) => x.id !== t.id);
+  if (!tasks.length) { meta.noCarry = true; saveMeta(); }
+  closeTaskModal(); render(); save(); renderTodayExtras();
+}
+$('#tmPark').onclick = () => {
+  const t = editingTask(); if (!t) return;
+  const carry = { note: t.note || '', estimateMin: t.estimateMin || null,
+    projectId: t.projectId || null, fromTaskId: t.id };
+  if (t.pickupDate) {
+    backlog.unshift(normBacklog(Object.assign({ text: t.text, pickupDate: t.pickupDate }, carry)));
+    saveBacklog();
+    logActivity('backlog-parked', 'Parked “' + t.text.slice(0, 50) + '” for later', { taskId: t.id });
+    dropParkedTask(t);
+    return flash('📥 In the backlog — back on ' + t.pickupDate);
+  }
+  // Their rule for the backlog: without a pick-up date, ask for one before it
+  // leaves the board, or it is just something you will never see again.
+  blAskWhen({ text: t.text, extra: carry, after: () => {
+    logActivity('backlog-parked', 'Parked “' + t.text.slice(0, 50) + '” for later', { taskId: t.id });
+    dropParkedTask(t);
+    flash('📥 In the backlog');
+  } }, t.text, $('#tmWhen'));
+};
+
 document.querySelectorAll('#tmPrio button').forEach((b) => {
   b.onclick = () => {
     const t = editingTask(); if (!t) return;
@@ -7043,10 +7081,10 @@ function addCapture(text, context) {
 }
 
 // Converting preserves the original wording as context, so nothing is lost.
-async function processCapture(id, kind) {
+async function processCapture(id, kind, preMadeId) {
   const c = captures.find((x) => x.id === id);
   if (!c) return null;
-  let madeId = null, label = '';
+  let madeId = preMadeId || null, label = kind === 'backlog' ? 'backlog item' : '';
   if (kind === 'task') {
     const t = await createTaskOn(iso(new Date()), c.text, { note: c.note || ('Captured ' + relTime(c.createdAt)) });
     madeId = t.id; label = 'task';
@@ -7061,6 +7099,7 @@ async function processCapture(id, kind) {
     const d = await createDoc({ title: c.text, content: '# ' + c.text + '\n\n' + (c.note ? c.note + '\n' : '') });
     madeId = d ? d.id : null; label = 'document';
   }
+  // 'backlog' arrives already made — the date prompt created it.
   if (!madeId) { flash('Could not convert that one.'); return null; }
   c.status = 'processed'; c.becameKind = kind; c.becameId = madeId; c.processedAt = Date.now();
   saveCaptures();
@@ -7614,9 +7653,11 @@ function renderInboxPage() {
             '<button data-to="learning">🧠 Learning</button>' +
             '<button data-to="idea">💡 Idea</button>' +
             '<button data-to="doc">📄 Document</button>' +
+            '<button data-to="backlog">📥 Backlog</button>' +
             '<button class="inbox-del" data-del="1" title="Delete">✕</button>' +
           '</div>'
-        : '<div class="inbox-became">' + ({ task: '✓ task', learning: '🧠 learning topic', idea: '💡 idea', doc: '📄 document' }[c.becameKind] || 'processed') +
+          + '<div class="bl-when hidden" data-when="1"></div>'
+        : '<div class="inbox-became">' + ({ task: '✓ task', learning: '🧠 learning topic', idea: '💡 idea', doc: '📄 document', backlog: '📥 backlog' }[c.becameKind] || 'processed') +
           ' · ' + relTime(c.processedAt) + '<button data-open="1">Open</button></div>') +
     '</div>';
   list.innerHTML =
@@ -7633,6 +7674,13 @@ function renderInboxPage() {
     }
     el.querySelectorAll('[data-to]').forEach((b) => {
       b.onclick = async () => {
+        // The backlog is the one destination that needs a date first.
+        if (b.dataset.to === 'backlog') {
+          return blAskWhen({ text: c.text, extra: { note: c.note || '' }, after: async (item) => {
+            await processCapture(id, 'backlog', item.id);
+            renderInboxPage(); renderTodayExtras();
+          } }, c.text, el.querySelector('[data-when]'));
+        }
         b.closest('.inbox-item').classList.add('converting');
         await processCapture(id, b.dataset.to);
         setTimeout(() => { renderInboxPage(); renderTodayExtras(); }, 260);
@@ -7648,6 +7696,7 @@ function renderInboxPage() {
       else if (c.becameKind === 'learning') { await openPage('learning'); openLearnDetail(c.becameId); }
       else if (c.becameKind === 'idea') { await openPage('ideas'); }
       else if (c.becameKind === 'task') { const t = taskById(c.becameId); if (t) jumpToTask(t._date, t.id); }
+      else if (c.becameKind === 'backlog') { closePage(); renderBacklog(); flash('📥 It is in the backlog'); }
     };
   });
 }
@@ -8636,6 +8685,7 @@ function normBacklog(b) {
     text: b.text || '',
     note: b.note || '',
     pickupDate: b.pickupDate || null,
+    fromTaskId: b.fromTaskId || null,   // parked off a board, rather than typed in
     projectId: b.projectId || null,
     estimateMin: b.estimateMin || null,
     createdAt: b.createdAt || Date.now(),
@@ -8666,9 +8716,15 @@ function blNextMonth() {
 // answer — but an undated item says so plainly, so it cannot quietly become
 // something that never comes back.
 let blPending = null;        // { text } waiting for a date, or { id } re-dating
-function blAskWhen(pending, label) {
+// The same "when should this come back?" prompt, rendered wherever it was
+// asked for — the backlog strip, the task modal, an inbox row. Parking from a
+// modal cannot use the strip's copy: it is behind the modal, and may be
+// switched off in settings entirely.
+let blWhenHost = null;
+function blAskWhen(pending, label, host) {
   blPending = pending;
-  const el = $('#blWhen');
+  const el = host || $('#blWhen');
+  blWhenHost = el;
   el.classList.remove('hidden');
   el.innerHTML =
     '<span class="bl-when-q">When should ' + (label ? '“' + escapeHtml(label.slice(0, 44)) + '”' : 'it') + ' come back?</span>'
@@ -8685,7 +8741,12 @@ function blAskWhen(pending, label) {
   });
   $('#blWhenDate').onchange = (e) => { if (e.target.value) blResolve(e.target.value); };
 }
-function blCloseWhen() { blPending = null; $('#blWhen').classList.add('hidden'); $('#blWhen').innerHTML = ''; }
+function blCloseWhen() {
+  blPending = null;
+  const el = blWhenHost || $('#blWhen');
+  blWhenHost = null;
+  if (el) { el.classList.add('hidden'); el.innerHTML = ''; }
+}
 
 function blResolve(dateISO) {
   const p = blPending;
@@ -8697,11 +8758,12 @@ function blResolve(dateISO) {
   } else {
     const text = (p.text || '').trim();
     if (!text) return;
-    backlog.unshift(normBacklog({ text, pickupDate: dateISO }));
+    const item = normBacklog(Object.assign({ text, pickupDate: dateISO }, p.extra || {}));
+    backlog.unshift(item);
     saveBacklog();
     logActivity('backlog-added', 'Backlog: ' + text.slice(0, 60));
-    $('#blNew').value = '';
-    $('#blNew').focus();
+    if (p.after) p.after(item);
+    else { $('#blNew').value = ''; $('#blNew').focus(); }
   }
   renderBacklog();
 }

@@ -631,6 +631,48 @@ const server = http.createServer((req, res) => {
     return res.end('Method not allowed');
   }
 
+  // API: POST /api/tasks/park?date=&id=  — off the board, into the backlog.
+  // One operation on purpose: the two halves must not be able to happen
+  // separately, because a task removed but not parked is simply gone, and
+  // nothing here deletes.
+  if (u.pathname === '/api/tasks/park' && req.method === 'POST') {
+    const date = safeDate(u.searchParams.get('date'));
+    const id = u.searchParams.get('id');
+    if (!date) return sendJSON(res, 400, { error: 'bad date' });
+    readBody(req, (err, body) => {
+      if (err) return sendJSON(res, 413, { error: 'too large' });
+      let p = {};
+      try { p = body ? JSON.parse(body) : {}; } catch { return sendJSON(res, 400, { error: 'bad body' }); }
+      const arr = readTasks(date);
+      const t = arr.find((x) => x.id === id);
+      if (!t) return sendJSON(res, 404, { error: 'no such task on ' + date });
+      const item = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        createdAt: Date.now(),
+        text: t.text, note: t.note || '', estimateMin: t.estimateMin || null,
+        projectId: t.projectId || null,
+        pickupDate: p.pickupDate !== undefined ? p.pickupDate : (t.pickupDate || null),
+        fromTaskId: t.id, promotedTo: null, promotedOn: null, notifiedOn: null,
+      };
+      const bl = readCollection('backlog');
+      bl.unshift(item);
+      writeCollection('backlog', bl);
+      // A carried task walks back onto tomorrow's board unless the day it left
+      // remembers letting it go.
+      const meta = readMeta(date) || {};
+      if (t.srcId) {
+        if (!Array.isArray(meta.carryDropped)) meta.carryDropped = [];
+        if (!meta.carryDropped.includes(t.srcId)) meta.carryDropped.push(t.srcId);
+      }
+      const left = arr.filter((x) => x.id !== id);
+      if (!left.length) meta.noCarry = true;
+      writeMeta(date, meta);
+      writeTasks(date, left);
+      sendJSON(res, 200, { ok: true, item, rev: fileRev(fileFor(date)) });
+    });
+    return;
+  }
+
   // API: /api/meta?date=YYYY-MM-DD  — per-day info (login/logout/location/focus)
   if (u.pathname === '/api/meta') {
     const date = safeDate(u.searchParams.get('date'));

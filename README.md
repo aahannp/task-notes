@@ -103,7 +103,9 @@ Work you have decided on but are not doing yet. It sits collapsed under the boar
 
 Adding something always asks when it should come back: **Tomorrow · Next week · Next month**, a date, or **No date yet**. You are never refused — a half-formed thought still lands — but an undated item says so plainly on its row rather than quietly becoming something that never returns.
 
-On the day an item comes due you get one native notification, once. **Pull in** puts it on the board for the day you're looking at; the backlog keeps the record of which task it became, so it reads as what came out of it, not just what's left.
+Three ways in, not one. The `+` on the strip; **📥 Backlog** in the task panel, which takes a task off the board and parks it with its note, estimate and project intact; and **📥 Backlog** on an Inbox row, for a thought that turned out to be work for later rather than now. All three ask the same question about when it comes back — asked where you are, so parking from the task panel does not send you hunting for a strip that may be switched off.
+
+On the day an item comes due you get one native notification, once. **Pull in** puts it on the board for the day you're looking at; the backlog keeps the record of which task it became, so it reads as what came out of it, not just what's left. Parking runs the same way in reverse: the entry remembers the task it came from, and a carried task parked this way stops walking back onto tomorrow's board.
 
 Backlog items live in their own store rather than in a day file — a backlog item has no day, and parking one in a future day file would put it in the path of the carry-forward reconciliation, which would then drag it between days as though it were live work.
 
@@ -303,7 +305,7 @@ claude mcp add task-notes --scope user -- node ~/task-notes/mcp/tasknotes.js
 
 Working inside this repo, the checked-in `.mcp.json` does the same thing without the setup.
 
-**Forty-two tools**, one per thing a person would say they are doing:
+**Forty-three tools**, one per thing a person would say they are doing:
 
 | | |
 |---|---|
@@ -313,7 +315,7 @@ Working inside this repo, the checked-in `.mcp.json` does the same thing without
 | **Learning** | `list_learning` · `add_learning` · `update_learning` |
 | **Inbox** | `list_inbox` · `capture` · `process_inbox_item` |
 | **Reminders** | `list_reminders` · `add_reminder` · `update_reminder` |
-| **Backlog** | `list_backlog` · `add_backlog` · `update_backlog` · `promote_backlog` |
+| **Backlog** | `list_backlog` · `add_backlog` · `update_backlog` · `promote_backlog` · `park_task` |
 | **Documents** | `list_documents` · `read_document` · `write_document` · `update_document` |
 | **The day** | `day_summary` · `set_day` |
 | **Focus** | `focus_summary` · `log_focus` |
