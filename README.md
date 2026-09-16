@@ -346,6 +346,8 @@ add_task         Added to 2026-09-10: review the grants audit      6m ago
 
 Every row is clickable and goes to the thing itself — the day, the document, the page. An assistant with write access to your work is only reasonable if you can see what it wrote.
 
+Downloads do not pile up. Every release lands under a new filename, so a folder of 129 MB disk images builds quietly; unless Settings says otherwise, the previous one moves to the **Trash** — the Trash, not deleted — once the new one has finished. **Settings → When an update downloads** switches between *Replace the old one* and *Keep every version*.
+
 The log lives in `data/mcp-log.jsonl`, one line per call, appended by the MCP server rather than sent to the app — so a call that failed *because the app was closed* is recorded too. It keeps the last 2000 lines.
 
 ### Priority

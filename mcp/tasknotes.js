@@ -1117,6 +1117,9 @@ const TOOLS = [
       const out = [];
       out.push('Panels:', show(v.sections) || '  (all shown)');
       out.push('Pages:', show(v.pages) || '  (all shown)');
+      out.push('Downloads: ' + ((v.downloads && v.downloads.keepOld)
+        ? 'every version is kept in Downloads'
+        : 'a new download replaces the last one (the old disk image goes to the Trash)'));
       return out.join('\n');
     },
   },
@@ -1129,10 +1132,12 @@ const TOOLS = [
       properties: {
         sections: { type: 'object', description: 'Panel name to true (shown) or false (hidden), e.g. {"spotify": false}. Read get_settings for the names.' },
         pages: { type: 'object', description: 'Page name to true or false.' },
+        keepOldDownloads: { type: 'boolean', description: 'true keeps every downloaded disk image; false (the default) moves the previous one to the Trash when a new one lands.' },
       },
     },
     async run(a) {
       const patch = {};
+      if (a.keepOldDownloads != null) patch.downloads = { keepOld: !!a.keepOldDownloads };
       ['sections', 'pages'].forEach((k) => {
         if (a[k] == null) return;
         if (typeof a[k] !== 'object' || Array.isArray(a[k])) throw new Error(k + ' must be an object of name → true/false');
@@ -1142,7 +1147,10 @@ const TOOLS = [
       });
       await patchStore('settings', null, some(patch));
       const changed = [];
-      Object.keys(patch).forEach((k) => Object.keys(patch[k]).forEach((n) => changed.push(n + ' ' + (patch[k][n] ? 'shown' : 'hidden'))));
+      ['sections', 'pages'].forEach((k) => {
+        if (patch[k]) Object.keys(patch[k]).forEach((n) => changed.push(n + ' ' + (patch[k][n] ? 'shown' : 'hidden')));
+      });
+      if (patch.downloads) changed.push(patch.downloads.keepOld ? 'keeping every download' : 'replacing old downloads');
       return changed.join(', ') + '.';
     },
   },

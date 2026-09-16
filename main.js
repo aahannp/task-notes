@@ -270,6 +270,29 @@ app.on('before-quit', saveMiniState);
 // Downloading the new build, and then getting out of the way. An unsigned app
 // cannot replace itself on disk while it is running, so this stops at "here it
 // is, in Finder" rather than pretending it can install anything.
+// Every release lands under a new filename, so Downloads quietly fills up
+// with old disk images. Unless asked to keep them, the earlier ones go once
+// the new one is safely on disk — to the Trash, never unlinked, so getting
+// this wrong costs nothing but a drag back out.
+async function tidyOldDownloads(dir, keepPath) {
+  const mine = /^Task[ ._]Notes[-_ ].*\.dmg$/i;
+  const keep = path.resolve(keepPath);
+  let names = [];
+  try { names = fs.readdirSync(dir); } catch { return 0; }
+  let moved = 0;
+  for (const n of names) {
+    if (!mine.test(n)) continue;
+    const full = path.resolve(dir, n);
+    if (full === keep) continue;
+    try {
+      if (!fs.statSync(full).isFile()) continue;
+      await shell.trashItem(full);
+      moved++;
+    } catch {}                       // locked, already gone, not ours to move
+  }
+  return moved;
+}
+
 ipcMain.handle('update:download', async (evt, payload) => {
   const url = payload && payload.url;
   const name = (payload && payload.name) || 'Task Notes.dmg';
@@ -316,6 +339,10 @@ ipcMain.handle('update:download', async (evt, payload) => {
   } catch (e) {
     return { ok: false, error: String(e.message || e) };
   }
+  let tidied = 0;
+  if (!(payload && payload.keepOld)) {
+    tidied = await tidyOldDownloads(path.dirname(dest), dest);
+  }
   shell.showItemInFolder(dest);
   if (win && !win.isDestroyed()) {
     dialog.showMessageBox(win, {
@@ -323,11 +350,13 @@ ipcMain.handle('update:download', async (evt, payload) => {
       title: 'Update downloaded',
       message: name + ' is in your Downloads folder.',
       detail: 'Open it, drag Task Notes to Applications and replace the old one, then quit and reopen the app. '
-        + 'Your data is untouched — it lives outside the app.',
+        + 'Your data is untouched — it lives outside the app.'
+        + (tidied ? '\n\n' + (tidied === 1 ? 'The previous download was' : tidied + ' older downloads were')
+            + ' moved to the Trash. Settings can keep them instead.' : ''),
       buttons: ['OK'],
     });
   }
-  return { ok: true, path: dest };
+  return { ok: true, path: dest, tidied };
 });
 
 app.on('will-quit', () => { if (server.clearPortFile) server.clearPortFile(); });

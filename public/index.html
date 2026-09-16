@@ -1402,6 +1402,15 @@
   .upd-notes { font-size: 12.5px; line-height: 1.6; color: var(--muted); white-space: pre-wrap;
     background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r-sm);
     padding: 12px 14px; margin-top: 12px; max-height: 240px; overflow-y: auto; }
+  .set-choice { display: flex; gap: 8px; flex-wrap: wrap; }
+  .set-choice button { flex: 1 1 0; min-width: 140px; background: var(--panel-2);
+    border: 1px solid var(--line); color: var(--muted); font-family: inherit;
+    font-size: 12.5px; font-weight: 600; padding: 9px 12px; border-radius: var(--r-sm);
+    cursor: pointer; transition: .15s; }
+  .set-choice button:hover { color: var(--text); }
+  .set-choice button.on { background: rgba(124,155,255,.16); border-color: rgba(124,155,255,.45);
+    color: var(--text); }
+
   .upd-prog { margin-top: 14px; }
   .upd-prog .bar { height: 6px; }
   .upd-prog-meta { display: flex; justify-content: space-between; align-items: baseline;
@@ -7979,7 +7988,10 @@ const SETTING_PAGES = [
 
 let settings = null;
 function defaultSettings() {
-  const s = { sections: {}, pages: {} };
+  // keepOld false: a new download replaces the last one. Every release has a
+  // different filename, so keeping them all is how Downloads fills with disk
+  // images you will never open again.
+  const s = { sections: {}, pages: {}, downloads: { keepOld: false } };
   SETTING_SECTIONS.forEach((x) => { s.sections[x.k] = true; });
   SETTING_PAGES.forEach(([k]) => { s.pages[k] = true; });
   return s;
@@ -7993,6 +8005,7 @@ function normSettings(v) {
   SETTING_PAGES.forEach(([k]) => {
     if (v.pages && v.pages[k] === false) d.pages[k] = false;
   });
+  if (v.downloads && v.downloads.keepOld === true) d.downloads.keepOld = true;
   return d;
 }
 const saveSettings = () => saveStore('settings', settings);
@@ -8021,7 +8034,9 @@ function applySettings() {
 
 const SIMPLE = { sections: false, pages: ['tasks', 'docs'] };
 function applyPreset(kind) {
+  const keepOld = !!(settings && settings.downloads && settings.downloads.keepOld);
   settings = defaultSettings();
+  settings.downloads.keepOld = keepOld;      // a layout preset is not about downloads
   if (kind === 'simple') {
     Object.keys(settings.sections).forEach((k) => { settings.sections[k] = false; });
     Object.keys(settings.pages).forEach((k) => { settings.pages[k] = SIMPLE.pages.includes(k); });
@@ -8041,6 +8056,7 @@ function renderSettings() {
   $('#setState').textContent = (offSec + offPg)
     ? (offSec + offPg) + ' hidden' : 'everything showing';
 
+  const keepOld = !!(settings.downloads && settings.downloads.keepOld);
   const row = (id, on, label, sub) =>
     '<label class="set-row"><input type="checkbox" data-set="' + id + '"' + (on ? ' checked' : '') + '>'
     + '<span class="sr-t">' + escapeHtml(label)
@@ -8057,7 +8073,16 @@ function renderSettings() {
       + '</div></div>'
     + '<div class="mcp-sec"><div class="mcp-h">Pages in the menu</div><div class="set-grid">'
       + SETTING_PAGES.map(([k, label]) => row('pg:' + k, settings.pages[k], label, '')).join('')
-      + '</div><div class="mcp-hint">Today is always there.</div></div>';
+      + '</div><div class="mcp-hint">Today is always there.</div></div>'
+    + '<div class="mcp-sec"><div class="mcp-h">When an update downloads</div><div class="set-choice">'
+      + '<button data-dl="replace"' + (keepOld ? '' : ' class="on"') + '>Replace the old one</button>'
+      + '<button data-dl="keep"' + (keepOld ? ' class="on"' : '') + '>Keep every version</button>'
+      + '</div><div class="mcp-hint">'
+      + (keepOld
+          ? 'Every disk image you download stays in Downloads. They are about 129 MB each.'
+          : 'The previous disk image moves to the Trash once the new one has finished downloading — '
+            + 'to the Trash, not deleted, so you can always put it back.')
+      + '</div></div>';
 
   el.querySelectorAll('[data-set]').forEach((box) => {
     box.onchange = () => {
@@ -8070,6 +8095,14 @@ function renderSettings() {
       // The agenda skips its fetch while hidden, so switching it back on has
       // to ask for the meetings it never loaded.
       if (kind === 'sec' && key === 'agenda' && box.checked) renderAgenda();
+    };
+  });
+  el.querySelectorAll('[data-dl]').forEach((b) => {
+    b.onclick = () => {
+      if (!settings.downloads) settings.downloads = {};
+      settings.downloads.keepOld = b.dataset.dl === 'keep';
+      saveSettings();
+      renderSettings();
     };
   });
   $('#setSimple').onclick = () => applyPreset('simple');
@@ -8176,12 +8209,15 @@ function updProgress(expect) {
         note.textContent = rate > 0 ? mb(rate) + ' MB/s' : 'downloading\u2026';
       }
     },
-    settle(ok, err) {
+    settle(ok, err, tidied) {
       wrap.classList.add(ok ? 'done' : 'failed');
       wrap.querySelector('.bar').style.opacity = '1';
       fill.style.width = '100%';
-      if (ok) { pct.textContent = '100%'; note.textContent = 'saved to Downloads'; }
-      else { pct.textContent = 'stopped'; note.textContent = err || 'download failed'; }
+      if (ok) {
+        pct.textContent = '100%';
+        note.textContent = 'saved to Downloads'
+          + (tidied ? '  ·  ' + (tidied === 1 ? 'older one' : tidied + ' older ones') + ' to Trash' : '');
+      } else { pct.textContent = 'stopped'; note.textContent = err || 'download failed'; }
     },
   };
 }
@@ -8231,10 +8267,15 @@ function renderUpdPanel() {
     const bar = updProgress(d.asset.size || 0);
     const off = window.tn.onUpdateProgress ? window.tn.onUpdateProgress(bar.tick) : null;
     let r;
-    try { r = await window.tn.downloadUpdate({ url: d.asset.url, name: d.asset.name }); }
+    try {
+      r = await window.tn.downloadUpdate({
+        url: d.asset.url, name: d.asset.name,
+        keepOld: !!(settings && settings.downloads && settings.downloads.keepOld),
+      });
+    }
     finally { if (off) off(); }
     const ok = !!(r && r.ok);
-    bar.settle(ok, ok ? '' : ((r && r.error) || 'unknown'));
+    bar.settle(ok, ok ? '' : ((r && r.error) || 'unknown'), ok ? (r.tidied || 0) : 0);
     get.textContent = ok ? 'In your Downloads folder' : 'Failed — ' + ((r && r.error) || 'unknown');
     if (!ok) get.disabled = false;
   };
