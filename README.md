@@ -117,6 +117,18 @@ Backlog items live in their own store rather than in a day file — a backlog it
 
 <br>
 
+## Due
+
+One page that answers *what has to be done by when*.
+
+The app already had five places that carry a date — a project's due, a learning item's deadline, a reminder, a backlog pick-up, a task's pick-up date — and no way to see them together. **Due** is two halves. Its own small store, for a commitment that isn't yet a task or a project and shouldn't have to become one just to hold a date. And underneath, a read-only roll-up of every dated thing that already exists, so this doesn't become a sixth place to lose a deadline. Click a rolled-up row and you go to the thing itself, which is where it's edited.
+
+Items group as **Overdue · Today · Tomorrow · This week · Later · No date yet**, overdue in red, and each one links to **anything** — a task, a project, a document, an idea, a learning topic, a reminder — through one picker over all of them, because "link it to whatever" shouldn't be six separate controls. The sidebar carries a badge for what's late or landing today, which is the only number worth putting on a nav item.
+
+Over MCP: `list_due` (with `includeOthers` for the roll-up) · `add_due` · `update_due`.
+
+<br>
+
 ## Knowledge that comes back
 
 Marking something "Learned" usually means never seeing it again. Learned topics resurface on a widening schedule (5 → 13 → 30 → 60 → 120 days), pulled in sooner if you keep postponing them or flagged them high priority.
@@ -311,7 +323,7 @@ claude mcp add task-notes --scope user -- node ~/task-notes/mcp/tasknotes.js
 
 Working inside this repo, the checked-in `.mcp.json` does the same thing without the setup.
 
-**Forty-three tools**, one per thing a person would say they are doing:
+**Forty-six tools**, one per thing a person would say they are doing:
 
 | | |
 |---|---|
@@ -323,6 +335,7 @@ Working inside this repo, the checked-in `.mcp.json` does the same thing without
 | **Reminders** | `list_reminders` · `add_reminder` · `update_reminder` |
 | **Backlog** | `list_backlog` · `add_backlog` · `update_backlog` · `promote_backlog` · `park_task` |
 | **Documents** | `list_documents` · `read_document` · `write_document` · `update_document` |
+| **Due** | `list_due` · `add_due` · `update_due` |
 | **The day** | `day_summary` · `set_day` |
 | **Focus** | `focus_summary` · `log_focus` |
 | **Weekly review** | `read_review` · `write_review` |

@@ -316,6 +316,7 @@ const COLLECTIONS = {
   captures: 'captures.json',
   reminders: 'reminders.json',
   backlog: 'backlog.json',
+  todos: 'todos.json',
   settings: 'settings.json',
 };
 // reviews is an object keyed by week-start; everything else is an array.

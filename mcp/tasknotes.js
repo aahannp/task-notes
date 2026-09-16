@@ -858,6 +858,133 @@ const TOOLS = [
     },
   },
 
+  // ------------------------------------------------------------------- due
+  {
+    name: 'list_due',
+    description: 'Everything with a day it has to be done by — the Due list, grouped from overdue through to no-date-yet. Pass includeOthers to also roll up the dates already carried elsewhere in the app: project due dates, learning deadlines, reminders, backlog pick-ups and task pick-up dates.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        includeDone: { type: 'boolean' },
+        includeOthers: { type: 'boolean', description: 'Also list dated things from the rest of the app.' },
+      },
+    },
+    async run(a) {
+      const all = await store('todos');
+      const rows = a.includeDone ? all : all.filter((t) => t.status !== 'done');
+      const day = (d) => {
+        if (!d) return null;
+        const x = new Date(d + 'T00:00:00'); x.setHours(0, 0, 0, 0);
+        const n = new Date(); n.setHours(0, 0, 0, 0);
+        return Math.round((x - n) / 86400000);
+      };
+      const word = (d) => {
+        const n = day(d);
+        return n === null ? 'no date' : n < 0 ? Math.abs(n) + 'd late' : n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + 'd';
+      };
+      const out = [];
+      if (!rows.length) out.push('Nothing on the Due list.');
+      else {
+        rows.slice().sort((x, y) => String(x.due || '9999').localeCompare(String(y.due || '9999')))
+          .forEach((t) => out.push('- [' + (t.status === 'done' ? 'done' : word(t.due)) + '] ' + t.text
+            + (t.due ? '  (' + t.due + ')' : '')
+            + (t.priority && t.priority !== 'normal' ? '  · ' + t.priority : '')
+            + (t.note ? '\n    ' + t.note : '')
+            + '  #' + t.id));
+      }
+      if (a.includeOthers) {
+        const [projects, learning, reminders, backlog, days] = await Promise.all([
+          store('projects'), store('learning'), store('reminders'), store('backlog'),
+          api('GET', '/api/alldays').then((r) => r.days || []),
+        ]);
+        const other = [];
+        projects.filter((p) => p.due && p.status !== 'done').forEach((p) => other.push(['Project', p.title, p.due]));
+        learning.filter((l) => l.deadline && l.status !== 'learned').forEach((l) => other.push(['Learning', l.name, l.deadline]));
+        reminders.filter((r) => r.status !== 'done' && !r.doneAt).forEach((r) => other.push(['Reminder', r.text, r.date]));
+        backlog.filter((b) => b.pickupDate && !b.promotedTo).forEach((b) => other.push(['Backlog', b.text, b.pickupDate]));
+        days.forEach((d) => (d.tasks || []).forEach((t) => {
+          if (t.pickupDate && t.status !== 'done') other.push(['Task', t.text, t.pickupDate]);
+        }));
+        // A carried task appears once per day carried, same date every time.
+        const seen = new Set();
+        const uniq = other.filter((o) => {
+          const k = o.join('\u0000');
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        uniq.sort((x, y) => String(x[2]).localeCompare(String(y[2])));
+        out.push('', 'Already dated elsewhere (' + uniq.length + '):');
+        uniq.slice(0, 60).forEach((o) => out.push('- ' + o[2] + '  [' + o[0] + ']  ' + o[1]));
+      }
+      return out.join('\n');
+    },
+  },
+  {
+    name: 'add_due',
+    write: true,
+    description: 'Put something on the Due list — a commitment with the day it has to be done by. Use this for "X by Friday" when X is not yet a task on a board, a project or anything else. It can be linked to any of those afterwards, or right away.',
+    inputSchema: {
+      type: 'object',
+      required: ['text'],
+      properties: {
+        text: { type: 'string' },
+        due: { type: 'string', description: 'YYYY-MM-DD it must be done by. Leave it out for something with no date yet.' },
+        note: { type: 'string', description: 'Any leeway, conditions or detail.' },
+        priority: { type: 'string', enum: PRIORITIES, description: 'Defaults to normal.' },
+        taskId: { type: 'string' },
+        projectId: { type: 'string' },
+        docId: { type: 'string' },
+        ideaId: { type: 'string' },
+        learningId: { type: 'string' },
+        reminderId: { type: 'string' },
+      },
+    },
+    async run(a) {
+      const r = await addStore('todos', {
+        text: need(a, 'text'), note: a.note || '', due: theDay(a.due, 'due'),
+        priority: thePriority(a.priority) || 'normal', status: 'open', doneAt: null,
+        taskId: a.taskId || null, projectId: a.projectId || null, docId: a.docId || null,
+        ideaId: a.ideaId || null, learningId: a.learningId || null, reminderId: a.reminderId || null,
+      });
+      return 'On the Due list: ' + r.item.text + (r.item.due ? ' — by ' + r.item.due : ' — no date yet') + '  #' + r.item.id;
+    },
+  },
+  {
+    name: 'update_due',
+    write: true,
+    description: 'Change something on the Due list — move its date, mark it done, reword it, or link it to a task, project, document, idea, learning item or reminder.',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'string' },
+        text: { type: 'string' },
+        note: { type: 'string' },
+        due: { type: 'string', description: 'YYYY-MM-DD, or "" to take the date off.' },
+        priority: { type: 'string', enum: PRIORITIES },
+        done: { type: 'boolean' },
+        taskId: { type: 'string', description: 'Link to a task; "" unlinks.' },
+        projectId: { type: 'string' },
+        docId: { type: 'string' },
+        ideaId: { type: 'string' },
+        learningId: { type: 'string' },
+        reminderId: { type: 'string' },
+      },
+    },
+    async run(a) {
+      const patch = pick(a, ['text', 'note']);
+      if (a.due !== undefined) patch.due = theDay(a.due, 'due');
+      if (a.priority != null) patch.priority = thePriority(a.priority);
+      if (a.done != null) { patch.status = a.done ? 'done' : 'open'; patch.doneAt = a.done ? Date.now() : null; }
+      ['taskId', 'projectId', 'docId', 'ideaId', 'learningId', 'reminderId'].forEach((k) => {
+        if (a[k] !== undefined) patch[k] = a[k] || null;
+      });
+      const r = await patchStore('todos', need(a, 'id'), some(patch));
+      return 'Due updated: ' + r.item.text + (r.item.status === 'done' ? ' — done' : r.item.due ? ' — by ' + r.item.due : ' — no date');
+    },
+  },
+
   // -------------------------------------------------------------- documents
   {
     name: 'list_documents',

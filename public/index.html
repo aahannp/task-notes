@@ -2391,6 +2391,67 @@
     color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 650; padding: 6px 9px;
     border-radius: 7px; cursor: pointer; }
   .tree-folder:hover { background: var(--panel-2); color: var(--text); }
+  /* Due page */
+  .nav-badge { margin-left: auto; font-size: 10px; font-weight: 700; min-width: 17px; height: 17px;
+    line-height: 17px; text-align: center; border-radius: 9px; padding: 0 5px;
+    background: rgba(229,83,75,.18); color: #ff9b94; opacity: 0; transition: opacity var(--t-base); }
+  .nav-badge.on { opacity: 1; }
+  .due-list { display: flex; flex-direction: column; gap: 22px; }
+  .due-sec { }
+  .due-h { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 9px; }
+  .due-h .n { font-weight: 600; opacity: .6; }
+  .due-sec.is-late .due-h { color: #ff9b94; }
+  .due-item { display: flex; align-items: flex-start; gap: 11px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; margin-bottom: 7px;
+    transition: border-color var(--t-base), background var(--t-base); }
+  .due-item:hover { border-color: rgba(124,155,255,.3); }
+  .due-item.late { border-left: 3px solid #e5534b; }
+  .due-item.is-done { opacity: .5; }
+  .due-item.is-done .due-text { text-decoration: line-through; }
+  .due-check { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; border-radius: 50%;
+    border: 1.5px solid var(--line); background: none; cursor: pointer; transition: .15s; }
+  .due-check:hover { border-color: var(--accent); }
+  .due-check.on { background: #3fb950; border-color: #3fb950; }
+  .due-main { flex: 1; min-width: 0; }
+  .due-text { font-size: 14px; line-height: 1.45; color: var(--text); outline: none; }
+  .due-text[contenteditable]:focus { background: var(--panel-2); border-radius: 5px; padding: 0 4px; margin: 0 -4px; }
+  .due-note { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+  .due-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .due-when { background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+    font-family: inherit; font-size: 11px; border-radius: 6px; padding: 3px 6px; cursor: pointer;
+    color-scheme: dark; }
+  .due-when-l { font-size: 11px; color: var(--muted); }
+  .due-when-l.late { color: #ff9b94; font-weight: 600; }
+  .due-item.late .due-when-l { color: #ff9b94; font-weight: 600; }
+  .due-prio { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+    padding: 2px 7px; border-radius: 99px; cursor: pointer; background: var(--panel-2); color: var(--muted); }
+  .due-prio.prio-high { background: rgba(229,83,75,.16); color: #ff9b94; }
+  .due-prio.prio-low { background: rgba(124,155,255,.12); color: #9fb0e0; }
+  .due-chip, .due-link { display: inline-flex; align-items: center; gap: 4px; font-family: inherit;
+    font-size: 11px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+    border-radius: 99px; padding: 3px 9px; cursor: pointer; transition: .15s; }
+  .due-chip:hover, .due-link:hover { color: var(--text); border-color: rgba(124,155,255,.4); }
+  .due-chip .x { opacity: .45; margin-left: 2px; font-size: 10px; }
+  .due-chip .x:hover { opacity: 1; color: var(--danger); }
+  .due-del { background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer;
+    opacity: 0; padding: 2px 4px; transition: .15s; }
+  .due-item:hover .due-del { opacity: .5; }
+  .due-del:hover { opacity: 1; color: var(--danger); }
+  .due-other { display: flex; align-items: center; gap: 10px; padding: 9px 13px; border-radius: 9px;
+    cursor: pointer; font-size: 13px; color: var(--muted); transition: background var(--t-base); }
+  .due-other:hover { background: var(--panel-2); color: var(--text); }
+  .due-other-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .due-other-k { font-size: 10.5px; opacity: .55; text-transform: uppercase; letter-spacing: .4px; }
+  .due-sec.others { opacity: .92; border-top: 1px solid var(--line); padding-top: 16px; }
+  .due-link-list { max-height: 320px; overflow-y: auto; margin-top: 12px; }
+  .due-link-row { display: flex; align-items: center; gap: 10px; width: 100%; background: none;
+    border: none; color: var(--text); font-family: inherit; font-size: 13px; text-align: left;
+    padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+  .due-link-row:hover { background: var(--panel-2); }
+  .due-link-row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .due-link-row .s { font-size: 10.5px; color: var(--muted); opacity: .7; }
+
   .md-img { max-width: 100%; height: auto; border-radius: 8px; }
   .md-img[data-align="center"] { display: block; margin-left: auto; margin-right: auto; }
   .md-img[data-align="right"] { display: block; margin-left: auto; margin-right: 0; }
@@ -2993,6 +3054,7 @@
     <button class="nav-btn" data-page="docs"><svg class="ico" viewBox="0 0 24 24"><use href="#i-docs"/></svg>Docs</button>
     <button class="nav-btn" data-page="ideas"><svg class="ico" viewBox="0 0 24 24"><use href="#i-ideas"/></svg>Ideas</button>
     <button class="nav-btn" data-page="calendar"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendar"/></svg>Calendar</button>
+    <button class="nav-btn" data-page="due"><svg class="ico" viewBox="0 0 24 24"><use href="#i-reminders"/></svg>Due<span class="nav-badge" id="dueBadge"></span></button>
     <button class="nav-btn" data-page="reminders"><svg class="ico" viewBox="0 0 24 24"><use href="#i-reminders"/></svg>Reminders</button>
     <button class="nav-btn" data-page="focus"><svg class="ico" viewBox="0 0 24 24"><use href="#i-focus"/></svg>Focus</button>
     <button class="nav-btn" data-page="review"><svg class="ico" viewBox="0 0 24 24"><use href="#i-review"/></svg>Review</button>
@@ -3535,6 +3597,23 @@
     </div>
     <div class="page-bar"><div class="filters" id="rpFilters"></div></div>
     <div class="rp-list" id="rpList"></div>
+  </div>
+</div>
+
+<!-- ============ DUE — everything with a date it has to be done by ============ -->
+<div class="page hidden" id="page-due">
+  <div class="page-inner">
+    <div class="page-head">
+      <div><h2>⏳ Due</h2><p class="page-sub">Things with a day they have to be done by — and everything else in the app that already carries one.</p></div>
+      <button class="page-close" title="Back to today">✕</button>
+    </div>
+    <div class="addrow-page big">
+      <input id="dueNew" placeholder="Something that has to be done by…" autocomplete="off" />
+      <input type="date" id="dueDate" class="rp-date" />
+      <button class="addbtn" id="dueAdd">+</button>
+    </div>
+    <div class="page-bar"><div class="filters" id="dueFilters"></div></div>
+    <div class="due-list" id="dueList"></div>
   </div>
 </div>
 
@@ -5212,10 +5291,11 @@ const saveReviews  = () => saveStore('reviews', reviews);
 
 async function loadStores(force) {
   if (storesLoaded && !force) return;
-  const [p, l, i, a, r, cap, rem, bl, st] = await Promise.all([
+  const [p, l, i, a, r, cap, rem, bl, st, td] = await Promise.all([
     loadStore('projects'), loadStore('learning'), loadStore('ideas'),
     loadStore('activity'), loadStore('reviews'), loadStore('captures'),
     loadStore('reminders'), loadStore('backlog'), loadStore('settings'),
+    loadStore('todos'),
   ]);
   settings = normSettings(st);
   applySettings();
@@ -5227,6 +5307,8 @@ async function loadStores(force) {
   activity = a || [];
   reviews = r || {};
   captures = (cap || []).map(normCapture);
+  todos = (td || []).map(normTodo);
+  renderDueBadge();
   storesLoaded = true;
 }
 async function refreshDays() {
@@ -5332,7 +5414,7 @@ function projectById(id) { return projects.find((p) => p.id === id); }
 // =====================================================================
 // PAGE ROUTING — each area is a full-screen surface over the Today board.
 // =====================================================================
-const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders', 'focus'];
+const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders', 'focus', 'due'];
 let activePage = null;
 
 async function openPage(name) {
@@ -5352,6 +5434,7 @@ async function openPage(name) {
   if (name === 'calendar') renderCalendarPage();
   if (name === 'reminders') renderRemindersPage();
   if (name === 'focus') renderFocusPage();
+  if (name === 'due') renderDuePage();
 }
 function closePage() {
   PAGES.forEach((p) => $('#page-' + p).classList.add('hidden'));
@@ -8197,7 +8280,7 @@ const SETTING_SECTIONS = [
 const SETTING_PAGES = [
   ['tasks', 'Tasks'], ['projects', 'Projects'], ['learning', 'Learning'], ['docs', 'Docs'],
   ['ideas', 'Ideas'], ['inbox', 'Inbox'], ['calendar', 'Calendar'], ['reminders', 'Reminders'],
-  ['focus', 'Focus'], ['review', 'Review'],
+  ['focus', 'Focus'], ['review', 'Review'], ['due', 'Due'],
 ];
 
 let settings = null;
@@ -12985,6 +13068,362 @@ function renderReviewPage() {
   $('#wrWell').oninput = save; $('#wrBad').oninput = save; $('#wrNextWeek').oninput = save;
 }
 
+
+// =====================================================================
+// DUE — the one page that answers "what has to be done by when".
+//
+// The app already had five places that carry a date: a project's due, a
+// learning item's deadline, a reminder, a backlog pick-up, a task's pick-up
+// date. None of them could be seen together, and none of them was the right
+// home for "this thing, by Friday" when the thing is not yet any of those.
+//
+// So this is two halves. Its own small store for commitments that belong
+// nowhere else, and a read-only roll-up of every dated thing that already
+// exists — which is what stops this from becoming a sixth place to lose a date.
+// =====================================================================
+let todos = [];
+let dueShowDone = false;
+let dueShowOthers = true;
+
+const DUE_LINKS = [
+  { k: 'taskId', label: 'Task', icon: '✓' },
+  { k: 'projectId', label: 'Project', icon: '🚀' },
+  { k: 'docId', label: 'Document', icon: '📄' },
+  { k: 'ideaId', label: 'Idea', icon: '💡' },
+  { k: 'learningId', label: 'Learning', icon: '🧠' },
+  { k: 'reminderId', label: 'Reminder', icon: '🔔' },
+];
+
+function normTodo(t) {
+  t = t || {};
+  return {
+    id: t.id || uid(),
+    text: t.text || '',
+    note: t.note || '',
+    due: t.due || null,                    // YYYY-MM-DD, or null for someday
+    priority: PRIO_RANK[t.priority] !== undefined ? t.priority : 'normal',
+    status: t.status === 'done' ? 'done' : 'open',
+    doneAt: t.doneAt || null,
+    createdAt: t.createdAt || Date.now(),
+    taskId: t.taskId || null,
+    projectId: t.projectId || null,
+    docId: t.docId || null,
+    ideaId: t.ideaId || null,
+    learningId: t.learningId || null,
+    reminderId: t.reminderId || null,
+  };
+}
+const saveTodos = () => saveStore('todos', todos);
+
+// Days between two dates, both flattened to local midnight first. Without the
+// flattening this is off by one whenever the clock has drifted past noon.
+function dueDaysAway(ds) {
+  if (!ds) return null;
+  const a = new Date(ds + 'T00:00:00'); a.setHours(0, 0, 0, 0);
+  const b = new Date(); b.setHours(0, 0, 0, 0);
+  return Math.round((a - b) / 86400000);
+}
+function dueLabel(ds) {
+  const n = dueDaysAway(ds);
+  if (n === null) return 'No date';
+  if (n < -1) return Math.abs(n) + ' days late';
+  if (n === -1) return 'Yesterday';
+  if (n === 0) return 'Today';
+  if (n === 1) return 'Tomorrow';
+  if (n < 7) return 'In ' + n + ' days';
+  return new Date(ds + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+const DUE_BUCKETS = [
+  { k: 'late', title: 'Overdue', test: (n) => n !== null && n < 0 },
+  { k: 'today', title: 'Today', test: (n) => n === 0 },
+  { k: 'tomorrow', title: 'Tomorrow', test: (n) => n === 1 },
+  { k: 'week', title: 'This week', test: (n) => n !== null && n > 1 && n <= 7 },
+  { k: 'later', title: 'Later', test: (n) => n !== null && n > 7 },
+  { k: 'someday', title: 'No date yet', test: (n) => n === null },
+];
+
+// Everything else in the app that already carries a date. Read-only here:
+// clicking a row goes to the thing itself, because that is where it is edited.
+function dueOthers() {
+  const out = [];
+  projects.filter((p) => p.due && p.status !== 'done').forEach((p) =>
+    out.push({ kind: 'Project', icon: '🚀', text: p.title, due: p.due, go: () => { openPage('projects').then(() => openProjectDetail(p.id)); } }));
+  learnItems.filter((l) => l.deadline && l.status !== 'learned' && l.status !== 'archived').forEach((l) =>
+    out.push({ kind: 'Learning', icon: '🧠', text: l.name, due: l.deadline, go: () => { openPage('learning').then(() => openLearnDetail(l.id)); } }));
+  reminders.filter((r) => r.status !== 'done' && !r.doneAt).forEach((r) =>
+    out.push({ kind: 'Reminder', icon: '🔔', text: r.text, due: r.date, go: () => openPage('reminders') }));
+  backlog.filter((b) => b.pickupDate && !b.promotedTo).forEach((b) =>
+    out.push({ kind: 'Backlog', icon: '📥', text: b.text, due: b.pickupDate, go: () => { closePage(); renderBacklog(); } }));
+  allTasks().filter((t) => t.pickupDate && t.status !== 'done').forEach((t) =>
+    out.push({ kind: 'Task', icon: '✓', text: t.text, due: t.pickupDate, go: () => jumpToTask(t._date, t.id) }));
+  // A carried task exists once per day it was carried onto, all with the same
+  // pick-up date — listing it five times says nothing five times.
+  const seen = new Set();
+  return out.filter((o) => {
+    const key = o.kind + '\u0000' + o.text + '\u0000' + o.due;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => String(a.due).localeCompare(String(b.due)));
+}
+
+// Overdue and due-today, for the badge in the sidebar. The number people
+// actually want on a nav item is "how much is late or landing now", not a total.
+function duePressing() {
+  return todos.filter((t) => t.status !== 'done').filter((t) => {
+    const n = dueDaysAway(t.due);
+    return n !== null && n <= 0;
+  }).length;
+}
+function renderDueBadge() {
+  const el = $('#dueBadge'); if (!el) return;
+  const n = duePressing();
+  el.textContent = n ? String(n) : '';
+  el.classList.toggle('on', !!n);
+}
+
+function dueLinkChips(t) {
+  const out = [];
+  DUE_LINKS.forEach((L) => {
+    const id = t[L.k]; if (!id) return;
+    let label = '';
+    if (L.k === 'taskId') { const x = taskById(id); label = x && x.text; }
+    else if (L.k === 'projectId') { const x = projects.find((p) => p.id === id); label = x && x.title; }
+    else if (L.k === 'docId') { const x = docById(id); label = x && x.title; }
+    else if (L.k === 'ideaId') { const x = ideas.find((i) => i.id === id); label = x && x.title; }
+    else if (L.k === 'learningId') { const x = learnItems.find((l) => l.id === id); label = x && x.name; }
+    else if (L.k === 'reminderId') { const x = reminders.find((r) => r.id === id); label = x && x.text; }
+    if (!label) return;                      // the thing it pointed at is gone
+    out.push('<button class="due-chip" data-open="' + L.k + ':' + escapeHtml(id) + '" title="Open this ' +
+      L.label.toLowerCase() + '">' + L.icon + ' ' + escapeHtml(String(label).slice(0, 40)) +
+      '<span class="x" data-unlink="' + L.k + '" title="Unlink">✕</span></button>');
+  });
+  return out.join('');
+}
+
+function renderDuePage() {
+  const list = $('#dueList'); if (!list) return;
+  const open = todos.filter((t) => t.status !== 'done');
+  const done = todos.filter((t) => t.status === 'done')
+    .sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)).slice(0, 30);
+
+  $('#dueFilters').innerHTML =
+    '<button class="filter' + (dueShowOthers ? ' on' : '') + '" id="dueOthersT">Everything else that is dated</button>' +
+    '<button class="filter' + (dueShowDone ? ' on' : '') + '" id="dueDoneT">Done (' + todos.filter((t) => t.status === 'done').length + ')</button>';
+
+  const row = (t) => {
+    const n = dueDaysAway(t.due);
+    const late = n !== null && n < 0;
+    return '<div class="due-item' + (late ? ' late' : '') + '" data-todo="' + t.id + '">' +
+      '<button class="due-check" data-done="1" title="Mark done" aria-label="Mark done"></button>' +
+      '<div class="due-main">' +
+        '<div class="due-text" contenteditable="true" spellcheck="false">' + escapeHtml(t.text) + '</div>' +
+        (t.note ? '<div class="due-note">' + escapeHtml(t.note) + '</div>' : '') +
+        '<div class="due-meta">' +
+          '<input type="date" class="due-when" value="' + (t.due || '') + '" aria-label="Due date" />' +
+          '<span class="due-when-l">' + dueLabel(t.due) + '</span>' +
+          '<span class="due-prio prio-' + t.priority + '" data-cycle="1" title="Change priority">' +
+            (PRIO_LABEL[t.priority] || t.priority) + '</span>' +
+          dueLinkChips(t) +
+          '<button class="due-link" data-link="1">＋ link</button>' +
+        '</div>' +
+      '</div>' +
+      '<button class="due-del" data-del="1" title="Delete">✕</button>' +
+    '</div>';
+  };
+
+  let html = '';
+  DUE_BUCKETS.forEach((b) => {
+    const rows = open.filter((t) => b.test(dueDaysAway(t.due)))
+      .sort((a, x) => (String(a.due || '9999').localeCompare(String(x.due || '9999')))
+        || (PRIO_RANK[a.priority] - PRIO_RANK[x.priority]));
+    if (!rows.length) return;
+    html += '<div class="due-sec' + (b.k === 'late' ? ' is-late' : '') + '"><div class="due-h">' + b.title +
+      '<span class="n">' + rows.length + '</span></div>' + rows.map(row).join('') + '</div>';
+  });
+  if (!open.length) {
+    html += '<div class="empty"><div class="empty-ic">⏳</div><div class="empty-t">Nothing is due.</div>' +
+      '<div class="empty-s">Add something above with the day it has to be done by.</div></div>';
+  }
+
+  if (dueShowDone && done.length) {
+    html += '<div class="due-sec done"><div class="due-h">Done<span class="n">' + done.length + '</span></div>' +
+      done.map((t) => '<div class="due-item is-done" data-todo="' + t.id + '">' +
+        '<button class="due-check on" data-done="1" title="Reopen" aria-label="Reopen"></button>' +
+        '<div class="due-main"><div class="due-text">' + escapeHtml(t.text) + '</div>' +
+        '<div class="due-meta"><span class="due-when-l">' + (t.doneAt ? 'finished ' + relTime(t.doneAt) : '') + '</span></div></div>' +
+        '<button class="due-del" data-del="1" title="Delete">✕</button></div>').join('') + '</div>';
+  }
+
+  if (dueShowOthers) {
+    const others = dueOthers();
+    html += '<div class="due-sec others"><div class="due-h">Already dated elsewhere<span class="n">' + others.length + '</span></div>' +
+      (others.length
+        ? others.map((o, i) => '<div class="due-other" data-other="' + i + '">' +
+            '<span class="due-other-ic">' + o.icon + '</span>' +
+            '<span class="due-other-t">' + escapeHtml(o.text) + '</span>' +
+            '<span class="due-other-k">' + o.kind + '</span>' +
+            '<span class="due-when-l' + (dueDaysAway(o.due) < 0 ? ' late' : '') + '">' + dueLabel(o.due) + '</span></div>').join('')
+        : '<div class="tree-none">Nothing else in the app carries a date right now.</div>') +
+      '<div class="mcp-hint">These live in their own pages — this is only the view of them. Click one to go there.</div></div>';
+  }
+
+  list.innerHTML = html;
+  wireDue(list);
+  renderDueBadge();
+}
+
+function wireDue(list) {
+  const find = (el) => todos.find((t) => t.id === el.closest('[data-todo]').dataset.todo);
+  list.querySelectorAll('[data-todo]').forEach((el) => {
+    const t = find(el); if (!t) return;
+    const chk = el.querySelector('[data-done]');
+    if (chk) chk.onclick = () => {
+      t.status = t.status === 'done' ? 'open' : 'done';
+      t.doneAt = t.status === 'done' ? Date.now() : null;
+      if (t.status === 'done') logActivity('due-done', 'Finished “' + t.text.slice(0, 50) + '”');
+      saveTodos(); renderDuePage();
+    };
+    const del = el.querySelector('[data-del]');
+    if (del) del.onclick = () => leaveThen(el, () => {
+      todos = todos.filter((x) => x.id !== t.id);
+      saveTodos(); renderDuePage();
+    });
+    const txt = el.querySelector('.due-text[contenteditable]');
+    if (txt) {
+      txt.onblur = () => {
+        const v = txt.textContent.trim();
+        if (v && v !== t.text) { t.text = v; saveTodos(); }
+        else if (!v) txt.textContent = t.text;
+      };
+      txt.onkeydown = (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); txt.blur(); }
+        if (e.key === 'Escape') { txt.textContent = t.text; txt.blur(); }
+      };
+    }
+    const when = el.querySelector('.due-when');
+    if (when) when.onchange = () => { t.due = when.value || null; saveTodos(); renderDuePage(); };
+    const prio = el.querySelector('[data-cycle]');
+    // Raise before lower: the first click on a normal item is nearly always
+    // "this one matters", not "this one matters less".
+    const PRIO_CYCLE = ['normal', 'high', 'low'];
+    if (prio) prio.onclick = () => {
+      const i = PRIO_CYCLE.indexOf(t.priority);
+      t.priority = PRIO_CYCLE[(i + 1) % PRIO_CYCLE.length];
+      saveTodos(); renderDuePage();
+    };
+    el.querySelectorAll('[data-unlink]').forEach((x) => {
+      x.onclick = (e) => { e.stopPropagation(); t[x.dataset.unlink] = null; saveTodos(); renderDuePage(); };
+    });
+    el.querySelectorAll('[data-open]').forEach((c) => {
+      c.onclick = (e) => {
+        if (e.target.dataset.unlink) return;
+        const [kind, id] = c.dataset.open.split(':');
+        dueGoTo(kind, id);
+      };
+    });
+    const link = el.querySelector('[data-link]');
+    if (link) link.onclick = () => openDueLinker(t.id);
+  });
+  const others = dueOthers();
+  list.querySelectorAll('[data-other]').forEach((el) => {
+    const o = others[+el.dataset.other];
+    if (o) el.onclick = () => o.go();
+  });
+  const ot = $('#dueOthersT');
+  if (ot) ot.onclick = () => { dueShowOthers = !dueShowOthers; renderDuePage(); };
+  const dt = $('#dueDoneT');
+  if (dt) dt.onclick = () => { dueShowDone = !dueShowDone; renderDuePage(); };
+}
+
+function dueGoTo(kind, id) {
+  if (kind === 'taskId') { const t = taskById(id); if (t) jumpToTask(t._date, t.id); return; }
+  if (kind === 'projectId') { openPage('projects').then(() => openProjectDetail(id)); return; }
+  if (kind === 'docId') { openPage('docs').then(() => openDocument(id)); return; }
+  if (kind === 'ideaId') { openPage('ideas'); return; }
+  if (kind === 'learningId') { openPage('learning').then(() => openLearnDetail(id)); return; }
+  if (kind === 'reminderId') { openPage('reminders'); return; }
+}
+
+// One picker over everything linkable, because "link it to whatever" is the
+// whole point and a separate control per entity would be six controls.
+let dueLinkFor = null;
+async function openDueLinker(todoId) {
+  dueLinkFor = todoId;
+  await loadDocs();                 // the picker offers documents; load them first
+  let el = $('#dueLinker');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'dueLinker';
+    el.className = 'modal-overlay';
+    el.innerHTML = '<div class="modal sm"><div class="modal-head"><h3>Link to…</h3>' +
+      '<button class="modal-close" data-x="1">✕</button></div>' +
+      '<div class="modal-body"><input id="dueLinkQ" class="tm-input" placeholder="Search tasks, projects, documents, ideas, learning, reminders…" autocomplete="off" />' +
+      '<div id="dueLinkList" class="due-link-list"></div></div></div>';
+    document.body.appendChild(el);
+    el.onclick = (e) => { if (e.target === el || e.target.dataset.x) closeDueLinker(); };
+    $('#dueLinkQ').oninput = renderDueLinkList;
+    $('#dueLinkQ').onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Escape') closeDueLinker(); };
+  }
+  el.classList.remove('hidden');
+  $('#dueLinkQ').value = '';
+  renderDueLinkList();
+  $('#dueLinkQ').focus();
+}
+function closeDueLinker() {
+  dueLinkFor = null;
+  const el = $('#dueLinker'); if (el) el.classList.add('hidden');
+}
+function dueLinkables() {
+  const out = [];
+  allTasks().filter((t) => t.status !== 'done').forEach((t) =>
+    out.push({ k: 'taskId', id: t.id, icon: '✓', label: t.text, sub: t._date }));
+  projects.forEach((p) => out.push({ k: 'projectId', id: p.id, icon: '🚀', label: p.title, sub: p.status }));
+  (docList || []).filter((d) => d.status !== 'archived').forEach((d) =>
+    out.push({ k: 'docId', id: d.id, icon: '📄', label: d.title, sub: d.folder || 'document' }));
+  ideas.forEach((i) => out.push({ k: 'ideaId', id: i.id, icon: '💡', label: i.title, sub: i.status }));
+  learnItems.forEach((l) => out.push({ k: 'learningId', id: l.id, icon: '🧠', label: l.name, sub: l.status }));
+  reminders.filter((r) => r.status !== 'done').forEach((r) =>
+    out.push({ k: 'reminderId', id: r.id, icon: '🔔', label: r.text, sub: r.date }));
+  return out;
+}
+function renderDueLinkList() {
+  const host = $('#dueLinkList'); if (!host) return;
+  const q = ($('#dueLinkQ').value || '').trim().toLowerCase();
+  let rows = dueLinkables();
+  if (q) rows = rows.filter((r) => String(r.label).toLowerCase().includes(q));
+  rows = rows.slice(0, 60);
+  host.innerHTML = rows.length
+    ? rows.map((r, i) => '<button class="due-link-row" data-pick="' + i + '">' +
+        '<span class="ic">' + r.icon + '</span><span class="t">' + escapeHtml(String(r.label).slice(0, 70)) + '</span>' +
+        '<span class="s">' + escapeHtml(String(r.sub || '')) + '</span></button>').join('')
+    : '<div class="tree-none">Nothing matches.</div>';
+  host.querySelectorAll('[data-pick]').forEach((b) => {
+    b.onclick = () => {
+      const r = rows[+b.dataset.pick];
+      const t = todos.find((x) => x.id === dueLinkFor);
+      if (t && r) { t[r.k] = r.id; saveTodos(); }
+      closeDueLinker();
+      renderDuePage();
+      flash('🔗 Linked');
+    };
+  });
+}
+
+function dueAdd() {
+  const inp = $('#dueNew');
+  const text = (inp.value || '').trim();
+  if (!text) { inp.focus(); return; }
+  const when = $('#dueDate').value || null;
+  todos.unshift(normTodo({ text, due: when }));
+  saveTodos();
+  logActivity('due-added', 'Due: ' + text.slice(0, 60) + (when ? ' — by ' + when : ''));
+  inp.value = ''; $('#dueDate').value = '';
+  inp.focus();
+  renderDuePage();
+}
+
 // =====================================================================
 // WIRING
 // =====================================================================
@@ -13008,6 +13447,10 @@ $('#rpAdd').onclick = async () => {
   if (r) { $('#rpNew').value = ''; renderRemindersPage(); }
 };
 $('#rpNew').onkeydown = (e) => { if (e.key === 'Enter') $('#rpAdd').click(); };
+
+$('#dueAdd').onclick = dueAdd;
+$('#dueNew').onkeydown = (e) => { if (e.key === 'Enter') dueAdd(); };
+$('#dueDate').onkeydown = (e) => { if (e.key === 'Enter') dueAdd(); };
 $('#pdClose').onclick = closeProjectDetail;
 $('#ldClose').onclick = closeLearnDetail;
 $('#lsClose').onclick = closeLearnSession;
