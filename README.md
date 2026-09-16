@@ -295,7 +295,7 @@ That produces `dist-app/Task Notes-<version>-arm64.dmg`. The build is unsigned, 
 
 ## Driving it from Claude
 
-There is an MCP server at `mcp/tasknotes.js` — stdio, zero dependencies, like everything else here. Point Claude Code at it and you can add tasks, move them between columns, start projects, park things in the backlog, capture thoughts, set reminders, and read or write documents by asking.
+There is an MCP server at `mcp/tasknotes.js` — stdio, zero dependencies, like everything else here. Point Claude Code at it and everything the app does, you can also ask for.
 
 ```bash
 claude mcp add task-notes --scope user -- node ~/task-notes/mcp/tasknotes.js
@@ -303,9 +303,29 @@ claude mcp add task-notes --scope user -- node ~/task-notes/mcp/tasknotes.js
 
 Working inside this repo, the checked-in `.mcp.json` does the same thing without the setup.
 
-**Fourteen tools:** `list_tasks` · `add_task` · `update_task` · `list_projects` · `add_project` · `capture` · `list_backlog` · `add_backlog` · `add_reminder` · `list_documents` · `read_document` · `write_document` · `day_summary` · `focus_summary`.
+**Forty-two tools**, one per thing a person would say they are doing:
 
-**Nothing deletes.** Claude can create and change; removing a task, a project or a document stays something you do yourself, so a misread instruction cannot erase work.
+| | |
+|---|---|
+| **Tasks** | `list_tasks` · `add_task` · `update_task` · `link_tasks` |
+| **Projects** | `list_projects` · `project_detail` · `add_project` · `update_project` |
+| **Ideas** | `list_ideas` · `add_idea` · `update_idea` · `convert_idea` |
+| **Learning** | `list_learning` · `add_learning` · `update_learning` |
+| **Inbox** | `list_inbox` · `capture` · `process_inbox_item` |
+| **Reminders** | `list_reminders` · `add_reminder` · `update_reminder` |
+| **Backlog** | `list_backlog` · `add_backlog` · `update_backlog` · `promote_backlog` |
+| **Documents** | `list_documents` · `read_document` · `write_document` · `update_document` |
+| **The day** | `day_summary` · `set_day` |
+| **Focus** | `focus_summary` · `log_focus` |
+| **Weekly review** | `read_review` · `write_review` |
+| **Settings** | `get_settings` · `update_settings` |
+| **History** | `recent_activity` |
+| **Calendar** | `list_events` · `add_event` · `update_event` |
+| **Music** | `play_music` |
+
+`link_tasks` is the one worth calling out: it sets a real dependency between two tasks on the same day, so one cannot be finished until what it waits on is done. It refuses a loop, and `action: "unlink"` takes it off again.
+
+**Nothing deletes.** Claude can create and change; removing a task, a project or a document stays something you do yourself, so a misread instruction cannot erase work. Two things come close and are deliberately reversible instead: `update_document` can archive a document and bring it back, and `update_settings` can hide a panel and show it again.
 
 Everything goes through the running app's local HTTP API rather than the data directory. Every rule that keeps the data coherent — carry-forward lineage, day-local dependencies, the activity log, document bodies as real `.md` files, atomic writes — lives in `server.js`, and a second process editing files directly would honour none of it. So the app has to be open; if it isn't, the tools say so rather than guessing.
 

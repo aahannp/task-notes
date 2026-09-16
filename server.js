@@ -656,6 +656,33 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Merge a few fields without sending the whole day back. `appendSession`
+    // is spelled out rather than done by patching `sessions`, because a second
+    // writer reading the array and putting it back would drop whatever the app
+    // added to it meanwhile — and the app adds to it every time you focus.
+    if (req.method === 'PATCH') {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        try {
+          const patch = JSON.parse(body);
+          if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('not an object');
+          const meta = readMeta(date) || {};
+          const add = patch.appendSession;
+          delete patch.appendSession;
+          delete patch.sessions;                  // only ever appended, never replaced here
+          Object.assign(meta, patch);
+          if (add && typeof add === 'object' && !Array.isArray(add)) {
+            if (!Array.isArray(meta.sessions)) meta.sessions = [];
+            meta.sessions.push(add);
+          }
+          writeMeta(date, meta);
+          sendJSON(res, 200, { ok: true, meta });
+        } catch (e) { sendJSON(res, 400, { error: String(e.message || 'bad body') }); }
+      });
+      return;
+    }
+
     res.writeHead(405);
     return res.end('Method not allowed');
   }
@@ -926,6 +953,44 @@ const server = http.createServer((req, res) => {
           arr.unshift(rec);
           writeCollection(name, arr);
           sendJSON(res, 200, { ok: true, item: rec, rev: fileRev(collectionFile(name)) });
+        } catch (e) { sendJSON(res, 400, { error: String(e.message || 'bad body') }); }
+      });
+      return;
+    }
+    // Change one item in place. The alternative — read the whole collection,
+    // edit it, PUT it back — loses whatever the app wrote in between, and the
+    // app is usually open while this runs.
+    if (req.method === 'PATCH') {
+      const id = u.searchParams.get('id');
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        try {
+          const patch = JSON.parse(body);
+          if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('not an object');
+          // `reviews` and `settings` are maps, not lists. With an id the patch
+          // merges into that key (a week-start, for a review); without one it
+          // merges at the top, one level deep, so changing a single setting
+          // does not wipe its neighbours.
+          if (OBJECT_COLLECTIONS.has(name)) {
+            const cur = readCollection(name);
+            if (id) cur[id] = Object.assign({}, cur[id] || {}, patch);
+            else Object.keys(patch).forEach((k) => {
+              const a = cur[k], b = patch[k];
+              const bothPlain = a && b && typeof a === 'object' && typeof b === 'object'
+                && !Array.isArray(a) && !Array.isArray(b);
+              cur[k] = bothPlain ? Object.assign({}, a, b) : b;
+            });
+            writeCollection(name, cur);
+            return sendJSON(res, 200, { ok: true, value: id ? cur[id] : cur, rev: fileRev(collectionFile(name)) });
+          }
+          const arr = readCollection(name);
+          const item = arr.find((x) => x && x.id === id);
+          if (!item) return sendJSON(res, 404, { error: 'no such item in ' + name });
+          delete patch.id; delete patch.createdAt;           // identity is not content
+          Object.assign(item, patch);
+          writeCollection(name, arr);
+          sendJSON(res, 200, { ok: true, item, rev: fileRev(collectionFile(name)) });
         } catch (e) { sendJSON(res, 400, { error: String(e.message || 'bad body') }); }
       });
       return;
