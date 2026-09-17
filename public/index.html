@@ -13752,11 +13752,47 @@ async function loadGraph(force) {
 }
 const saveGraph = () => saveStore('graph', graph);
 
-// The live task behind a node, or null when it has been deleted elsewhere.
+// The live task behind a node.
+//
+// Unfinished work is carried onto the next day as a NEW record with a new id
+// and a srcId pointing back, so a node pulled in on Monday points at Monday's
+// copy by Wednesday — the same work, the wrong record. Follow the lineage to
+// the latest incarnation, exactly the way blockers already do, rather than
+// showing a task nobody can act on any more.
+function gLatest(date, id) {
+  const all = allTasks();
+  const line = all.filter((t) => (t._date === date && t.id === id) || sameLineage(all, t, id));
+  if (!line.length) return null;
+  line.sort((a, b) => (a._date < b._date ? -1 : a._date > b._date ? 1 : 0));
+  return line[line.length - 1];
+}
 function gTask(n) {
   const day = allDays.find((d) => d.date === n.date);
   const t = day && (day.tasks || []).find((x) => x.id === n.id);
   return t ? Object.assign({ _date: n.date }, normalize(t)) : null;
+}
+
+// Move every node onto today's copy of its work. Called when the page opens,
+// which is the moment it matters: you left the canvas yesterday and came back.
+function gSyncToToday() {
+  let moved = 0, gone = 0;
+  const next = [];
+  graph.nodes.forEach((n) => {
+    const live = gLatest(n.date, n.id);
+    if (!live) { gone++; return; }                  // deleted somewhere else
+    if (live.status === 'done') { gone++; return; } // finished elsewhere: off it goes
+    if (live._date !== n.date || live.id !== n.id) {
+      moved++;
+      next.push(Object.assign({}, n, { date: live._date, id: live.id }));
+      return;
+    }
+    next.push(n);
+  });
+  if (moved || gone !== 0 || next.length !== graph.nodes.length) {
+    graph.nodes = next;
+    saveGraph();
+  }
+  return { moved, gone };
 }
 function gNodes() {
   return graph.nodes.map((n) => ({ n, t: gTask(n) })).filter((x) => x.t);
@@ -14489,8 +14525,15 @@ async function gClear() {
 
 async function renderGraph() {
   await loadGraph();
+  await refreshDays();
+  const { moved, gone } = gSyncToToday();
   gBindViewport();
   renderGraphPage();
+  if (moved || gone) {
+    flash((moved ? moved + ' caught up to today' : '')
+      + (moved && gone ? ' · ' : '')
+      + (gone ? gone + (gone === 1 ? ' finished, off the canvas' : ' finished, off the canvas') : ''));
+  }
 }
 
 // =====================================================================

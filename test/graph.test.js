@@ -173,3 +173,35 @@ test('the graph rejects nothing it should accept, and keeps its view', async () 
   assert.equal(graph().view.zoom, 1.4);
   assert.ok(graph().nodes.length > 0, 'patching the view did not drop the nodes');
 });
+
+// Carrying forward. Unfinished work becomes a new record on the next day with
+// a srcId pointing back, so a node pulled in on Monday must follow the work
+// rather than keep showing Monday's copy.
+test('a node follows its task onto the day it was carried to', async () => {
+  const yday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const old = { id: 'CHAIN1', text: 'carried work', status: 'progress', dependsOn: [] };
+  await api('PUT', '/api/tasks?date=' + yday, [old]);
+  const today = (await api('GET', '/api/tasks?date=' + TODAY)).body.tasks;
+  today.push({ id: 'CHAIN2', text: 'carried work', status: 'progress', srcId: 'CHAIN1', carried: true, dependsOn: [] });
+  await api('PUT', '/api/tasks?date=' + TODAY, today);
+
+  await api('PATCH', '/api/store?name=graph', { nodes: [{ date: yday, id: 'CHAIN1' }] });
+
+  // The lineage walk the page does: the newest record whose chain reaches the id.
+  const days = (await api('GET', '/api/alldays')).body.days || [];
+  const all = [];
+  days.forEach((d) => (d.tasks || []).forEach((t) => all.push(Object.assign({ _date: d.date }, t))));
+  const chainHits = (t, id) => {
+    let cur = t;
+    for (let hop = 0; hop < 90 && cur; hop++) {
+      if (cur.id === id) return true;
+      cur = cur.srcId ? all.find((x) => x.id === cur.srcId) : null;
+    }
+    return false;
+  };
+  const line = all.filter((t) => chainHits(t, 'CHAIN1'))
+    .sort((a, b) => (a._date < b._date ? -1 : 1));
+  const latest = line[line.length - 1];
+  assert.equal(latest.id, 'CHAIN2', 'resolves to the copy on the later day');
+  assert.equal(latest._date, TODAY);
+});
