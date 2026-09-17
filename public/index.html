@@ -2448,6 +2448,20 @@
     border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
     color: #fff; font-size: 14px; cursor: pointer; transition: .15s; }
   .sf-close:hover { background: rgba(255,255,255,.16); }
+  .sf-corner { position: absolute; z-index: 1; }
+  .sf-corner.tl { top: 34px; left: 40px; }
+  .sf-corner.bl { bottom: 36px; left: 40px; max-width: min(620px, 52vw); }
+  .sf-corner.hidden { display: none; }
+  .sf-date { font-size: 12px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase;
+    color: rgba(255,255,255,.5); margin-bottom: 6px; }
+  .sf-timebig { font-family: var(--serif); font-size: 34px; font-weight: 600; letter-spacing: -.5px;
+    color: rgba(255,255,255,.88); font-variant-numeric: tabular-nums; }
+  .sf-task-k { margin-bottom: 8px !important; }
+  .sf-task-t { font-family: var(--serif); font-size: clamp(16px, 1.5vw, 22px); line-height: 1.4;
+    color: rgba(255,255,255,.82); display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden; }
+  @media (max-height: 560px) { .sf-corner { display: none; } }
+
   .sf-stage { position: relative; z-index: 1; height: 100%; display: flex; align-items: center;
     justify-content: center; gap: clamp(28px, 5vw, 72px); padding: 6vh 7vw; }
   .sf-art { width: clamp(220px, 42vh, 460px); height: clamp(220px, 42vh, 460px);
@@ -3348,6 +3362,14 @@
     <img class="sf-bg" id="sfBg" alt="" aria-hidden="true" />
     <div class="sf-veil"></div>
     <button class="sf-close" id="sfClose" title="Close (Esc)">✕</button>
+    <div class="sf-corner tl" id="sfClock" aria-hidden="true">
+      <div class="sf-date" id="sfDate"></div>
+      <div class="sf-timebig" id="sfTime"></div>
+    </div>
+    <div class="sf-corner bl hidden" id="sfTask">
+      <div class="sf-kicker sf-task-k" id="sfTaskKicker">Working on</div>
+      <div class="sf-task-t" id="sfTaskText"></div>
+    </div>
     <div class="sf-stage">
       <img class="sf-art" id="sfArt" alt="" />
       <div class="sf-meta">
@@ -15245,7 +15267,10 @@ function paintSpotProgress() {
     $('#sfCur').textContent = mmss(pos);
   }
 }
-setInterval(() => { if (spotState.running && spotBase.playing) paintSpotProgress(); }, 1000);
+setInterval(() => {
+  if (spotState.running && spotBase.playing) paintSpotProgress();
+  if (spotFullOpen()) paintSfCorners();
+}, 1000);
 async function spotifyControl(action) {
   try {
     spotState = await (await fetch('/api/spotify?action=' + action, { method: 'POST' })).json();
@@ -15292,8 +15317,36 @@ function closeSpotFull() {
   $('#spotFull').classList.add('hidden');
   document.body.classList.remove('sf-open');
 }
+// Exactly one task, chosen the way the app already ranks the day: the running
+// focus session if there is one — that IS what you are doing this minute —
+// otherwise the top In Progress task by priority. Never a list.
+function sfCurrentTask() {
+  const s = typeof openSession === 'function' ? openSession() : null;
+  if (s && s.end == null) {
+    const text = s.taskText || (s.taskId && (tasks.find((x) => x.id === s.taskId) || {}).text);
+    if (text) return { text, focusing: !!s.runningSince };
+  }
+  const prog = (tasks || []).filter((t) => t.status === 'progress')
+    .sort((a, b) => PRIO_RANK[a.priority] - PRIO_RANK[b.priority]);
+  return prog.length ? { text: prog[0].text, focusing: false } : null;
+}
+function paintSfCorners() {
+  if (!spotFullOpen()) return;
+  const now = new Date();
+  const date = now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  const time = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  if ($('#sfDate').textContent !== date) $('#sfDate').textContent = date;
+  if ($('#sfTime').textContent !== time) $('#sfTime').textContent = time;
+  const cur = sfCurrentTask();
+  $('#sfTask').classList.toggle('hidden', !cur);
+  if (cur) {
+    $('#sfTaskKicker').textContent = cur.focusing ? '🎧 Focusing on' : 'Working on';
+    if ($('#sfTaskText').textContent !== cur.text) $('#sfTaskText').textContent = cur.text;
+  }
+}
 function renderSpotFull() {
   if (!spotFullOpen()) return;
+  paintSfCorners();
   // Playback stopping is the room going dark — leave with it.
   if (!spotState.running || !spotState.name) return closeSpotFull();
   $('#sfName').textContent = spotState.name || '';

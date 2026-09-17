@@ -199,7 +199,7 @@ Past weeks are **snapshotted** the first time you view them after they end, so h
 
 ## Full-screen now playing
 
-The Spotify card opens into a full-screen player — **⛶** on the card, or double-click the artwork. The artwork itself is the room: blown up, blurred and dimmed behind a sharp copy of itself, with the title in serif at poster size, the green scrubber (click to seek), play/next/previous, the heart, and volume. Esc leaves. It closes itself when the music stops, and the ambient layer is deliberately static — an animated blur is a GPU heater.
+The Spotify card opens into a full-screen player — **⛶** on the card, or double-click the artwork. The date and time sit top-left the way a lock screen keeps them, and bottom-left is **one** thing: what you are working on. Never a list. The running focus session wins if there is one — that *is* what you are doing this minute — otherwise the top In Progress task by priority, and if there is neither, the corner is simply not there. The artwork itself is the room: blown up, blurred and dimmed behind a sharp copy of itself, with the title in serif at poster size, the green scrubber (click to seek), play/next/previous, the heart, and volume. Esc leaves. It closes itself when the music stops, and the ambient layer is deliberately static — an animated blur is a GPU heater.
 
 <br>
 
