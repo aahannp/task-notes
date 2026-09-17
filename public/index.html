@@ -13824,7 +13824,15 @@ function gLatest(date, id) {
   const line = all.filter((t) => (t._date === date && t.id === id) || sameLineage(all, t, id));
   if (!line.length) return null;
   line.sort((a, b) => (a._date < b._date ? -1 : a._date > b._date ? 1 : 0));
-  return line[line.length - 1];
+  let best = line[line.length - 1];
+  // Chains from before lineage existed dead-end where the srcId trail stops.
+  // The board's resolver falls back to wording for exactly these records, so
+  // this does too — otherwise a node stays parked on the day the trail died.
+  const key = (best.text || '').trim();
+  all.forEach((t) => {
+    if (t._date > best._date && (t.text || '').trim() === key) best = t;
+  });
+  return best;
 }
 function gTask(n) {
   const day = allDays.find((d) => d.date === n.date);
@@ -13862,13 +13870,30 @@ function gNodes() {
 // edges here would be a second dependency system, which is exactly what the
 // board already decided not to have.
 function gEdges() {
-  const on = new Map();
-  gNodes().forEach(({ n, t }) => on.set(gKey(n.date, n.id), t));
+  const items = gNodes();
+  const onById = new Map(items.map(({ n, t }) => [t.id, n]));
   const out = [];
-  gNodes().forEach(({ n, t }) => {
+  const seen = new Set();
+  items.forEach(({ n, t }) => {
     (t.dependsOn || []).forEach((dep) => {
-      const from = on.get(gKey(n.date, dep));
-      if (from) out.push({ from: { date: n.date, id: dep }, to: { date: n.date, id: n.id }, done: from.status === 'done' });
+      // Resolve the way the board does — across every day, following lineage —
+      // then draw the edge if whatever it resolves to is on the canvas.
+      let fromNode = onById.get(dep);
+      let fromTask = fromNode ? gTask(fromNode) : null;
+      if (!fromNode) {
+        const r = resolveBlocker(t, dep);
+        if (r) {
+          const viaLive = gLatest(r._date, r.id);
+          const hit = viaLive && onById.get(viaLive.id);
+          if (hit) { fromNode = hit; fromTask = gTask(hit); }
+        }
+      }
+      if (!fromNode || !fromTask) return;
+      const key = fromNode.id + '>' + n.id;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ from: { date: fromNode.date, id: fromNode.id }, to: { date: n.date, id: n.id },
+        depId: dep, done: fromTask.status === 'done' });
     });
   });
   return out;
@@ -13877,11 +13902,9 @@ function gEdges() {
 // not from a flag. This is what gets shown instead of pretending the block
 // went away because a node was clicked.
 function gBlockers(t) {
-  const day = allDays.find((d) => d.date === t._date);
-  const all = (day && day.tasks) || [];
-  return (t.dependsOn || [])
-    .map((id) => all.find((x) => x.id === id))
-    .filter((x) => x && x.status !== 'done');
+  // The board's own resolution, so the warning here and the warning on the
+  // board card can never disagree.
+  return blockersFor(t);
 }
 
 // ---- layout ------------------------------------------------------------
@@ -14066,7 +14089,7 @@ function gEdgeSvg() {
     if (!a || !c) return '';
     const [p1, p2] = gAnchors(gBox(a), gBox(c));
     const d = gCurve(p1, p2);
-    const k = e.to.date + '|' + e.to.id + '|' + e.from.id;
+    const k = e.to.date + '|' + e.to.id + '|' + (e.depId || e.from.id);
     return '<path class="gedge' + (e.done ? ' done' : '') + '" d="' + d + '" marker-end="url(#gArrow' + (e.done ? 'Done' : '') + ')" />'
       + '<path class="gedge-hit" d="' + d + '" data-edge="' + k + '"><title>Click to remove this dependency</title></path>';
   }).join('');
@@ -14182,33 +14205,29 @@ async function gConnect(from, to) {
   repoint(from, liveFrom); repoint(to, liveTo);
   from = { date: liveFrom._date, id: liveFrom.id };
   to = { date: liveTo._date, id: liveTo.id };
-  if (from.date !== to.date) {
-    return flash('“' + liveFrom.text.slice(0, 24) + '” lives on ' + from.date
-      + ' and “' + liveTo.text.slice(0, 24) + '” on ' + to.date
-      + ' — dependencies only hold within a day.');
-  }
   if (from.id === to.id) return;
-  const day = allDays.find((d) => d.date === to.date);
-  const all = (day && day.tasks) || [];
-  const target = all.find((x) => x.id === to.id);
-  const source = all.find((x) => x.id === from.id);
-  if (!target || !source) return;
+  // Any node to any node. The board already copes with a dependency that
+  // points across days: its resolver looks everywhere, and each carry rewrites
+  // the id onto that day's copy. The same-day refusal here was this page being
+  // stricter than the thing it is a view of.
+  const target = liveTo;
+  const source = liveFrom;
   const cur = Array.isArray(target.dependsOn) ? target.dependsOn.slice() : [];
   if (cur.includes(from.id)) return flash('Already linked.');
-  // A depends on B depends on A would deadlock the board, so walk the chain.
+  // A depends on B depends on A would deadlock the board — walk everywhere,
+  // since ids are unique across days.
+  const everything = allTasks();
+  const byId = new Map(everything.map((t) => [t.id, t]));
   const cycles = (start, hunting, seen) => {
     if (start === hunting) return true;
     if (seen.has(start)) return false;
     seen.add(start);
-    const t = all.find((x) => x.id === start);
+    const t = byId.get(start);
     return !!(t && (t.dependsOn || []).some((d) => cycles(d, hunting, seen)));
   };
   if (cycles(from.id, to.id, new Set())) return flash('⚠ That would make a loop.');
   cur.push(from.id);
-  // Only the relationship. On the board, `blocked` is a status you set and
-  // dependsOn is shown beside it as a warning — the two are not wired to each
-  // other. Forcing blocked here invented a rule the app does not have, and
-  // left tasks stuck blocked after their blocker finished.
+  // Only the relationship — blocked stays a status you set, as on the board.
   await mutateTask(to.date, to.id, (t) => { t.dependsOn = cur; });
   await refreshDays();
   // You have just told the canvas about structure, so the canvas should show
