@@ -197,6 +197,12 @@ Past weeks are **snapshotted** the first time you view them after they end, so h
 
 <br>
 
+## Full-screen now playing
+
+The Spotify card opens into a full-screen player — **⛶** on the card, or double-click the artwork. The artwork itself is the room: blown up, blurred and dimmed behind a sharp copy of itself, with the title in serif at poster size, the green scrubber (click to seek), play/next/previous, the heart, and volume. Esc leaves. It closes itself when the music stops, and the ambient layer is deliberately static — an animated blur is a GPU heater.
+
+<br>
+
 ## Focus
 
 A full-screen focus mode with pause/resume, a daily goal ring, and a session log. A session attaches to **what you're actually doing** — a task, project, learning item or document — and shows that thing's context while you work. Quick thoughts go on the session itself, and when you stop it asks what you accomplished and what's next (the "next" becomes a capture so it isn't lost).

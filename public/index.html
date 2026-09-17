@@ -609,7 +609,7 @@
      the overlay can cover is a mute button on every message the app sends —
      which is why "nothing happened" kept being reported on pages whose only
      feedback channel was this element. */
-  .saved { position: fixed; bottom: 74px; left: 50%; transform: translateX(-50%); z-index: 200;
+  .saved { position: fixed; bottom: 74px; left: 50%; transform: translateX(-50%); z-index: 800;
     background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
     padding: 8px 16px; border-radius: 20px; font-size: 12px; opacity: 0; transition: .3s; pointer-events: none; }
   .saved.show { opacity: 1; }
@@ -2434,6 +2434,64 @@
   /* The pages sit under the strip rather than behind it. */
   body.has-ptabs.page-open .page { top: 42px; }
 
+  /* Full-screen now playing */
+  .spotfull { position: fixed; inset: 0; z-index: 400; background: #07080c; overflow: hidden; }
+  .spotfull.hidden { display: none; }
+  /* The artwork is the room: oversized, blurred, dimmed, and perfectly still. */
+  .sf-bg { position: absolute; inset: -12%; width: 124%; height: 124%; object-fit: cover;
+    filter: blur(72px) saturate(1.35) brightness(.42); transform: translateZ(0); }
+  .sf-veil { position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 30% 45%, transparent 0%, rgba(4,5,8,.55) 78%),
+                linear-gradient(to top, rgba(4,5,8,.65), transparent 40%); }
+  .sf-close { position: absolute; top: 18px; right: 22px; z-index: 2; width: 38px; height: 38px;
+    border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+    color: #fff; font-size: 14px; cursor: pointer; transition: .15s; }
+  .sf-close:hover { background: rgba(255,255,255,.16); }
+  .sf-stage { position: relative; z-index: 1; height: 100%; display: flex; align-items: center;
+    justify-content: center; gap: clamp(28px, 5vw, 72px); padding: 6vh 7vw; }
+  .sf-art { width: clamp(220px, 42vh, 460px); height: clamp(220px, 42vh, 460px);
+    object-fit: cover; border-radius: 14px;
+    box-shadow: 0 34px 90px rgba(0,0,0,.65), 0 6px 22px rgba(0,0,0,.5); }
+  .sf-meta { min-width: 0; max-width: min(560px, 44vw); }
+  .sf-kicker { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700;
+    letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,.55); margin-bottom: 18px; }
+  .sf-name { font-family: var(--serif); font-size: clamp(30px, 3.6vw, 56px); font-weight: 650;
+    letter-spacing: -.8px; line-height: 1.12; color: #fff; margin-bottom: 10px; }
+  .sf-artist { font-size: clamp(14px, 1.2vw, 18px); color: rgba(255,255,255,.62); margin-bottom: 34px; }
+  .sf-scrub { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+  .sf-time { font-size: 12px; color: rgba(255,255,255,.55); font-variant-numeric: tabular-nums; min-width: 34px; }
+  .sf-prog { flex: 1; height: 5px; border-radius: 99px; background: rgba(255,255,255,.18); cursor: pointer;
+    position: relative; }
+  .sf-prog:hover { height: 7px; }
+  .sf-prog-fill { height: 100%; width: 0%; border-radius: 99px; background: #1db954; position: relative; }
+  .sf-prog:hover .sf-prog-fill::after { content: ''; position: absolute; right: -6px; top: 50%;
+    width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+  .sf-ctrls { display: flex; align-items: center; gap: 14px; }
+  .sf-btn { background: none; border: none; color: rgba(255,255,255,.8); font-size: 20px; cursor: pointer;
+    transition: .15s; padding: 6px; }
+  .sf-btn:hover { color: #fff; transform: scale(1.08); }
+  .sf-play { width: 62px; height: 62px; border-radius: 50%; background: #fff; color: #000;
+    font-size: 22px; display: grid; place-content: center; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+  .sf-play:hover { transform: scale(1.05); color: #000; }
+  .sf-like { background: none; border: none; color: rgba(255,255,255,.7); font-size: 21px; cursor: pointer;
+    transition: .15s; padding: 6px; }
+  .sf-like:hover { color: #fff; }
+  .sf-like.liked { color: #1db954; }
+  .sf-vol { display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 13px;
+    color: rgba(255,255,255,.55); }
+  #sfVolume { -webkit-appearance: none; appearance: none; width: 110px; height: 16px; background: none; }
+  #sfVolume::-webkit-slider-runnable-track { height: 4px; border-radius: 99px; background: rgba(255,255,255,.22); }
+  #sfVolume::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+    background: #fff; cursor: pointer; margin-top: -4px; }
+  @media (max-width: 860px), (max-height: 560px) {
+    .sf-stage { flex-direction: column; text-align: center; gap: 26px; }
+    .sf-meta { max-width: 86vw; }
+    .sf-scrub { margin-bottom: 18px; }
+    .sf-ctrls { justify-content: center; }
+    .sf-vol { display: none; }
+  }
+
   /* Task Graph */
   #page-graph .g-wrap { position: absolute; inset: 0; display: flex; flex-direction: column; }
   .g-bar { display: flex; align-items: center; gap: 12px; padding: 14px 20px;
@@ -3257,6 +3315,7 @@
       <div class="spot-top">
         <span class="spot-name" id="spotName">—</span>
         <button class="spot-like" id="spotLike" title="Save to your Liked Songs">♡</button>
+        <button class="spot-like" id="spotFullBtn" title="Full screen" aria-label="Open the full-screen player">⛶</button>
         <svg class="spot-logo" width="21" height="21" viewBox="0 0 24 24" fill="#1db954"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.586 14.424a.623.623 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 11-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.623.623 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.13-9.965-1.166a.78.78 0 11-.452-1.492c3.632-1.102 8.147-.568 11.233 1.329a.78.78 0 01.256 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.542-1.79c3.532-1.072 9.404-.865 13.115 1.338a.935.935 0 01-.956 1.608z"/></svg>
       </div>
       <div class="spot-sub" id="spotArtist"></div>
@@ -3278,6 +3337,35 @@
       </div>
       <input id="spotSearch" class="spot-search" placeholder="Search Spotify songs…" style="display:none" autocomplete="off" />
       <div class="spot-results" id="spotResults"></div>
+    </div>
+  </div>
+
+  <!-- Full-screen now playing. The artwork itself is the room: blown up,
+       blurred and dimmed behind a sharp copy of itself. Static on purpose —
+       an ambient layer that animates is a GPU heater (learned the hard way). -->
+  <div class="spotfull hidden" id="spotFull" role="dialog" aria-label="Now playing">
+    <img class="sf-bg" id="sfBg" alt="" aria-hidden="true" />
+    <div class="sf-veil"></div>
+    <button class="sf-close" id="sfClose" title="Close (Esc)">✕</button>
+    <div class="sf-stage">
+      <img class="sf-art" id="sfArt" alt="" />
+      <div class="sf-meta">
+        <div class="sf-kicker"><svg width="18" height="18" viewBox="0 0 24 24" fill="#1db954"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.586 14.424a.623.623 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 11-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.623.623 0 01.207.857zm1.223-2.722a.78.78 0 01-1.072.257c-2.687-1.652-6.785-2.13-9.965-1.166a.78.78 0 11-.452-1.492c3.632-1.102 8.147-.568 11.233 1.329a.78.78 0 01.256 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.542-1.79c3.532-1.072 9.404-.865 13.115 1.338a.935.935 0 01-.956 1.608z"/></svg><span>Now playing</span></div>
+        <div class="sf-name" id="sfName">—</div>
+        <div class="sf-artist" id="sfArtist"></div>
+        <div class="sf-scrub">
+          <span class="sf-time" id="sfCur">0:00</span>
+          <div class="sf-prog" id="sfProgWrap"><div class="sf-prog-fill" id="sfProg"></div></div>
+          <span class="sf-time" id="sfDur">0:00</span>
+        </div>
+        <div class="sf-ctrls">
+          <button class="sf-like" id="sfLike" title="Save to your Liked Songs">♡</button>
+          <button class="sf-btn" id="sfPrev" title="Previous">⏮</button>
+          <button class="sf-btn sf-play" id="sfPlay" title="Play / Pause">▶</button>
+          <button class="sf-btn" id="sfNext" title="Next">⏭</button>
+          <div class="sf-vol" title="Volume"><span>🔊</span><input type="range" min="0" max="100" value="70" id="sfVolume" /></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -14911,6 +14999,7 @@ document.addEventListener('keydown', (e) => {
   if (!$('#remBlock').classList.contains('hidden')) return;
   if (!$('#mcpPanel').classList.contains('hidden')) return closeMcp();
   if (!$('#syncPanel').classList.contains('hidden')) return closeSync();
+  if (!$('#spotFull').classList.contains('hidden')) return closeSpotFull();
   if (!$('#updPanel').classList.contains('hidden')) return closeUpdate();
   if (!$('#setPanel').classList.contains('hidden')) return closeSettings();
   // Inside the block editor, Escape means "leave this block" — it used to fall
@@ -15121,7 +15210,7 @@ function renderSpotify() {
   const on = !!spotState.running && !!spotState.name;
   $('#spotBar').style.display = on ? 'flex' : 'none';
   $('#fmSpot').style.display = on ? 'flex' : 'none';
-  if (!on) return;
+  if (!on) { if (typeof closeSpotFull === 'function' && spotFullOpen()) closeSpotFull(); return; }
   const playing = spotState.state === 'playing';
   $('#spotName').textContent = spotState.name || '';
   $('#spotArtist').textContent = [spotState.artist, spotState.album].filter(Boolean).join('  ·  ');
@@ -15142,6 +15231,7 @@ function renderSpotify() {
     $('#spotVolume').value = spotState.volume;
   }
   if (spotState.uri !== lastLikedUri) { lastLikedUri = spotState.uri; refreshLiked(); }
+  renderSpotFull();
 }
 function paintSpotProgress() {
   let pos = spotBase.pos + (spotBase.playing ? (Date.now() - spotBase.at) / 1000 : 0);
@@ -15149,6 +15239,10 @@ function paintSpotProgress() {
   const pct = spotBase.dur ? Math.min(100, (pos / spotBase.dur) * 100) : 0;
   $('#spotProg').style.width = pct.toFixed(2) + '%';
   $('#spotCur').textContent = mmss(pos);
+  if (spotFullOpen()) {
+    $('#sfProg').style.width = pct.toFixed(2) + '%';
+    $('#sfCur').textContent = mmss(pos);
+  }
 }
 setInterval(() => { if (spotState.running && spotBase.playing) paintSpotProgress(); }, 1000);
 async function spotifyControl(action) {
@@ -15169,10 +15263,12 @@ async function spotifyControl(action) {
 // Like / save the current track
 let spotLiked = false, lastLikedUri = null;
 function setLikeUI(liked) {
-  const b = $('#spotLike');
-  b.textContent = liked ? '♥' : '♡';
-  b.classList.toggle('liked', liked);
-  b.title = liked ? 'Remove from your Liked Songs' : 'Save to your Liked Songs';
+  [$('#spotLike'), $('#sfLike')].forEach((b) => {
+    if (!b) return;
+    b.textContent = liked ? '♥' : '♡';
+    b.classList.toggle('liked', liked);
+    b.title = liked ? 'Remove from your Liked Songs' : 'Save to your Liked Songs';
+  });
 }
 async function refreshLiked() {
   if (!spotState.running || !spotState.uri) { spotLiked = false; setLikeUI(false); return; }
@@ -15181,6 +15277,49 @@ async function refreshLiked() {
     spotLiked = !!r.liked; setLikeUI(spotLiked);
   } catch {}
 }
+// ---- full screen ----
+const spotFullOpen = () => !$('#spotFull').classList.contains('hidden');
+function openSpotFull() {
+  if (!spotState.running || !spotState.name) return;
+  $('#spotFull').classList.remove('hidden');
+  renderSpotFull();
+}
+function closeSpotFull() { $('#spotFull').classList.add('hidden'); }
+function renderSpotFull() {
+  if (!spotFullOpen()) return;
+  // Playback stopping is the room going dark — leave with it.
+  if (!spotState.running || !spotState.name) return closeSpotFull();
+  $('#sfName').textContent = spotState.name || '';
+  $('#sfArtist').textContent = [spotState.artist, spotState.album].filter(Boolean).join('  ·  ');
+  $('#sfPlay').textContent = spotState.state === 'playing' ? '⏸' : '▶';
+  $('#sfDur').textContent = mmss(spotState.durationSec || 0);
+  const art = spotState.artworkUrl || '';
+  ['sfArt', 'sfBg'].forEach((id) => {
+    const img = $('#' + id);
+    if (art && img.getAttribute('src') !== art) img.src = art;
+  });
+  if (document.activeElement !== $('#sfVolume') && typeof spotState.volume === 'number' &&
+      Date.now() - spotVolSetAt > 1500) $('#sfVolume').value = spotState.volume;
+  paintSpotProgress();
+}
+$('#spotFullBtn').onclick = openSpotFull;
+$('#spotArtWrap').ondblclick = openSpotFull;
+$('#sfClose').onclick = closeSpotFull;
+$('#sfPrev').onclick = () => spotifyControl('previous');
+$('#sfPlay').onclick = () => spotifyControl('playpause');
+$('#sfNext').onclick = () => spotifyControl('next');
+$('#sfLike').onclick = () => $('#spotLike').click();
+$('#sfVolume').oninput = () => setSpotifyVolume($('#sfVolume').value);
+$('#sfProgWrap').onclick = (e) => {
+  if (!spotState.durationSec) return;
+  const r = $('#sfProgWrap').getBoundingClientRect();
+  const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  const pos = Math.round(frac * spotState.durationSec);
+  spotBase = { pos, dur: spotState.durationSec, playing: spotBase.playing, at: Date.now() };
+  paintSpotProgress();
+  fetch('/api/spotify?action=seek&value=' + pos, { method: 'POST' }).then(() => setTimeout(refreshSpotify, 300));
+};
+
 $('#spotLike').onclick = async () => {
   if (!spotState.uri) return;
   const method = spotLiked ? 'DELETE' : 'POST';
