@@ -2436,11 +2436,12 @@
 
   /* Full-screen now playing */
   .spotfull { position: fixed; inset: 0; z-index: 400; background: #07080c; overflow: hidden; }
+  body.sf-open { overflow: hidden; }
   .spotfull.hidden { display: none; }
   /* The artwork is the room: oversized, blurred, dimmed, and perfectly still. */
   .sf-bg { position: absolute; inset: -12%; width: 124%; height: 124%; object-fit: cover;
     filter: blur(72px) saturate(1.35) brightness(.42); transform: translateZ(0); }
-  .sf-veil { position: absolute; inset: 0;
+  .sf-veil { position: absolute; inset: 0; pointer-events: none;
     background: radial-gradient(ellipse at 30% 45%, transparent 0%, rgba(4,5,8,.55) 78%),
                 linear-gradient(to top, rgba(4,5,8,.65), transparent 40%); }
   .sf-close { position: absolute; top: 18px; right: 22px; z-index: 2; width: 38px; height: 38px;
@@ -15282,9 +15283,15 @@ const spotFullOpen = () => !$('#spotFull').classList.contains('hidden');
 function openSpotFull() {
   if (!spotState.running || !spotState.name) return;
   $('#spotFull').classList.remove('hidden');
+  // The scrollbar at the edge belongs to the board underneath — a full-screen
+  // room with someone else's scrollbar down its side is not full screen.
+  document.body.classList.add('sf-open');
   renderSpotFull();
 }
-function closeSpotFull() { $('#spotFull').classList.add('hidden'); }
+function closeSpotFull() {
+  $('#spotFull').classList.add('hidden');
+  document.body.classList.remove('sf-open');
+}
 function renderSpotFull() {
   if (!spotFullOpen()) return;
   // Playback stopping is the room going dark — leave with it.
