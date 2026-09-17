@@ -14074,6 +14074,11 @@ async function gConnect(from, to) {
   // left tasks stuck blocked after their blocker finished.
   await mutateTask(to.date, to.id, (t) => { t.dependsOn = cur; });
   await refreshDays();
+  // You have just told the canvas about structure, so the canvas should show
+  // the structure: re-flow so the chain reads left to right instead of leaving
+  // an arrow looping backwards to a card that happens to sit below.
+  gLayout(true);
+  saveGraph();
   renderGraphPage();
   flash('→ “' + source.text.slice(0, 28) + '” now comes first');
 }
@@ -14086,6 +14091,8 @@ async function gDisconnect(date, toId, fromId) {
   const left = (t.dependsOn || []).filter((d) => d !== fromId);
   await mutateTask(date, toId, (x) => { x.dependsOn = left; });
   await refreshDays();
+  gLayout(true);
+  saveGraph();
   renderGraphPage();
   flash('✂ Link removed');
 }
