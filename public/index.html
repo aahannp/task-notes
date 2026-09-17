@@ -605,7 +605,11 @@
   .empty { text-align: center; color: var(--muted); padding: 60px 0; font-size: 15px; }
   .empty .big { font-size: 34px; margin-bottom: 8px; }
 
-  .saved { position: fixed; bottom: 74px; left: 50%; transform: translateX(-50%);
+  /* Above everything, including open pages (z-index 60) and modals. A toast
+     the overlay can cover is a mute button on every message the app sends —
+     which is why "nothing happened" kept being reported on pages whose only
+     feedback channel was this element. */
+  .saved { position: fixed; bottom: 74px; left: 50%; transform: translateX(-50%); z-index: 200;
     background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
     padding: 8px 16px; border-radius: 20px; font-size: 12px; opacity: 0; transition: .3s; pointer-events: none; }
   .saved.show { opacity: 1; }
@@ -2447,6 +2451,16 @@
     background-size: 26px 26px; }
   .g-viewport.panning { cursor: grabbing; }
   .g-canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+  .g-hint { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 6;
+    display: flex; align-items: center; gap: 12px; background: rgba(124,155,255,.14);
+    border: 1px solid rgba(124,155,255,.5); color: #dbe4ff; border-radius: 99px;
+    padding: 9px 16px; font-size: 12.5px; white-space: nowrap;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .g-hint b { font-weight: 700; }
+  .g-hint.hidden { display: none; }
+  .g-hint button { background: none; border: 1px solid rgba(124,155,255,.4); color: inherit;
+    font-family: inherit; font-size: 10.5px; padding: 3px 9px; border-radius: 99px; cursor: pointer; }
+  .g-hint button:hover { background: rgba(124,155,255,.15); }
   .g-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center;
     gap: 10px; text-align: center; pointer-events: none; }
   .g-empty.hidden { display: none; }
@@ -2479,9 +2493,9 @@
   .gnode.link-target { border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(124,155,255,.28), 0 6px 22px rgba(0,0,0,.28); }
 
-  .gnode { position: absolute; width: 244px; box-sizing: border-box;
-    background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md);
-    padding: 10px 12px 9px; cursor: grab; user-select: none;
+  .gnode { position: absolute; width: 224px; box-sizing: border-box;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px 13px 10px; cursor: grab; user-select: none;
     box-shadow: 0 6px 22px rgba(0,0,0,.28); transition: border-color var(--t-base), box-shadow var(--t-base); }
   .gnode:hover { border-color: rgba(124,155,255,.45); }
   .gnode.sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(124,155,255,.25), 0 6px 22px rgba(0,0,0,.28); }
@@ -2491,29 +2505,24 @@
   .gnode.st-todo { border-left: 3px solid #aab2c4; }
   .gnode.focusing { border-color: rgba(124,155,255,.7);
     box-shadow: 0 0 0 1px rgba(124,155,255,.35), 0 10px 30px rgba(124,155,255,.18); }
-  .gn-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-  .gn-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-  .gn-status { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
-    color: var(--muted); }
-  .gn-prio { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
-    padding: 1px 5px; border-radius: 99px; background: var(--panel-2); color: var(--muted); }
-  .gn-prio.high { background: rgba(229,83,75,.18); color: #ff9b94; }
-  .gn-focus-badge { font-size: 9.5px; font-weight: 700; color: #cdd8ff; }
-  .gn-x { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 11px;
-    cursor: pointer; opacity: 0; padding: 0 2px; transition: opacity var(--t-base); }
-  .gnode:hover .gn-x, .gnode:focus-within .gn-x { opacity: .55; }
-  .gn-x:hover { opacity: 1; color: var(--danger); }
-  .gn-text { font-size: 13px; line-height: 1.4; color: var(--text);
+  .gn-text { font-size: 13px; line-height: 1.45; color: var(--text); font-weight: 550;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  .gn-block { margin-top: 6px; font-size: 10.5px; line-height: 1.4; color: #ff9b94; }
-  .gn-why { margin-top: 5px; font-size: 10px; color: var(--muted); opacity: .8; }
-  .gn-acts { display: flex; gap: 4px; margin-top: 8px; opacity: .45; transition: opacity var(--t-base); }
-  .gnode:hover .gn-acts, .gnode:focus-within .gn-acts { opacity: 1; }
-  .gn-acts button { flex: 1 1 0; min-width: 0; background: var(--panel-2); border: 1px solid var(--line);
-    color: var(--muted); font-family: inherit; font-size: 10px; font-weight: 600; padding: 5px 2px;
-    border-radius: 6px; cursor: pointer; transition: .15s; white-space: nowrap; overflow: hidden;
-    text-overflow: ellipsis; }
-  .gn-acts button:hover { color: var(--text); border-color: rgba(124,155,255,.45); }
+  .gn-hi { color: #ff9b94; font-size: 10px; margin-right: 5px; vertical-align: 1px; }
+  .gn-block { margin-top: 6px; font-size: 10.5px; line-height: 1.4; color: #ff9b94;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gn-block.focus { color: #cdd8ff; }
+  /* The verbs appear when the pointer arrives, in the space the card already
+     has — no reserved dead strip under every title. */
+  .gn-acts { position: absolute; right: 8px; top: -13px; display: flex; gap: 3px;
+    opacity: 0; transform: translateY(3px); pointer-events: none;
+    transition: opacity var(--t-base), transform var(--t-base); }
+  .gnode:hover .gn-acts, .gnode:focus-within .gn-acts { opacity: 1; transform: none; pointer-events: auto; }
+  .gn-acts button { width: 26px; height: 26px; display: grid; place-content: center;
+    background: var(--panel-3, var(--panel)); border: 1px solid var(--line); color: var(--muted);
+    font-family: inherit; font-size: 11px; border-radius: 8px; cursor: pointer; transition: .15s;
+    box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+  .gn-acts button:hover { color: var(--text); border-color: rgba(124,155,255,.55); }
+  .gn-acts .gn-x:hover { color: var(--danger); border-color: rgba(229,83,75,.5); }
   .gn-check { position: absolute; inset: 0; margin: auto; width: 46px; height: 46px; opacity: 0;
     pointer-events: none; }
   .gn-check path { fill: none; stroke: #3fb27f; stroke-width: 4; stroke-linecap: round;
@@ -3787,6 +3796,7 @@
       
     </div>
     <div class="g-viewport" id="gViewport">
+      <div class="g-hint hidden" id="gHint"></div>
       <div class="g-canvas" id="gCanvas"></div>
       <div class="g-empty" id="gEmpty">
         <div class="empty-ic">🕸</div>
@@ -13969,36 +13979,37 @@ function gZoom(by) {
   gApplyView(); saveGraph();
 }
 
+// Nodes and arrows, and nothing else at rest. The card is a title with a
+// status edge; what a card can DO shows when the pointer is on it, and the
+// meta that used to fill three lines lives in the tooltip. A working set you
+// look at forty times a day earns quiet.
 function gNodeHtml(n, t) {
   const blockers = gBlockers(t);      // the board shows this regardless of status
   const focused = gIsFocused(t);
+  const tip = [COL_TITLE[t.status] || t.status,
+    t.priority !== 'normal' ? PRIO_LABEL[t.priority] + ' priority' : '',
+    blockers.length ? 'waiting on: ' + blockers.map((b) => b.text).join(', ') : '',
+    n.why || ''].filter(Boolean).join('\n');
   return '<div class="gnode st-' + t.status + (focused ? ' focusing' : '') +
       (blockers.length ? ' waiting' : '') + '" data-k="' + gKey(n.date, n.id) + '"' +
       ' style="left:' + (n.x || 0) + 'px;top:' + (n.y || 0) + 'px" tabindex="0"' +
+      ' title="' + escapeHtml(tip) + '"' +
       ' role="group" aria-label="' + escapeHtml(t.text) + ', ' + (COL_TITLE[t.status] || t.status) + '">' +
-    '<div class="gn-top">' +
-      '<span class="gn-dot" style="background:' + COL_COLOR[t.status] + '"></span>' +
-      '<span class="gn-status">' + (COL_TITLE[t.status] || t.status) + '</span>' +
-      (t.priority && t.priority !== 'normal' ? '<span class="gn-prio ' + t.priority + '">' + PRIO_LABEL[t.priority] + '</span>' : '') +
-      (focused ? '<span class="gn-focus-badge">🎧 focusing</span>' : '') +
-      '<button class="gn-x" data-remove="1" title="Take it off the canvas (the task is untouched)" aria-label="Remove from graph">✕</button>' +
-    '</div>' +
-    '<div class="gn-text">' + escapeHtml(t.text) + '</div>' +
-    (blockers.length
-      ? '<div class="gn-block">⛔ waiting on ' + escapeHtml(blockers.map((b) => b.text).join(', ')).slice(0, 90) + '</div>'
-      : '') +
-    (n.why ? '<div class="gn-why">' + escapeHtml(n.why) + '</div>' : '') +
+    '<div class="gn-text">' +
+      (t.priority === 'high' ? '<span class="gn-hi" title="High priority">▲</span>' : '') +
+      escapeHtml(t.text) + '</div>' +
+    (blockers.length ? '<div class="gn-block">⛔ ' + escapeHtml(blockers[0].text.slice(0, 34)) +
+      (blockers.length > 1 ? ' +' + (blockers.length - 1) : '') + '</div>' : '') +
+    (focused ? '<div class="gn-block focus">🎧 focusing</div>' : '') +
     '<div class="gn-acts">' +
-      '<button data-done="1" title="Mark done">✓ Done</button>' +
-      '<button data-focus="1" title="Start a focus session on this task">🎧 Focus</button>' +
-      '<button data-link="1" title="Say what comes after this — then click the task that follows">→ Link</button>' +
-      '<button data-open="1" title="Open the full task">Open</button>' +
+      '<button data-done="1" title="Mark done">✓</button>' +
+      '<button data-focus="1" title="Focus on this task">🎧</button>' +
+      '<button data-link="1" title="Link: then click the task that comes after">→</button>' +
+      '<button data-open="1" title="Open the full task">⋯</button>' +
+      '<button class="gn-x" data-remove="1" title="Off the canvas — the task is untouched">✕</button>' +
     '</div>' +
     '<svg class="gn-check" viewBox="0 0 40 40" aria-hidden="true"><path d="M10 21 l7 7 l14 -16" /></svg>' +
-    // Drag this onto another card to say "that one comes first". It writes the
-    // board's own dependsOn, so the arrow you draw here is the same
-    // relationship the task panel shows and the board blocks on.
-    '<span class="gn-plug out" data-plug="out" title="Drag onto another task that comes after this one"></span>' +
+    '<span class="gn-plug out" data-plug="out" title="Drag onto the task that comes after this one"></span>' +
     '<span class="gn-plug in" data-plug="in" aria-hidden="true"></span>' +
   '</div>';
 }
@@ -14234,10 +14245,17 @@ function gArm(node, el) {
   $('#gCanvas').classList.add('arming');
   $('#gCanvas').querySelectorAll('.gnode').forEach((x) => x.classList.toggle('armed', x === el));
   const t = gTask(node);
-  flash('→ Now click the task that comes after “' + (t ? t.text.slice(0, 26) : '') + '”  ·  Esc to cancel');
+  // A mode needs to be visible for as long as it is on, where the person is
+  // looking. A toast is neither.
+  const hint = $('#gHint');
+  hint.innerHTML = '→ Click the task that comes <b>after</b> “' + escapeHtml(t ? t.text.slice(0, 40) : '') + '”'
+    + '<button id="gHintX">Esc · cancel</button>';
+  hint.classList.remove('hidden');
+  $('#gHintX').onclick = () => { gDisarm(); };
 }
 function gDisarm() {
   gArmed = null;
+  const h = $('#gHint'); if (h) h.classList.add('hidden');
   const c = $('#gCanvas'); if (!c) return;
   c.classList.remove('arming');
   c.querySelectorAll('.gnode.armed').forEach((x) => x.classList.remove('armed'));
