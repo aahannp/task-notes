@@ -125,6 +125,8 @@ Pull two or three things onto a canvas and work them. Nodes are **references** �
 
 **Pulling something in starts it.** A task in To Do moves to In Progress, because putting it on the canvas is the act of picking it up. Backlog isn't a task status here — it's a separate store — so a parked item is promoted through the existing route and lands started. **Blocked is the exception, deliberately:** a task waiting on unfinished work comes onto the canvas still blocked, wearing the reason. Clicking a node does not finish its dependencies.
 
+**Draw the arrows yourself.** Drag from a card's right-hand connector onto another and the first one comes first; click an arrow to cut it. It writes the board's own `dependsOn` — the same field the task panel edits and the board warns on — so there is no second notion of *comes before* anywhere in the app. Loops are refused, and two cards from different days can't be joined, because dependencies here have always been day-local.
+
 Dependencies become the layout — chains run left to right, everything unrelated sits in a loose grid beside them — and a node you drag keeps where you put it, because a layout pass that overrules the person who moved something is a layout pass nobody trusts. Edges from a finished prerequisite turn green.
 
 **Suggested** pulls a few based on what's overdue, already started, high priority, carried too many times, or no longer actually blocked — and every node says which of those it was. No opaque ranking. There's a shuffle across the shortlist so it isn't the same three forever.
@@ -297,6 +299,12 @@ The board is where you work a single day. The Tasks page is every task you have,
 - **Things that have gone quiet** — stale projects, tasks, learning, ideas and documents, with keep / snooze / archive, so commitments don't silently pile up
 - **Command palette** (⌘K) — every command that actually does something, plus document search
 - **Search, keyboard shortcuts, and a motion language** that's meant to be felt more than noticed
+
+<br>
+
+## Pages open as tabs
+
+One cross in one page's corner is a cross you have to go and find, and it says nothing about what else is open. Pages now open as **tabs** across the top — named, closable where they are named, and remembered. Closing the last one puts you back on Today, which is the ground everything else sits on rather than a tab of its own. Escape closes the tab you are on.
 
 <br>
 

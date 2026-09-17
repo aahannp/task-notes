@@ -2391,9 +2391,35 @@
     color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 650; padding: 6px 9px;
     border-radius: 7px; cursor: pointer; }
   .tree-folder:hover { background: var(--panel-2); color: var(--text); }
+  /* Open pages, as tabs */
+  .ptabs { position: fixed; top: 0; left: 0; right: 0; height: 42px; z-index: 62;
+    display: flex; align-items: flex-end; gap: 3px; padding: 0 12px 0 84px;
+    background: var(--panel-3, rgba(16,18,26,.9)); border-bottom: 1px solid var(--line);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .ptabs::-webkit-scrollbar { display: none; }
+  .ptabs.hidden { display: none; }
+  .ptab { display: flex; align-items: center; gap: 7px; flex-shrink: 0; max-width: 190px;
+    background: transparent; border: 1px solid transparent; border-bottom: none;
+    color: var(--muted); font-family: inherit; font-size: 12.5px; padding: 8px 10px 7px;
+    border-radius: 8px 8px 0 0; cursor: pointer; transition: background var(--t-base), color var(--t-base); }
+  .ptab:hover { background: var(--panel-2); color: var(--text); }
+  .ptab.active { background: var(--panel); border-color: var(--line); color: var(--text); }
+  .ptab .pt-ic { font-size: 11px; opacity: .85; }
+  .pt-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pt-x { opacity: 0; font-size: 10px; padding: 1px 3px; border-radius: 4px; transition: opacity var(--t-base); }
+  .ptab:hover .pt-x, .ptab.active .pt-x { opacity: .5; }
+  .pt-x:hover { opacity: 1; background: var(--panel-2); color: var(--danger); }
+  .ptab-home { flex-shrink: 0; margin-left: 8px; align-self: center; background: none;
+    border: 1px solid var(--line); color: var(--muted); font-family: inherit; font-size: 11.5px;
+    padding: 4px 11px; border-radius: 99px; cursor: pointer; transition: .15s; }
+  .ptab-home:hover { color: var(--text); border-color: rgba(124,155,255,.45); }
+  /* The pages sit under the strip rather than behind it. */
+  body.has-ptabs.page-open .page { top: 42px; }
+
   /* Task Graph */
   #page-graph .g-wrap { position: absolute; inset: 0; display: flex; flex-direction: column; }
-  .g-bar { display: flex; align-items: center; gap: 12px; padding: 14px 20px 14px 90px;
+  .g-bar { display: flex; align-items: center; gap: 12px; padding: 14px 20px;
     border-bottom: 1px solid var(--line); background: var(--panel-3, var(--panel));
     -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); z-index: 3; }
   .g-title { display: flex; align-items: baseline; gap: 10px; }
@@ -2414,11 +2440,27 @@
   .g-empty button { pointer-events: auto; margin-top: 8px; }
 
   .gedges { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; }
-  .gedge { fill: none; stroke: rgba(170,178,196,.42); stroke-width: 2; }
-  .gedge.done { stroke: rgba(63,178,127,.6); }
-  .gedges marker path { fill: rgba(170,178,196,.55); }
+  .gedge { fill: none; stroke: rgba(170,178,196,.55); stroke-width: 2; }
+  .gedge.done { stroke: rgba(63,178,127,.7); }
+  /* A two-pixel line is impossible to hit. This one is invisible and fat. */
+  .gedge-hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; }
+  .gedge-hit:hover { stroke: rgba(229,83,75,.18); }
+  .gedge-draft { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4;
+    pointer-events: none; }
 
-  .gnode { position: absolute; width: 210px; min-height: 86px; box-sizing: border-box;
+  /* The connector. Small until you go near the card, then obvious. */
+  .gn-plug { position: absolute; top: 50%; width: 12px; height: 12px; margin-top: -6px;
+    border-radius: 50%; background: var(--panel-2); border: 2px solid var(--line);
+    opacity: 0; transition: opacity var(--t-base), transform var(--t-base), background var(--t-base); }
+  .gn-plug.out { right: -7px; cursor: crosshair; }
+  .gn-plug.in { left: -7px; pointer-events: none; }
+  .gnode:hover .gn-plug, .gnode:focus-within .gn-plug, .gnode.linking .gn-plug { opacity: 1; }
+  .gn-plug.out:hover { background: var(--accent); border-color: var(--accent); transform: scale(1.25); }
+  .gnode.linking { border-color: var(--accent); }
+  .gnode.link-target { border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,155,255,.28), 0 6px 22px rgba(0,0,0,.28); }
+
+  .gnode { position: absolute; width: 210px; box-sizing: border-box;
     background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md);
     padding: 10px 12px 9px; cursor: grab; user-select: none;
     box-shadow: 0 6px 22px rgba(0,0,0,.28); transition: border-color var(--t-base), box-shadow var(--t-base); }
@@ -2446,7 +2488,7 @@
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .gn-block { margin-top: 6px; font-size: 10.5px; line-height: 1.4; color: #ff9b94; }
   .gn-why { margin-top: 5px; font-size: 10px; color: var(--muted); opacity: .8; }
-  .gn-acts { display: flex; gap: 4px; margin-top: 8px; opacity: 0; transition: opacity var(--t-base); }
+  .gn-acts { display: flex; gap: 4px; margin-top: 8px; opacity: .45; transition: opacity var(--t-base); }
   .gnode:hover .gn-acts, .gnode:focus-within .gn-acts { opacity: 1; }
   .gn-acts button { flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
     font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 4px 0; border-radius: 6px;
@@ -3503,11 +3545,16 @@
 </div>
 
 <!-- ============ TASKS: global view over the same day-task records ============ -->
+<!-- Open pages, as tabs. One cross per page in its own corner is a cross you
+     have to go and find; a tab strip says what is open and closes it where it
+     is named. -->
+<div class="ptabs hidden" id="pageTabsBar" role="tablist" aria-label="Open pages"></div>
+
 <div class="page hidden" id="page-tasks">
   <div class="page-inner">
     <div class="page-head">
       <div><h2>✓ Tasks</h2><p class="page-sub">Everything you need to do — across every day.</p></div>
-      <button class="page-close" title="Back to today">✕</button>
+      
     </div>
     <div class="page-bar">
       <div class="filters" id="taskFilters"></div>
@@ -3522,7 +3569,7 @@
   <div class="page-inner">
     <div class="page-head">
       <div><h2>📦 Projects</h2><p class="page-sub">What you're trying to accomplish.</p></div>
-      <button class="page-close" title="Back to today">✕</button>
+      
     </div>
     <div class="addrow-page">
       <input id="newProject" placeholder="What are you trying to accomplish?" autocomplete="off" />
@@ -3565,7 +3612,6 @@
 <!-- ============ LEARNING BAG ============ -->
 <div class="page hidden" id="page-learning">
   <div class="page-inner">
-    <button class="page-close floating" title="Back to today">✕</button>
     <div class="learnpage-head">
       <h2>🎒 Learning</h2>
       <p>Things you want to understand.</p>
@@ -3634,7 +3680,7 @@
   <div class="page-inner">
     <div class="page-head">
       <div><h2>💡 Ideas</h2><p class="page-sub">Things you might pursue. No commitment required.</p></div>
-      <button class="page-close" title="Back to today">✕</button>
+      
     </div>
     <div class="addrow-page big">
       <input id="newIdea" placeholder="Get it out of your head…" autocomplete="off" />
@@ -3690,7 +3736,7 @@
   <div class="page-inner">
     <div class="page-head">
       <div><h2>🔔 Reminders</h2><p class="page-sub">What you asked to be told about, and when.</p></div>
-      <button class="page-close" title="Back to today">✕</button>
+      
     </div>
     <div class="addrow-page big">
       <input id="rpNew" placeholder="Remind me to…" autocomplete="off" />
@@ -3718,7 +3764,7 @@
         <button class="btn-ghost sm" id="gRelayout" title="Lay it out again from the dependencies">Reset layout</button>
         <button class="btn-ghost sm" id="gClearBtn" title="Take everything off the canvas — no task is deleted">Clear</button>
       </div>
-      <button class="page-close" title="Back to today">✕</button>
+      
     </div>
     <div class="g-viewport" id="gViewport">
       <div class="g-canvas" id="gCanvas"></div>
@@ -3752,7 +3798,7 @@
   <div class="page-inner">
     <div class="page-head">
       <div><h2>⏳ Due</h2><p class="page-sub">Things with a day they have to be done by — and everything else in the app that already carries one.</p></div>
-      <button class="page-close" title="Back to today">✕</button>
+      
     </div>
     <div class="addrow-page big">
       <input id="dueNew" placeholder="Something that has to be done by…" autocomplete="off" />
@@ -3769,7 +3815,7 @@
   <div class="page-inner wide">
     <div class="page-head">
       <div><h2>📅 Calendar</h2><p class="page-sub">Your real calendar, the way you need to look at it.</p></div>
-      <button class="page-close" title="Back to today">✕</button>
+      
     </div>
     <div class="cw-top">
       <div class="cw-title"><h2 id="cwTitle">—</h2><div class="cw-sub" id="cwSub"></div></div>
@@ -3798,7 +3844,7 @@
   <div class="page-inner wide">
     <div class="page-head">
       <div><h2>🎯 Focus Log</h2><p class="page-sub">Every session you ran, and what came out of it.</p></div>
-      <button class="page-close" title="Back to today">✕</button>
+      
     </div>
     <div class="wr-nav">
       <button class="navbtn" id="fxPrev" title="Previous day">‹</button>
@@ -3815,7 +3861,7 @@
   <div class="page-inner wide">
     <div class="page-head">
       <div><h2>📈 Weekly Review</h2><p class="page-sub">What actually happened.</p></div>
-      <button class="page-close" title="Back to today">✕</button>
+      
     </div>
     <div class="wr-nav">
       <button class="navbtn" id="wrPrev" title="Previous week">‹</button>
@@ -3892,7 +3938,6 @@
       <div class="ws-rail-body hidden" id="railLinks"></div>
     </aside>
   </div>
-  <button class="page-close floating" title="Back to today">✕</button>
   <input type="file" id="docMdPicker" accept=".md,.markdown,.txt,.mdown,text/markdown,text/plain" style="display:none" multiple />
   <input type="file" id="docImgPicker" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/avif" style="display:none" multiple />
 </div>
@@ -3926,7 +3971,7 @@
   <div class="page-inner">
     <div class="page-head">
       <div><h2>📥 Inbox</h2><p class="page-sub">Everything you dumped in, waiting to become something. <span id="inboxCount"></span></p></div>
-      <button class="page-close" title="Back to today">✕</button>
+      
     </div>
     <div class="addrow-page big">
       <input id="newCapture" placeholder="Capture a thought…" autocomplete="off" />
@@ -5563,14 +5608,65 @@ function projectById(id) { return projects.find((p) => p.id === id); }
 // PAGE ROUTING — each area is a full-screen surface over the Today board.
 // =====================================================================
 const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders', 'focus', 'due', 'graph'];
+const PAGE_TITLE = {
+  tasks: 'Tasks', projects: 'Projects', learning: 'Learning', docs: 'Docs', ideas: 'Ideas',
+  inbox: 'Inbox', review: 'Review', calendar: 'Calendar', reminders: 'Reminders',
+  focus: 'Focus', due: 'Due', graph: 'Task Graph',
+};
+const PAGE_ICON = {
+  tasks: '✓', projects: '🚀', learning: '🧠', docs: '📄', ideas: '💡', inbox: '📥',
+  review: '📊', calendar: '📅', reminders: '🔔', focus: '🎧', due: '⏳', graph: '🕸',
+};
 let activePage = null;
+
+// Which pages are open, in the order they were opened. Today is the ground
+// underneath rather than a tab: closing the last one puts you back on it,
+// which is the only place there is to go back to.
+const PTAB_KEY = 'tasknotes.pageTabs';
+let pageTabs = [];
+try {
+  pageTabs = (JSON.parse(localStorage.getItem(PTAB_KEY) || '[]') || []).filter((p) => PAGES.includes(p));
+} catch {}
+const savePageTabs = () => { try { localStorage.setItem(PTAB_KEY, JSON.stringify(pageTabs)); } catch {} };
+
+function renderPageTabs() {
+  const bar = $('#pageTabsBar'); if (!bar) return;
+  bar.classList.toggle('hidden', !pageTabs.length);
+  document.body.classList.toggle('has-ptabs', !!pageTabs.length);
+  bar.innerHTML = pageTabs.map((p) =>
+    '<button class="ptab' + (p === activePage ? ' active' : '') + '" data-ptab="' + p + '"' +
+    ' role="tab" aria-selected="' + (p === activePage) + '">' +
+    '<span class="pt-ic">' + PAGE_ICON[p] + '</span>' +
+    '<span class="pt-t">' + escapeHtml(PAGE_TITLE[p] || p) + '</span>' +
+    '<span class="pt-x" data-ptclose="' + p + '" title="Close" aria-label="Close ' + escapeHtml(PAGE_TITLE[p] || p) + '">✕</span></button>').join('')
+    + '<button class="ptab-home" id="ptabHome" title="Back to today">Today</button>';
+  bar.querySelectorAll('[data-ptab]').forEach((b) => {
+    b.onclick = (e) => {
+      if (e.target.dataset.ptclose) { closePageTab(e.target.dataset.ptclose); return; }
+      if (b.dataset.ptab !== activePage) openPage(b.dataset.ptab);
+    };
+  });
+  $('#ptabHome').onclick = () => { closePage(); };
+}
+
+function closePageTab(name) {
+  const i = pageTabs.indexOf(name);
+  if (i < 0) return;
+  pageTabs.splice(i, 1);
+  savePageTabs();
+  if (name !== activePage) { renderPageTabs(); return; }
+  const next = pageTabs[i] || pageTabs[i - 1] || null;
+  if (next) openPage(next); else closePage();
+}
 
 async function openPage(name) {
   await loadStores();
   await refreshDays();
   PAGES.forEach((p) => $('#page-' + p).classList.toggle('hidden', p !== name));
   activePage = name;
+  if (!pageTabs.includes(name)) { pageTabs.push(name); savePageTabs(); }
   document.body.classList.add('page-open');
+  renderPageTabs();
   syncNav();
   if (name === 'tasks') renderTasksPage();
   if (name === 'projects') renderProjectsPage();
@@ -5585,11 +5681,14 @@ async function openPage(name) {
   if (name === 'due') renderDuePage();
   if (name === 'graph') await renderGraph();
 }
+// Back to the board. The tabs stay open — that is the point of a tab — so
+// coming back to a page puts you where you left it.
 function closePage() {
   PAGES.forEach((p) => $('#page-' + p).classList.add('hidden'));
   closeProjectDetail(); closeLearnDetail();
   activePage = null;
   document.body.classList.remove('page-open');
+  renderPageTabs();
   syncNav();
 }
 function syncNav() {
@@ -13731,8 +13830,9 @@ function gLayout(force) {
     col.forEach((x, i) => {
       if (!force && x.n.x != null) return;            // dragged: leave it alone
       const sub = Math.floor(i / perCol);
-      x.n.x = d * (NODE_W + GAP_X) + sub * (NODE_W + GAP_X);
-      x.n.y = (i % perCol) * (NODE_H + GAP_Y);
+      // A little inset so a fresh layout is not flush against the corner.
+      x.n.x = 40 + d * (NODE_W + GAP_X) + sub * (NODE_W + GAP_X);
+      x.n.y = 30 + (i % perCol) * (NODE_H + GAP_Y);
     });
   });
 }
@@ -13778,7 +13878,7 @@ function gZoom(by) {
 }
 
 function gNodeHtml(n, t) {
-  const blockers = t.status === 'blocked' ? gBlockers(t) : [];
+  const blockers = gBlockers(t);      // the board shows this regardless of status
   const focused = gIsFocused(t);
   return '<div class="gnode st-' + t.status + (focused ? ' focusing' : '') +
       (blockers.length ? ' waiting' : '') + '" data-k="' + gKey(n.date, n.id) + '"' +
@@ -13802,9 +13902,18 @@ function gNodeHtml(n, t) {
       '<button data-open="1" title="Open the full task">Open</button>' +
     '</div>' +
     '<svg class="gn-check" viewBox="0 0 40 40" aria-hidden="true"><path d="M10 21 l7 7 l14 -16" /></svg>' +
+    // Drag this onto another card to say "that one comes first". It writes the
+    // board's own dependsOn, so the arrow you draw here is the same
+    // relationship the task panel shows and the board blocks on.
+    '<span class="gn-plug out" data-plug="out" title="Drag onto another task that comes after this one"></span>' +
+    '<span class="gn-plug in" data-plug="in" aria-hidden="true"></span>' +
   '</div>';
 }
 
+function gCurve(x1, y1, x2, y2) {
+  const mx = (x1 + x2) / 2;
+  return 'M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 + ' ' + (x2 - 10) + ' ' + y2;
+}
 function gEdgeSvg() {
   const edges = gEdges();
   const pos = new Map(gNodes().map(({ n }) => [gKey(n.date, n.id), n]));
@@ -13813,15 +13922,18 @@ function gEdgeSvg() {
   const path = edges.map((e) => {
     const a = pos.get(gKey(e.from.date, e.from.id)), c = pos.get(gKey(e.to.date, e.to.id));
     if (!a || !c) return '';
-    const x1 = a.x + NODE_W, y1 = a.y + NODE_H / 2;
-    const x2 = c.x, y2 = c.y + NODE_H / 2;
-    const mx = (x1 + x2) / 2;
-    return '<path class="gedge' + (e.done ? ' done' : '') + '" d="M' + x1 + ' ' + y1 +
-      ' C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 + ' ' + (x2 - 9) + ' ' + y2 + '" marker-end="url(#gArrow)" />';
+    const d = gCurve(a.x + NODE_W, a.y + NODE_H / 2, c.x, c.y + NODE_H / 2);
+    const k = e.to.date + '|' + e.to.id + '|' + e.from.id;
+    return '<path class="gedge' + (e.done ? ' done' : '') + '" d="' + d + '" marker-end="url(#gArrow' + (e.done ? 'Done' : '') + ')" />'
+      + '<path class="gedge-hit" d="' + d + '" data-edge="' + k + '"><title>Click to remove this dependency</title></path>';
   }).join('');
-  return '<svg class="gedges" width="' + w + '" height="' + h + '" aria-hidden="true">' +
-    '<defs><marker id="gArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">' +
-    '<path d="M0 0 L10 5 L0 10 z" /></marker></defs>' + path + '</svg>';
+  return '<svg class="gedges" width="' + w + '" height="' + h + '">' +
+    '<defs>' +
+    '<marker id="gArrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">' +
+      '<path d="M0 1 L11 6 L0 11 z" fill="rgba(170,178,196,.75)" /></marker>' +
+    '<marker id="gArrowDone" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">' +
+      '<path d="M0 1 L11 6 L0 11 z" fill="rgba(63,178,127,.8)" /></marker>' +
+    '</defs>' + path + '<path class="gedge-draft" id="gDraftEdge" d="" />' + '</svg>';
 }
 
 function renderGraphPage(opts) {
@@ -13856,14 +13968,109 @@ function renderGraphPage(opts) {
   if (opts && opts.fit) gFit();
 }
 
+// Drawing a dependency by hand. This is what makes the canvas a work graph
+// rather than a pinboard: drag from one card onto another and the first one
+// now comes first. It writes the board's own dependsOn — the same field the
+// task panel edits and the board blocks on — so there is no second notion of
+// "comes before" anywhere in the app.
+let gLink = null;
+function gPointInCanvas(e) {
+  const c = $('#gCanvas').getBoundingClientRect();
+  const z = graph.view.zoom || 1;
+  return { x: (e.clientX - c.left) / z, y: (e.clientY - c.top) / z };
+}
+function gStartLink(e, node, el) {
+  e.preventDefault(); e.stopPropagation();
+  gLink = { from: node, el };
+  el.classList.add('linking');
+  const move = (ev) => {
+    const p = gPointInCanvas(ev);
+    const d = $('#gDraftEdge');
+    if (d) d.setAttribute('d', gCurve(node.x + NODE_W, node.y + NODE_H / 2, p.x, p.y));
+    const over = document.elementFromPoint(ev.clientX, ev.clientY);
+    const card = over && over.closest && over.closest('.gnode');
+    $('#gCanvas').querySelectorAll('.gnode.link-target').forEach((x) => x.classList.remove('link-target'));
+    if (card && card !== el) card.classList.add('link-target');
+  };
+  const up = async (ev) => {
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    el.classList.remove('linking');
+    const d = $('#gDraftEdge'); if (d) d.setAttribute('d', '');
+    $('#gCanvas').querySelectorAll('.gnode.link-target').forEach((x) => x.classList.remove('link-target'));
+    const over = document.elementFromPoint(ev.clientX, ev.clientY);
+    const card = over && over.closest && over.closest('.gnode');
+    gLink = null;
+    if (!card || card === el) return;
+    const [date, id] = card.dataset.k.split('/');
+    await gConnect(node, { date, id });
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+}
+
+// `from` must finish before `to`. Dependencies here are day-local, the way the
+// board has always had them, so two cards from different days cannot be joined
+// — saying so is better than quietly making an edge that means nothing.
+async function gConnect(from, to) {
+  if (from.date !== to.date) return flash('Those are on different days — a dependency only holds within a day.');
+  if (from.id === to.id) return;
+  const day = allDays.find((d) => d.date === to.date);
+  const all = (day && day.tasks) || [];
+  const target = all.find((x) => x.id === to.id);
+  const source = all.find((x) => x.id === from.id);
+  if (!target || !source) return;
+  const cur = Array.isArray(target.dependsOn) ? target.dependsOn.slice() : [];
+  if (cur.includes(from.id)) return flash('Already linked.');
+  // A depends on B depends on A would deadlock the board, so walk the chain.
+  const cycles = (start, hunting, seen) => {
+    if (start === hunting) return true;
+    if (seen.has(start)) return false;
+    seen.add(start);
+    const t = all.find((x) => x.id === start);
+    return !!(t && (t.dependsOn || []).some((d) => cycles(d, hunting, seen)));
+  };
+  if (cycles(from.id, to.id, new Set())) return flash('⚠ That would make a loop.');
+  cur.push(from.id);
+  // Only the relationship. On the board, `blocked` is a status you set and
+  // dependsOn is shown beside it as a warning — the two are not wired to each
+  // other. Forcing blocked here invented a rule the app does not have, and
+  // left tasks stuck blocked after their blocker finished.
+  await mutateTask(to.date, to.id, (t) => { t.dependsOn = cur; });
+  await refreshDays();
+  renderGraphPage();
+  flash('→ “' + source.text.slice(0, 28) + '” now comes first');
+}
+
+async function gDisconnect(date, toId, fromId) {
+  const day = allDays.find((d) => d.date === date);
+  const all = (day && day.tasks) || [];
+  const t = all.find((x) => x.id === toId);
+  if (!t) return;
+  const left = (t.dependsOn || []).filter((d) => d !== fromId);
+  await mutateTask(date, toId, (x) => { x.dependsOn = left; });
+  await refreshDays();
+  renderGraphPage();
+  flash('✂ Link removed');
+}
+
 // ---- interaction -------------------------------------------------------
 function wireGraph(vp) {
+  vp.querySelectorAll('[data-edge]').forEach((p) => {
+    p.onclick = (e) => {
+      e.stopPropagation();
+      const [date, toId, fromId] = p.dataset.edge.split('|');
+      gDisconnect(date, toId, fromId);
+    };
+  });
   vp.querySelectorAll('.gnode').forEach((el) => {
     const [date, id] = el.dataset.k.split('/');
     const node = graph.nodes.find((n) => n.date === date && n.id === id);
     const t = node && gTask(node);
     if (!t) return;
 
+    const plug = el.querySelector('[data-plug="out"]');
+    if (plug) plug.onpointerdown = (e) => gStartLink(e, node, el);
     el.querySelector('[data-remove]').onclick = (e) => { e.stopPropagation(); gRemove(date, id); };
     el.querySelector('[data-open]').onclick = (e) => { e.stopPropagation(); jumpToTask(date, id); };
     el.querySelector('[data-focus]').onclick = (e) => { e.stopPropagation(); gFocus(date, id); };
@@ -13878,7 +14085,7 @@ function wireGraph(vp) {
     // behave the same, and the delta is divided by the zoom or the node runs
     // away from the cursor whenever the canvas is scaled.
     el.onpointerdown = (e) => {
-      if (e.target.closest('button')) return;
+      if (e.target.closest('button') || e.target.dataset.plug) return;
       e.preventDefault();
       el.setPointerCapture(e.pointerId);
       gSelected = el.dataset.k;
@@ -14261,7 +14468,6 @@ async function renderGraph() {
 document.querySelectorAll('.nav-btn').forEach((b) => {
   b.onclick = () => { const p = b.dataset.page; if (p === 'today') goToday(); else openPage(p); };
 });
-document.querySelectorAll('.page-close').forEach((b) => { b.onclick = closePage; });
 bindCalendarPage();
 watchOverlays();
 
@@ -14427,7 +14633,7 @@ document.addEventListener('keydown', (e) => {
   if (!$('#learnSession').classList.contains('hidden')) return closeLearnSession();
   if (!$('#learnDetail').classList.contains('hidden')) return closeLearnDetail();
   if (!$('#projectDetail').classList.contains('hidden')) return closeProjectDetail();
-  if (activePage) closePage();
+  if (activePage) closePageTab(activePage);
 });
 
 // =====================================================================
