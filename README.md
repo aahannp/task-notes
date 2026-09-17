@@ -127,6 +127,8 @@ Pull two or three things onto a canvas and work them. Nodes are **references** �
 
 **The canvas catches up with the day.** Unfinished work is carried onto the next day as a *new* record with a `srcId` pointing back, so a node pulled in on Monday would be showing Monday's copy by Wednesday — the same work, the wrong record, and nothing you do to it lands where you are. Opening the page walks each node's lineage to its latest incarnation and moves the node there, keeping its position. Anything finished in the meantime comes off, and so does a reference to a task that no longer exists.
 
+Arrows are drawn off the **measured** cards, not an assumed size — a card with a wrapped title, a waiting line and a reason is nearly three times the height of a short one, and anchoring at a constant put every arrow somewhere near the top of a tall card, ending in mid-air. Each one leaves and arrives on whichever sides face each other: left to right for a chain, top to bottom for a stack.
+
 **Draw the arrows yourself**, two ways: drag the connector on a card's right edge onto another card, or press **→ Link** and then click the task that comes after. The second exists because the first is a fourteen-pixel target and a drag, which is fine with a mouse and miserable on a trackpad. Click an arrow to cut it. It writes the board's own `dependsOn` — the same field the task panel edits and the board warns on — so there is no second notion of *comes before* anywhere in the app. Loops are refused, and two cards from different days can't be joined, because dependencies here have always been day-local.
 
 Dependencies become the layout — chains run left to right, everything unrelated sits in a loose grid beside them — and a node you drag keeps where you put it, because a layout pass that overrules the person who moved something is a layout pass nobody trusts. Edges from a finished prerequisite turn green.
@@ -306,7 +308,7 @@ The board is where you work a single day. The Tasks page is every task you have,
 
 ## Every page, one click away
 
-A page covers the sidebar. So the way to a page you were not already on used to be Escape, find it in the sidebar, click — three moves to do one thing. Now a strip across the top carries **every page, always**, with the one you are on lit up: hop straight from Docs to the graph to Review without going home in between. **☰ Today** is the way back to the board.
+A page covers the sidebar. So the way to a page you were not already on used to be Escape, find it in the sidebar, click — three moves to do one thing. Now a strip across the top carries **every page, always**, with the one you are on lit up: hop straight from Docs to the graph to Review without going home in between. **☰ Today** is the way back to the board, and the tabs **drag to reorder** — the default is the order the app grew in, which is nobody's order.
 
 Nothing up there closes, because there is nothing to close — the strip is a map of the app, not a list of what you happen to have opened. Pages switched off in Settings stay off it, and narrow windows drop the labels rather than the pages.
 
