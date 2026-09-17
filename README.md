@@ -117,6 +117,26 @@ Backlog items live in their own store rather than in a day file — a backlog it
 
 <br>
 
+## Task Graph
+
+Tasks answers *what exists*. This answers *what am I working through*. Focus answers *what am I doing this minute*.
+
+Pull two or three things onto a canvas and work them. Nodes are **references** — `{date, id}` pointers at real tasks in real day files — so the graph stores no task data at all. Edit a task anywhere and the node shows it; take a node off and the task is untouched. There is one source of truth and it is not this page.
+
+**Pulling something in starts it.** A task in To Do moves to In Progress, because putting it on the canvas is the act of picking it up. Backlog isn't a task status here — it's a separate store — so a parked item is promoted through the existing route and lands started. **Blocked is the exception, deliberately:** a task waiting on unfinished work comes onto the canvas still blocked, wearing the reason. Clicking a node does not finish its dependencies.
+
+Dependencies become the layout — chains run left to right, everything unrelated sits in a loose grid beside them — and a node you drag keeps where you put it, because a layout pass that overrules the person who moved something is a layout pass nobody trusts. Edges from a finished prerequisite turn green.
+
+**Suggested** pulls a few based on what's overdue, already started, high priority, carried too many times, or no longer actually blocked — and every node says which of those it was. No opaque ranking. There's a shuffle across the shortlist so it isn't the same three forever.
+
+Each node can start a **Focus** session against that exact task — the existing timer, music, session log and floating window, not a second implementation — and the focused node is marked while it runs. A project can open a handful of its active work onto the canvas, not all forty.
+
+Animation carries cause and effect and nothing else: a picked row flies into place and grows on the way, remaining nodes glide rather than teleport, a completed node draws its tick and leaves. All of it is skipped under `prefers-reduced-motion`, and **no state change waits on an animation** — a hidden tab suspends Web Animations, and a node stranded because someone switched windows is a bug, not a flourish.
+
+`npm test` covers the transition rules and the graph/task synchronisation. Over MCP: `list_graph` · `pull_into_graph` · `clear_graph` · `learning_to_task`.
+
+<br>
+
 ## Due
 
 One page that answers *what has to be done by when*.
@@ -323,7 +343,7 @@ claude mcp add task-notes --scope user -- node ~/task-notes/mcp/tasknotes.js
 
 Working inside this repo, the checked-in `.mcp.json` does the same thing without the setup.
 
-**Forty-six tools**, one per thing a person would say they are doing:
+**Fifty tools**, one per thing a person would say they are doing:
 
 | | |
 |---|---|
@@ -336,6 +356,7 @@ Working inside this repo, the checked-in `.mcp.json` does the same thing without
 | **Backlog** | `list_backlog` · `add_backlog` · `update_backlog` · `promote_backlog` · `park_task` |
 | **Documents** | `list_documents` · `read_document` · `write_document` · `update_document` |
 | **Due** | `list_due` · `add_due` · `update_due` |
+| **Task Graph** | `list_graph` · `pull_into_graph` · `clear_graph` · `learning_to_task` |
 | **The day** | `day_summary` · `set_day` |
 | **Focus** | `focus_summary` · `log_focus` |
 | **Weekly review** | `read_review` · `write_review` |

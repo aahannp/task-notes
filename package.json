@@ -1,7 +1,7 @@
 {
   "name": "task-notes",
   "productName": "Task Notes",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Personal daily task board with focus timer, Kanban columns, and daily notes.",
   "author": "Aahan Piplani",
   "license": "MIT",
@@ -9,7 +9,8 @@
   "scripts": {
     "start": "electron .",
     "dist": "npm run build:helper && electron-builder --mac dmg",
-    "build:helper": "swiftc -O -o helpers/tn-calendar helpers/tn-calendar.swift -framework EventKit -framework Foundation"
+    "build:helper": "swiftc -O -o helpers/tn-calendar helpers/tn-calendar.swift -framework EventKit -framework Foundation",
+    "test": "node --test test/*.test.js"
   },
   "build": {
     "appId": "com.aahan.tasknotes",

@@ -858,6 +858,125 @@ const TOOLS = [
     },
   },
 
+  // ----------------------------------------------------------- task graph
+  {
+    name: 'list_graph',
+    description: 'What is on the Task Graph right now — the small set of tasks pulled into the working canvas, with their status, what each is waiting on, and why it was pulled in. The graph holds references, never copies: every row is a real task on a real day.',
+    inputSchema: { type: 'object', properties: {} },
+    async run() {
+      const g = (await api('GET', '/api/store?name=graph')).value || {};
+      const nodes = Array.isArray(g.nodes) ? g.nodes : [];
+      if (!nodes.length) return 'The graph is empty.';
+      const byDate = {};
+      nodes.forEach((n) => { (byDate[n.date] = byDate[n.date] || []).push(n); });
+      const out = [];
+      for (const date of Object.keys(byDate).sort()) {
+        const { tasks } = await api('GET', '/api/tasks?date=' + date);
+        byDate[date].forEach((n) => {
+          const t = tasks.find((x) => x.id === n.id);
+          if (!t) { out.push('- (gone) ' + n.id); return; }
+          const waiting = (t.dependsOn || [])
+            .map((d) => tasks.find((x) => x.id === d))
+            .filter((x) => x && x.status !== 'done')
+            .map((x) => x.text);
+          out.push(line(t) + '  #' + t.id
+            + (waiting.length ? '\n    waiting on: ' + waiting.join('; ') : '')
+            + (n.why ? '\n    pulled in because: ' + n.why : ''));
+        });
+      }
+      return nodes.length + ' on the canvas\n' + out.join('\n');
+    },
+  },
+  {
+    name: 'pull_into_graph',
+    write: true,
+    description: 'Pull a task onto the Task Graph — the canvas of what is actually being worked through. A task in To Do starts when it is pulled in; a blocked task stays blocked if it is still waiting on unfinished work, because clicking a node does not finish its dependencies. Nothing is copied: the node points at the real task.',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'string', description: 'The task — see list_tasks.' },
+        date: { type: 'string', description: 'The day it is on. Defaults to today.' },
+      },
+    },
+    async run(a) {
+      const date = theDate(a);
+      const id = need(a, 'id');
+      const { tasks } = await api('GET', '/api/tasks?date=' + date);
+      const t = tasks.find((x) => x.id === id);
+      if (!t) throw new Error('no task ' + id + ' on ' + date);
+      const g = (await api('GET', '/api/store?name=graph')).value || {};
+      const nodes = Array.isArray(g.nodes) ? g.nodes : [];
+      if (nodes.some((n) => n.date === date && n.id === id)) return 'Already on the canvas: ' + t.text;
+
+      let moved = '';
+      const waiting = (t.dependsOn || [])
+        .map((d) => tasks.find((x) => x.id === d))
+        .filter((x) => x && x.status !== 'done');
+      if (t.status === 'todo' || (t.status === 'blocked' && !waiting.length)) {
+        await api('PATCH', '/api/tasks?date=' + date + '&id=' + encodeURIComponent(id), { status: 'progress' });
+        moved = ' — started';
+      } else if (t.status === 'blocked') {
+        moved = ' — still blocked, waiting on ' + waiting.map((x) => x.text).join('; ');
+      }
+      nodes.push({ date, id, x: null, y: null, addedAt: Date.now(), why: 'pulled in from chat' });
+      await api('PATCH', '/api/store?name=graph', { nodes });
+      return 'On the graph: ' + t.text + moved;
+    },
+  },
+  {
+    name: 'clear_graph',
+    write: true,
+    description: 'Take tasks off the Task Graph. This only clears the canvas — no task is deleted, changed or moved by it. Pass an id to remove one, or nothing to clear the whole canvas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'One task to take off. Omit to clear everything.' },
+        date: { type: 'string', description: 'The day that task is on. Defaults to today.' },
+      },
+    },
+    async run(a) {
+      const g = (await api('GET', '/api/store?name=graph')).value || {};
+      const nodes = Array.isArray(g.nodes) ? g.nodes : [];
+      if (!a.id) {
+        await api('PATCH', '/api/store?name=graph', { nodes: [] });
+        return 'Canvas cleared — ' + nodes.length + ' taken off, every task untouched.';
+      }
+      const date = theDate(a);
+      const left = nodes.filter((n) => !(n.date === date && n.id === a.id));
+      if (left.length === nodes.length) return 'That one was not on the canvas.';
+      await api('PATCH', '/api/store?name=graph', { nodes: left });
+      return 'Off the canvas. The task itself is untouched.';
+    },
+  },
+  {
+    name: 'learning_to_task',
+    write: true,
+    description: 'Turn a learning topic into an ordinary task on a day\'s board, keeping the relationship back to it. The result is a normal task in every respect — status, priority, dependencies, project, documents — not a special kind of task.',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'string', description: 'The learning item — see list_learning.' },
+        date: { type: 'string', description: "Which day's board. Defaults to today." },
+      },
+    },
+    async run(a) {
+      const date = theDate(a);
+      const l = await findIn('learning', need(a, 'id'), 'learning item');
+      const note = [l.want && 'Want: ' + l.want, l.why && 'Why: ' + l.why, l.source && 'Source: ' + l.source]
+        .filter(Boolean).join('\n');
+      const r = await api('POST', '/api/tasks?date=' + date, {
+        text: l.name, status: 'todo',
+        priority: PRIORITIES.includes(l.priority) ? l.priority : 'normal',
+        note, estimateMin: l.expectedMin || null, projectId: l.projectId || null,
+        learningId: l.id, people: [], pickupDate: l.deadline || null, dependsOn: [],
+      });
+      if (l.status === 'bag') await patchStore('learning', l.id, { status: 'learning' });
+      return '“' + l.name + '” is a task on ' + date + '  #' + r.task.id + ' — still linked to the learning item.';
+    },
+  },
+
   // ------------------------------------------------------------------- due
   {
     name: 'list_due',

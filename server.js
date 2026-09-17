@@ -318,9 +318,12 @@ const COLLECTIONS = {
   backlog: 'backlog.json',
   todos: 'todos.json',
   settings: 'settings.json',
+  graph: 'graph.json',
 };
 // reviews is an object keyed by week-start; everything else is an array.
-const OBJECT_COLLECTIONS = new Set(['reviews', 'settings']);
+// `graph` is a workspace, not a list: a set of references to real tasks plus
+// where they sit on the canvas. It owns no task data of its own.
+const OBJECT_COLLECTIONS = new Set(['reviews', 'settings', 'graph']);
 
 function collectionFile(name) { return path.join(DATA_DIR, COLLECTIONS[name]); }
 function readCollection(name) {

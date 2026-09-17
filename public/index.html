@@ -2391,11 +2391,112 @@
     color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 650; padding: 6px 9px;
     border-radius: 7px; cursor: pointer; }
   .tree-folder:hover { background: var(--panel-2); color: var(--text); }
+  /* Task Graph */
+  #page-graph .g-wrap { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .g-bar { display: flex; align-items: center; gap: 12px; padding: 14px 20px 14px 90px;
+    border-bottom: 1px solid var(--line); background: var(--panel-3, var(--panel));
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); z-index: 3; }
+  .g-title { display: flex; align-items: baseline; gap: 10px; }
+  .g-title h2 { font-size: 17px; font-weight: 700; letter-spacing: -.3px; margin: 0; }
+  .g-count { font-size: 11.5px; color: var(--muted); }
+  .g-acts { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+  .g-sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+  .g-zoom { font-size: 11px; color: var(--muted); min-width: 38px; text-align: center;
+    font-variant-numeric: tabular-nums; }
+  .g-viewport { flex: 1; position: relative; overflow: hidden; cursor: grab;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.045) 1px, transparent 0);
+    background-size: 26px 26px; }
+  .g-viewport.panning { cursor: grabbing; }
+  .g-canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+  .g-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center;
+    gap: 10px; text-align: center; pointer-events: none; }
+  .g-empty.hidden { display: none; }
+  .g-empty button { pointer-events: auto; margin-top: 8px; }
+
+  .gedges { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; }
+  .gedge { fill: none; stroke: rgba(170,178,196,.42); stroke-width: 2; }
+  .gedge.done { stroke: rgba(63,178,127,.6); }
+  .gedges marker path { fill: rgba(170,178,196,.55); }
+
+  .gnode { position: absolute; width: 210px; min-height: 86px; box-sizing: border-box;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md);
+    padding: 10px 12px 9px; cursor: grab; user-select: none;
+    box-shadow: 0 6px 22px rgba(0,0,0,.28); transition: border-color var(--t-base), box-shadow var(--t-base); }
+  .gnode:hover { border-color: rgba(124,155,255,.45); }
+  .gnode.sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(124,155,255,.25), 0 6px 22px rgba(0,0,0,.28); }
+  .gnode.dragging { cursor: grabbing; box-shadow: 0 16px 40px rgba(0,0,0,.45); z-index: 5; }
+  .gnode.st-progress { border-left: 3px solid #f5a623; }
+  .gnode.st-blocked { border-left: 3px solid #ff6b6b; }
+  .gnode.st-todo { border-left: 3px solid #aab2c4; }
+  .gnode.focusing { border-color: rgba(124,155,255,.7);
+    box-shadow: 0 0 0 1px rgba(124,155,255,.35), 0 10px 30px rgba(124,155,255,.18); }
+  .gn-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .gn-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .gn-status { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+    color: var(--muted); }
+  .gn-prio { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+    padding: 1px 5px; border-radius: 99px; background: var(--panel-2); color: var(--muted); }
+  .gn-prio.high { background: rgba(229,83,75,.18); color: #ff9b94; }
+  .gn-focus-badge { font-size: 9.5px; font-weight: 700; color: #cdd8ff; }
+  .gn-x { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 11px;
+    cursor: pointer; opacity: 0; padding: 0 2px; transition: opacity var(--t-base); }
+  .gnode:hover .gn-x, .gnode:focus-within .gn-x { opacity: .55; }
+  .gn-x:hover { opacity: 1; color: var(--danger); }
+  .gn-text { font-size: 13px; line-height: 1.4; color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .gn-block { margin-top: 6px; font-size: 10.5px; line-height: 1.4; color: #ff9b94; }
+  .gn-why { margin-top: 5px; font-size: 10px; color: var(--muted); opacity: .8; }
+  .gn-acts { display: flex; gap: 4px; margin-top: 8px; opacity: 0; transition: opacity var(--t-base); }
+  .gnode:hover .gn-acts, .gnode:focus-within .gn-acts { opacity: 1; }
+  .gn-acts button { flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+    font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 4px 0; border-radius: 6px;
+    cursor: pointer; transition: .15s; }
+  .gn-acts button:hover { color: var(--text); border-color: rgba(124,155,255,.45); }
+  .gn-check { position: absolute; inset: 0; margin: auto; width: 46px; height: 46px; opacity: 0;
+    pointer-events: none; }
+  .gn-check path { fill: none; stroke: #3fb27f; stroke-width: 4; stroke-linecap: round;
+    stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; }
+  .gnode.completing { border-color: #3fb27f; background: rgba(63,178,127,.10); }
+  .gnode.completing .gn-check { opacity: 1; }
+  .gnode.completing .gn-check path { animation: gTick .34s cubic-bezier(.22,1,.36,1) forwards; }
+  .gnode.completing .gn-text, .gnode.completing .gn-acts, .gnode.completing .gn-top { opacity: .25; }
+  @keyframes gTick { to { stroke-dashoffset: 0; } }
+
+  .gfly { position: fixed; z-index: 120; pointer-events: none; background: var(--panel);
+    border: 1px solid rgba(124,155,255,.5); border-radius: 10px; padding: 8px 11px; font-size: 12px;
+    color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    box-shadow: 0 14px 40px rgba(0,0,0,.45); }
+
+  .gpick-list { max-height: 360px; overflow-y: auto; margin-top: 10px; }
+  .gpick-row { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px;
+    cursor: pointer; font-size: 13px; }
+  .gpick-row:hover { background: var(--panel-2); }
+  .gpick-row.on { background: rgba(124,155,255,.12); }
+  .gpick-row input { accent-color: var(--accent); }
+  .gp-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .gp-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gp-tag, .gp-st, .gp-why { font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .gp-tag { background: var(--panel-2); border-radius: 99px; padding: 2px 7px; }
+  .gp-tag.hi { background: rgba(229,83,75,.16); color: #ff9b94; }
+  .gp-why { opacity: .7; font-style: italic; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+  .ld-mktask { background: var(--panel-2); border: 1px dashed var(--line); color: var(--muted);
+    font-family: inherit; font-size: 11.5px; padding: 4px 11px; border-radius: 99px; cursor: pointer; }
+  .ld-mktask:hover { color: var(--text); border-color: rgba(124,155,255,.5); border-style: solid; }
+  .ld-task em { font-style: normal; font-size: 9.5px; opacity: .6; margin-left: 5px;
+    text-transform: uppercase; letter-spacing: .3px; }
+  .pd-graph { margin-left: 8px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gnode, .gn-acts, .gn-x { transition: none; }
+    .gnode.completing .gn-check path { animation: none; stroke-dashoffset: 0; }
+  }
+
   /* Due page */
   .nav-badge { margin-left: auto; font-size: 10px; font-weight: 700; min-width: 17px; height: 17px;
     line-height: 17px; text-align: center; border-radius: 9px; padding: 0 5px;
     background: rgba(229,83,75,.18); color: #ff9b94; opacity: 0; transition: opacity var(--t-base); }
   .nav-badge.on { opacity: 1; }
+  .nav-badge.calm { background: rgba(124,155,255,.18); color: #b9c6ff; }
   .due-list { display: flex; flex-direction: column; gap: 22px; }
   .due-sec { }
   .due-h { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700;
@@ -3054,6 +3155,7 @@
     <button class="nav-btn" data-page="docs"><svg class="ico" viewBox="0 0 24 24"><use href="#i-docs"/></svg>Docs</button>
     <button class="nav-btn" data-page="ideas"><svg class="ico" viewBox="0 0 24 24"><use href="#i-ideas"/></svg>Ideas</button>
     <button class="nav-btn" data-page="calendar"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendar"/></svg>Calendar</button>
+    <button class="nav-btn" data-page="graph"><svg class="ico" viewBox="0 0 24 24"><use href="#i-tasks"/></svg>Graph<span class="nav-badge" id="graphBadge"></span></button>
     <button class="nav-btn" data-page="due"><svg class="ico" viewBox="0 0 24 24"><use href="#i-reminders"/></svg>Due<span class="nav-badge" id="dueBadge"></span></button>
     <button class="nav-btn" data-page="reminders"><svg class="ico" viewBox="0 0 24 24"><use href="#i-reminders"/></svg>Reminders</button>
     <button class="nav-btn" data-page="focus"><svg class="ico" viewBox="0 0 24 24"><use href="#i-focus"/></svg>Focus</button>
@@ -3597,6 +3699,51 @@
     </div>
     <div class="page-bar"><div class="filters" id="rpFilters"></div></div>
     <div class="rp-list" id="rpList"></div>
+  </div>
+</div>
+
+<!-- ============ TASK GRAPH — the small set actually in hand ============ -->
+<div class="page hidden" id="page-graph">
+  <div class="g-wrap">
+    <div class="g-bar">
+      <div class="g-title"><h2>Task Graph</h2><span class="g-count" id="gCount">empty</span></div>
+      <div class="g-acts">
+        <button class="btn-primary sm" id="gAdd">＋ Add task</button>
+        <button class="btn-ghost sm" id="gSuggest" title="Pull a few based on what is overdue, started, high priority or waiting on nothing">✨ Suggested</button>
+        <span class="g-sep"></span>
+        <button class="btn-ghost sm" id="gFitBtn" title="Fit everything on screen">Fit</button>
+        <button class="btn-ghost sm" id="gOut" title="Zoom out" aria-label="Zoom out">−</button>
+        <span class="g-zoom" id="gZoomLabel">100%</span>
+        <button class="btn-ghost sm" id="gIn" title="Zoom in" aria-label="Zoom in">＋</button>
+        <button class="btn-ghost sm" id="gRelayout" title="Lay it out again from the dependencies">Reset layout</button>
+        <button class="btn-ghost sm" id="gClearBtn" title="Take everything off the canvas — no task is deleted">Clear</button>
+      </div>
+      <button class="page-close" title="Back to today">✕</button>
+    </div>
+    <div class="g-viewport" id="gViewport">
+      <div class="g-canvas" id="gCanvas"></div>
+      <div class="g-empty" id="gEmpty">
+        <div class="empty-ic">🕸</div>
+        <div class="empty-t">Nothing pulled in yet.</div>
+        <div class="empty-s">Add two or three things you are actually working through.<br>
+          Pulling one in starts it; taking it off again never deletes it.</div>
+        <button class="btn-primary sm" id="gEmptyAdd">＋ Add task</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="gPicker">
+  <div class="modal">
+    <div class="modal-head"><h3>Pull into the graph</h3>
+      <span class="mcp-state">To Do and Backlog start when you add them</span>
+      <button class="modal-close" id="gPickClose">✕</button></div>
+    <div class="modal-body">
+      <input id="gPickQ" class="tm-input" placeholder="Search your tasks…" autocomplete="off" />
+      <div class="filters" id="gPickFilters"></div>
+      <div class="gpick-list" id="gPickList"></div>
+    </div>
+    <div class="modal-foot"><button class="tm-save" id="gPickAdd" disabled>Add to graph</button></div>
   </div>
 </div>
 
@@ -5309,6 +5456,7 @@ async function loadStores(force) {
   captures = (cap || []).map(normCapture);
   todos = (td || []).map(normTodo);
   renderDueBadge();
+  loadGraph().then(renderGraphBadge);
   storesLoaded = true;
 }
 async function refreshDays() {
@@ -5414,7 +5562,7 @@ function projectById(id) { return projects.find((p) => p.id === id); }
 // =====================================================================
 // PAGE ROUTING — each area is a full-screen surface over the Today board.
 // =====================================================================
-const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders', 'focus', 'due'];
+const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders', 'focus', 'due', 'graph'];
 let activePage = null;
 
 async function openPage(name) {
@@ -5435,6 +5583,7 @@ async function openPage(name) {
   if (name === 'reminders') renderRemindersPage();
   if (name === 'focus') renderFocusPage();
   if (name === 'due') renderDuePage();
+  if (name === 'graph') await renderGraph();
 }
 function closePage() {
   PAGES.forEach((p) => $('#page-' + p).classList.add('hidden'));
@@ -5542,6 +5691,7 @@ function renderProjectDetail() {
      <div class="pd-dates">
        <label>Start <input type="date" id="pdStart" value="${p.start}"></label>
        <label class="${overdue ? 'over' : ''}">Due <input type="date" id="pdDue" value="${p.due}"></label>
+       <button class="btn-ghost sm pd-graph" id="pdGraph" title="Pull a handful of this project's active work onto the graph">🕸 Open in Task Graph</button>
      </div>`;
   $('#pdProgress').innerHTML =
     `<div class="pd-bar"><div class="pd-bar-fill" style="width:${s.pct}%"></div></div>
@@ -5641,6 +5791,7 @@ function renderProjectDetail() {
   // --- wiring ---
   animateBars($('#pdProgress'));
   const touch = () => { p.updatedAt = Date.now(); saveProjects(); };
+  $('#pdGraph').onclick = () => gOpenProject(p.id);
   $('#pdTitle').oninput = () => { p.title = $('#pdTitle').value; touch(); };
   $('#pdDesc').oninput = () => { p.desc = $('#pdDesc').value; touch(); };
   $('#pdStart').onchange = () => { p.start = $('#pdStart').value; touch(); };
@@ -8280,7 +8431,7 @@ const SETTING_SECTIONS = [
 const SETTING_PAGES = [
   ['tasks', 'Tasks'], ['projects', 'Projects'], ['learning', 'Learning'], ['docs', 'Docs'],
   ['ideas', 'Ideas'], ['inbox', 'Inbox'], ['calendar', 'Calendar'], ['reminders', 'Reminders'],
-  ['focus', 'Focus'], ['review', 'Review'], ['due', 'Due'],
+  ['focus', 'Focus'], ['review', 'Review'], ['due', 'Due'], ['graph', 'Graph'],
 ];
 
 let settings = null;
@@ -12500,7 +12651,9 @@ function renderLearnDetail() {
      <input class="ld-input" id="ldTags" value="${escapeHtml(l.tags.join(', '))}" placeholder="comma, separated" />
      <label class="ld-label">Notes</label>
      <textarea class="ld-input" id="ldNotes" rows="4" placeholder="Anything you learn, links, snippets…">${escapeHtml(l.notes)}</textarea>
-     ${linkedTasks.length ? `<label class="ld-label">Related tasks</label><div class="ld-tasks">${linkedTasks.map((t) => `<span class="ld-task" data-tid="${t.id}" data-date="${t._date}"><span class="dot" style="background:${COL_COLOR[t.status]}"></span>${escapeHtml(t.text)}</span>`).join('')}</div>` : ''}
+     <label class="ld-label">Related tasks</label>
+     <div class="ld-tasks">${linkedTasks.map((t) => `<span class="ld-task" data-tid="${t.id}" data-date="${t._date}" title="${escapeHtml(COL_TITLE[t.status] || t.status)} — open it"><span class="dot" style="background:${COL_COLOR[t.status]}"></span>${escapeHtml(t.text)}<em>${escapeHtml(COL_TITLE[t.status] || t.status)}</em></span>`).join('')}
+       <button class="ld-mktask" id="ldMakeTask" title="Put this on today's board as an ordinary task">＋ Make task</button></div>
      ${(l.sessions || []).filter((s) => s.end).length ? `<label class="ld-label">Sessions</label><div class="ld-sessions">${l.sessions.filter((s) => s.end).slice().reverse().map((s) => `<div class="ld-sess"><b>${fmtDur(s.seconds || 0)}</b><span>${relTime(s.end)}</span>${s.understood ? `<em>${escapeHtml(s.understood)}</em>` : ''}</div>`).join('')}</div>` : ''}
      <label class="ld-label">Documents</label>
      <div class="docsec" id="ldDocs"></div>
@@ -12517,6 +12670,32 @@ function renderLearnDetail() {
   renderDocSection($('#ldDocs'), 'learning', l.id, l.name);
   touchRecent('learning', l.id);
   const t = () => { saveLearn(); };
+  // A learning topic that has become actionable becomes an ordinary task —
+  // not a special kind of task. The relationship back is a learningId, which
+  // the task modal and this panel already both read.
+  const mk = $('#ldMakeTask');
+  if (mk) mk.onclick = async () => {
+    const why = [l.want && ('Want: ' + l.want), l.why && ('Why: ' + l.why), l.source && ('Source: ' + l.source)]
+      .filter(Boolean).join('\n');
+    const nt = await createTaskOn(iso(new Date()), l.name, {
+      learningId: l.id, note: why,
+      estimateMin: l.expectedMin || null,
+      projectId: l.projectId || null,
+      priority: PRIORITIES.includes(l.priority) ? l.priority : 'normal',
+      pickupDate: l.deadline || null,
+    });
+    if (l.status === 'bag') { l.status = 'learning'; }
+    l.updatedAt = Date.now();
+    saveLearn();
+    logActivity('learn-attached', '“' + l.name + '” became a task', { learningId: l.id, taskId: nt && nt.id });
+    await refreshDays();
+    renderLearnDetail();
+    flash('✓ On today\u2019s board');
+  };
+  document.querySelectorAll('#ldBody .ld-task[data-tid]').forEach((el) => {
+    el.onclick = () => jumpToTask(el.dataset.date, el.dataset.tid);
+  });
+
   $('#ldName').oninput = () => { l.name = $('#ldName').value; t(); };
   $('#ldWant').oninput = () => { l.want = $('#ldWant').value; t(); };
   $('#ldWhy').oninput = () => { l.why = $('#ldWhy').value; t(); };
@@ -13175,6 +13354,13 @@ function duePressing() {
     return n !== null && n <= 0;
   }).length;
 }
+function renderGraphBadge() {
+  const el = $('#graphBadge'); if (!el) return;
+  const n = (graph && graph.nodes ? graph.nodes.length : 0);
+  el.textContent = n ? String(n) : '';
+  el.classList.toggle('on', !!n);
+  el.classList.add('calm');
+}
 function renderDueBadge() {
   const el = $('#dueBadge'); if (!el) return;
   const n = duePressing();
@@ -13424,6 +13610,651 @@ function dueAdd() {
   renderDuePage();
 }
 
+
+// =====================================================================
+// TASK GRAPH — the small set of things actually in hand right now.
+//
+// Tasks answers "what exists". This answers "what am I working through".
+// Focus answers "what am I doing this minute". The graph owns no task data
+// whatsoever: a node is a reference to a real task in a real day file, and
+// every write goes through mutateTask(), the same path the board uses. Remove
+// a node and the task is untouched; change a task anywhere and the node shows
+// it. There is one source of truth and it is not this page.
+//
+// Tasks are day-scoped in this app, so a reference is {date, id} — an id alone
+// is ambiguous the moment the same work is carried across two days.
+// =====================================================================
+let graph = { nodes: [], view: { zoom: 1, x: 0, y: 0 } };
+let graphLoaded = false;
+let gDragNode = null, gPan = null, gSelected = null;
+
+const NODE_W = 210, NODE_H = 86, GAP_X = 74, GAP_Y = 54;
+const gKey = (date, id) => date + '/' + id;
+const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function normGraphNode(n) {
+  return {
+    date: n.date || '',
+    id: n.id || '',
+    x: typeof n.x === 'number' ? n.x : null,
+    y: typeof n.y === 'number' ? n.y : null,
+    addedAt: n.addedAt || Date.now(),
+    why: n.why || '',                  // why a suggestion pulled it in, if it did
+  };
+}
+function normGraph(g) {
+  g = g && typeof g === 'object' ? g : {};
+  const v = g.view || {};
+  return {
+    nodes: (Array.isArray(g.nodes) ? g.nodes : []).map(normGraphNode).filter((n) => n.date && n.id),
+    view: { zoom: +v.zoom > 0 ? Math.min(2.5, Math.max(0.3, +v.zoom)) : 1, x: +v.x || 0, y: +v.y || 0 },
+  };
+}
+async function loadGraph(force) {
+  if (graphLoaded && !force) return graph;
+  graph = normGraph(await loadStore('graph'));
+  graphLoaded = true;
+  return graph;
+}
+const saveGraph = () => saveStore('graph', graph);
+
+// The live task behind a node, or null when it has been deleted elsewhere.
+function gTask(n) {
+  const day = allDays.find((d) => d.date === n.date);
+  const t = day && (day.tasks || []).find((x) => x.id === n.id);
+  return t ? Object.assign({ _date: n.date }, normalize(t)) : null;
+}
+function gNodes() {
+  return graph.nodes.map((n) => ({ n, t: gTask(n) })).filter((x) => x.t);
+}
+// Dependencies are day-local in this app, so an edge exists only when both
+// ends are on the same day and both are on the canvas. Inventing cross-day
+// edges here would be a second dependency system, which is exactly what the
+// board already decided not to have.
+function gEdges() {
+  const on = new Map();
+  gNodes().forEach(({ n, t }) => on.set(gKey(n.date, n.id), t));
+  const out = [];
+  gNodes().forEach(({ n, t }) => {
+    (t.dependsOn || []).forEach((dep) => {
+      const from = on.get(gKey(n.date, dep));
+      if (from) out.push({ from: { date: n.date, id: dep }, to: { date: n.date, id: n.id }, done: from.status === 'done' });
+    });
+  });
+  return out;
+}
+// What a blocked task is actually waiting on — read from the real dependsOn,
+// not from a flag. This is what gets shown instead of pretending the block
+// went away because a node was clicked.
+function gBlockers(t) {
+  const day = allDays.find((d) => d.date === t._date);
+  const all = (day && day.tasks) || [];
+  return (t.dependsOn || [])
+    .map((id) => all.find((x) => x.id === id))
+    .filter((x) => x && x.status !== 'done');
+}
+
+// ---- layout ------------------------------------------------------------
+//
+// Dependency chains become columns left to right; everything unrelated is laid
+// out in a loose grid beside them. Nodes that have been dragged keep the
+// position they were dragged to — a layout pass that overrules the person who
+// moved something is a layout pass nobody trusts.
+function gLayout(force) {
+  const items = gNodes();
+  if (!items.length) return;
+  const depth = new Map();
+  const byKey = new Map(items.map((x) => [gKey(x.n.date, x.n.id), x]));
+  const deep = (key, seen) => {
+    if (depth.has(key)) return depth.get(key);
+    if (seen.has(key)) return 0;                      // a cycle cannot happen, but never hang on one
+    seen.add(key);
+    const it = byKey.get(key);
+    const parents = (it.t.dependsOn || [])
+      .map((id) => gKey(it.n.date, id)).filter((k) => byKey.has(k));
+    const d = parents.length ? Math.max(...parents.map((k) => deep(k, seen))) + 1 : 0;
+    depth.set(key, d);
+    return d;
+  };
+  items.forEach((x) => deep(gKey(x.n.date, x.n.id), new Set()));
+
+  const cols = new Map();
+  items.forEach((x) => {
+    const d = depth.get(gKey(x.n.date, x.n.id)) || 0;
+    if (!cols.has(d)) cols.set(d, []);
+    cols.get(d).push(x);
+  });
+  [...cols.keys()].sort((a, b) => a - b).forEach((d) => {
+    const col = cols.get(d);
+    // One long column of unrelated tasks is a list, not a graph — wrap it.
+    const perCol = Math.max(1, Math.ceil(Math.sqrt(col.length)));
+    col.forEach((x, i) => {
+      if (!force && x.n.x != null) return;            // dragged: leave it alone
+      const sub = Math.floor(i / perCol);
+      x.n.x = d * (NODE_W + GAP_X) + sub * (NODE_W + GAP_X);
+      x.n.y = (i % perCol) * (NODE_H + GAP_Y);
+    });
+  });
+}
+
+// ---- rendering ---------------------------------------------------------
+function gBounds() {
+  const items = gNodes();
+  if (!items.length) return null;
+  const xs = items.map((x) => x.n.x || 0), ys = items.map((x) => x.n.y || 0);
+  return { x0: Math.min(...xs), y0: Math.min(...ys),
+           x1: Math.max(...xs) + NODE_W, y1: Math.max(...ys) + NODE_H };
+}
+function gApplyView() {
+  const c = $('#gCanvas'); if (!c) return;
+  const v = graph.view;
+  c.style.transform = 'translate(' + v.x + 'px,' + v.y + 'px) scale(' + v.zoom + ')';
+  const z = $('#gZoomLabel'); if (z) z.textContent = Math.round(v.zoom * 100) + '%';
+}
+function gFit() {
+  const b = gBounds(); const vp = $('#gViewport');
+  if (!b || !vp) return;
+  const pad = 70;
+  const w = vp.clientWidth, h = vp.clientHeight;
+  if (w < 120 || h < 120) return;          // not laid out yet: leave the view alone
+  const zoom = Math.min(2, Math.max(0.3, Math.min((w - pad * 2) / Math.max(1, b.x1 - b.x0),
+                                                  (h - pad * 2) / Math.max(1, b.y1 - b.y0))));
+  graph.view.zoom = zoom;
+  graph.view.x = (w - (b.x1 - b.x0) * zoom) / 2 - b.x0 * zoom;
+  graph.view.y = (h - (b.y1 - b.y0) * zoom) / 2 - b.y0 * zoom;
+  gApplyView(); saveGraph();
+}
+function gZoom(by) {
+  const vp = $('#gViewport'); if (!vp) return;
+  const v = graph.view;
+  const next = Math.min(2.5, Math.max(0.3, v.zoom * by));
+  // Zoom about the middle of what is on screen, not the origin, or the graph
+  // wanders off every time you press the button.
+  const cx = vp.clientWidth / 2, cy = vp.clientHeight / 2;
+  v.x = cx - (cx - v.x) * (next / v.zoom);
+  v.y = cy - (cy - v.y) * (next / v.zoom);
+  v.zoom = next;
+  gApplyView(); saveGraph();
+}
+
+function gNodeHtml(n, t) {
+  const blockers = t.status === 'blocked' ? gBlockers(t) : [];
+  const focused = gIsFocused(t);
+  return '<div class="gnode st-' + t.status + (focused ? ' focusing' : '') +
+      (blockers.length ? ' waiting' : '') + '" data-k="' + gKey(n.date, n.id) + '"' +
+      ' style="left:' + (n.x || 0) + 'px;top:' + (n.y || 0) + 'px" tabindex="0"' +
+      ' role="group" aria-label="' + escapeHtml(t.text) + ', ' + (COL_TITLE[t.status] || t.status) + '">' +
+    '<div class="gn-top">' +
+      '<span class="gn-dot" style="background:' + COL_COLOR[t.status] + '"></span>' +
+      '<span class="gn-status">' + (COL_TITLE[t.status] || t.status) + '</span>' +
+      (t.priority && t.priority !== 'normal' ? '<span class="gn-prio ' + t.priority + '">' + PRIO_LABEL[t.priority] + '</span>' : '') +
+      (focused ? '<span class="gn-focus-badge">🎧 focusing</span>' : '') +
+      '<button class="gn-x" data-remove="1" title="Take it off the canvas (the task is untouched)" aria-label="Remove from graph">✕</button>' +
+    '</div>' +
+    '<div class="gn-text">' + escapeHtml(t.text) + '</div>' +
+    (blockers.length
+      ? '<div class="gn-block">⛔ waiting on ' + escapeHtml(blockers.map((b) => b.text).join(', ')).slice(0, 90) + '</div>'
+      : '') +
+    (n.why ? '<div class="gn-why">' + escapeHtml(n.why) + '</div>' : '') +
+    '<div class="gn-acts">' +
+      '<button data-done="1" title="Mark done">✓ Done</button>' +
+      '<button data-focus="1" title="Start a focus session on this task">🎧 Focus</button>' +
+      '<button data-open="1" title="Open the full task">Open</button>' +
+    '</div>' +
+    '<svg class="gn-check" viewBox="0 0 40 40" aria-hidden="true"><path d="M10 21 l7 7 l14 -16" /></svg>' +
+  '</div>';
+}
+
+function gEdgeSvg() {
+  const edges = gEdges();
+  const pos = new Map(gNodes().map(({ n }) => [gKey(n.date, n.id), n]));
+  const b = gBounds() || { x0: 0, y0: 0, x1: 1, y1: 1 };
+  const w = Math.max(b.x1 + 200, 800), h = Math.max(b.y1 + 200, 600);
+  const path = edges.map((e) => {
+    const a = pos.get(gKey(e.from.date, e.from.id)), c = pos.get(gKey(e.to.date, e.to.id));
+    if (!a || !c) return '';
+    const x1 = a.x + NODE_W, y1 = a.y + NODE_H / 2;
+    const x2 = c.x, y2 = c.y + NODE_H / 2;
+    const mx = (x1 + x2) / 2;
+    return '<path class="gedge' + (e.done ? ' done' : '') + '" d="M' + x1 + ' ' + y1 +
+      ' C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 + ' ' + (x2 - 9) + ' ' + y2 + '" marker-end="url(#gArrow)" />';
+  }).join('');
+  return '<svg class="gedges" width="' + w + '" height="' + h + '" aria-hidden="true">' +
+    '<defs><marker id="gArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">' +
+    '<path d="M0 0 L10 5 L0 10 z" /></marker></defs>' + path + '</svg>';
+}
+
+function renderGraphPage(opts) {
+  const vp = $('#gCanvas'); if (!vp) return;
+  gLayout(false);
+  const items = gNodes();
+  $('#gCount').textContent = items.length ? items.length + ' active' : 'empty';
+  renderGraphBadge();
+  $('#gEmpty').classList.toggle('hidden', !!items.length);
+
+  // Existing nodes move rather than teleport: remember where each one is,
+  // rebuild, then play the difference. This is the only honest way to animate
+  // a rearrangement when the markup is rebuilt wholesale.
+  const before = new Map();
+  vp.querySelectorAll('.gnode').forEach((el) => before.set(el.dataset.k, el.getBoundingClientRect()));
+
+  vp.innerHTML = gEdgeSvg() + items.map(({ n, t }) => gNodeHtml(n, t)).join('');
+  gApplyView();
+
+  if (!reduceMotion()) {
+    vp.querySelectorAll('.gnode').forEach((el) => {
+      const was = before.get(el.dataset.k);
+      if (!was) return;
+      const now = el.getBoundingClientRect();
+      const dx = was.left - now.left, dy = was.top - now.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+      el.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'none' }],
+        { duration: 320, easing: 'cubic-bezier(.22,1,.36,1)' });
+    });
+  }
+  wireGraph(vp);
+  if (opts && opts.fit) gFit();
+}
+
+// ---- interaction -------------------------------------------------------
+function wireGraph(vp) {
+  vp.querySelectorAll('.gnode').forEach((el) => {
+    const [date, id] = el.dataset.k.split('/');
+    const node = graph.nodes.find((n) => n.date === date && n.id === id);
+    const t = node && gTask(node);
+    if (!t) return;
+
+    el.querySelector('[data-remove]').onclick = (e) => { e.stopPropagation(); gRemove(date, id); };
+    el.querySelector('[data-open]').onclick = (e) => { e.stopPropagation(); jumpToTask(date, id); };
+    el.querySelector('[data-focus]').onclick = (e) => { e.stopPropagation(); gFocus(date, id); };
+    el.querySelector('[data-done]').onclick = (e) => { e.stopPropagation(); gComplete(date, id); };
+    el.ondblclick = () => jumpToTask(date, id);
+    el.onkeydown = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); jumpToTask(date, id); }
+      if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); gRemove(date, id); }
+    };
+
+    // Dragging a node. Pointer events so a trackpad, a mouse and a pen all
+    // behave the same, and the delta is divided by the zoom or the node runs
+    // away from the cursor whenever the canvas is scaled.
+    el.onpointerdown = (e) => {
+      if (e.target.closest('button')) return;
+      e.preventDefault();
+      el.setPointerCapture(e.pointerId);
+      gSelected = el.dataset.k;
+      vp.querySelectorAll('.gnode').forEach((x) => x.classList.toggle('sel', x === el));
+      gDragNode = { el, node, sx: e.clientX, sy: e.clientY, ox: node.x || 0, oy: node.y || 0, moved: false };
+      el.classList.add('dragging');
+    };
+    el.onpointermove = (e) => {
+      if (!gDragNode || gDragNode.el !== el) return;
+      const z = graph.view.zoom || 1;
+      const dx = (e.clientX - gDragNode.sx) / z, dy = (e.clientY - gDragNode.sy) / z;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) gDragNode.moved = true;
+      gDragNode.node.x = gDragNode.ox + dx;
+      gDragNode.node.y = gDragNode.oy + dy;
+      el.style.left = gDragNode.node.x + 'px';
+      el.style.top = gDragNode.node.y + 'px';
+      $('#gCanvas').querySelector('.gedges').outerHTML = gEdgeSvg();
+    };
+    el.onpointerup = () => {
+      if (!gDragNode || gDragNode.el !== el) return;
+      el.classList.remove('dragging');
+      const moved = gDragNode.moved;
+      gDragNode = null;
+      if (moved) saveGraph();
+    };
+  });
+}
+
+function gBindViewport() {
+  const vp = $('#gViewport'); if (!vp || vp.dataset.bound) return;
+  vp.dataset.bound = '1';
+  vp.onpointerdown = (e) => {
+    if (e.target.closest('.gnode')) return;
+    gPan = { sx: e.clientX, sy: e.clientY, ox: graph.view.x, oy: graph.view.y };
+    vp.classList.add('panning');
+    gSelected = null;
+    vp.querySelectorAll('.gnode.sel').forEach((x) => x.classList.remove('sel'));
+  };
+  window.addEventListener('pointermove', (e) => {
+    if (!gPan) return;
+    graph.view.x = gPan.ox + (e.clientX - gPan.sx);
+    graph.view.y = gPan.oy + (e.clientY - gPan.sy);
+    gApplyView();
+  });
+  window.addEventListener('pointerup', () => {
+    if (!gPan) return;
+    gPan = null; vp.classList.remove('panning'); saveGraph();
+  });
+  vp.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey && !e.metaKey) return;         // plain scroll is not zoom
+    e.preventDefault();
+    gZoom(e.deltaY < 0 ? 1.08 : 1 / 1.08);
+  }, { passive: false });
+}
+
+// ---- the four things a node can do -------------------------------------
+//
+// Every one of them writes through mutateTask, which owns the day file. None
+// of them writes anything graph-shaped into a task.
+// An animation is a way of showing a change, never the thing that commits it.
+// A hidden tab suspends Web Animations, so anything waiting on `finished`
+// waits forever — which would leave a node on the canvas because someone
+// switched windows mid-click. Whichever happens first wins, and it runs once.
+function gAfter(anim, ms, fn) {
+  let done = false;
+  const go = () => { if (done) return; done = true; fn(); };
+  if (anim) anim.finished.then(go).catch(go);
+  setTimeout(go, ms);
+}
+async function gRemove(date, id) {
+  const el = $('#gCanvas').querySelector('.gnode[data-k="' + gKey(date, id) + '"]');
+  const drop = () => {
+    graph.nodes = graph.nodes.filter((n) => !(n.date === date && n.id === id));
+    saveGraph(); renderGraphPage();
+  };
+  if (!el || reduceMotion()) return drop();
+  gAfter(el.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.92)' }],
+    { duration: 160, easing: 'ease-in' }), 220, drop);
+}
+
+async function gComplete(date, id) {
+  const el = $('#gCanvas').querySelector('.gnode[data-k="' + gKey(date, id) + '"]');
+  await mutateTask(date, id, (t) => { t.status = 'done'; t.doneAt = Date.now(); });
+  logActivity('task-done', 'Finished a task from the graph');
+  const finish = () => {
+    graph.nodes = graph.nodes.filter((n) => !(n.date === date && n.id === id));
+    saveGraph();
+    renderGraphPage();          // the rest rearrange, and any edge off it redraws
+    flash('✅ Done');
+  };
+  if (!el || reduceMotion()) return finish();
+  // Draw the tick, hold it for a beat, then let the node go. Long enough to
+  // read as "that one is finished", short enough not to be a cutscene.
+  el.classList.add('completing');
+  setTimeout(() => {
+    gAfter(el.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.86) translateY(-10px)' }],
+      { duration: 200, easing: 'cubic-bezier(.4,0,1,1)' }), 260, finish);
+  }, 430);
+}
+
+function gIsFocused(t) {
+  const s = openSession && openSession();
+  return !!(s && s.taskId && s.taskId === t.id && t._date === iso(current));
+}
+async function gFocus(date, id) {
+  // The focus timer, its music, the session log and the floating window all
+  // live on today. Focusing something from another day means going to that day
+  // first rather than quietly starting a session against the wrong one.
+  if (date !== iso(current)) {
+    current = new Date(date + 'T00:00:00');
+    await load();
+  }
+  const t = tasks.find((x) => x.id === id);
+  if (!t) return flash('That task is not on this day any more.');
+  const open = openSession();
+  if (open && open.taskId !== id) { flash('A focus session is already running — end it first.'); return; }
+  fmProject = null;
+  fmSelectedTask = id;
+  startFocus();
+  renderGraphPage();
+  flash('🎧 Focusing on “' + t.text.slice(0, 40) + '”');
+}
+
+// ---- pulling work in ---------------------------------------------------
+//
+// The status change on pull is the point of the page: the graph is what you
+// are working through, so putting something on it says you have started it.
+// Blocked is the exception, and deliberately so — a task waiting on unfinished
+// work does not stop waiting because a node was clicked. It comes onto the
+// canvas still blocked, wearing the reason.
+async function gPull(date, id, why, fromRect) {
+  if (graph.nodes.some((n) => n.date === date && n.id === id)) { flash('Already on the canvas.'); return null; }
+  const day = allDays.find((d) => d.date === date);
+  const raw = day && (day.tasks || []).find((x) => x.id === id);
+  if (!raw) return null;
+  const t = normalize(raw);
+
+  let moved = false;
+  if (t.status === 'todo') {
+    await mutateTask(date, id, (x) => { x.status = 'progress'; x.doneAt = null; });
+    moved = true;
+  } else if (t.status === 'blocked') {
+    const waiting = gBlockers(Object.assign({ _date: date }, t));
+    if (!waiting.length) {                 // blocked by nothing: the flag is stale
+      await mutateTask(date, id, (x) => { x.status = 'progress'; x.doneAt = null; });
+      moved = true;
+    }
+  }
+  const node = normGraphNode({ date, id, why: why || '' });
+  graph.nodes.push(node);
+  gLayout(false);
+  saveGraph();
+  renderGraphPage();
+  if (fromRect) gFlyIn(date, id, fromRect);
+  return { moved };
+}
+
+// The insertion animation: the row you picked travels to where the node
+// landed, growing slightly on the way, and the node fades up underneath it.
+function gFlyIn(date, id, from) {
+  const el = $('#gCanvas').querySelector('.gnode[data-k="' + gKey(date, id) + '"]');
+  if (!el) return;
+  if (reduceMotion()) { el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120 }); return; }
+  const to = el.getBoundingClientRect();
+  const ghost = document.createElement('div');
+  ghost.className = 'gfly';
+  ghost.textContent = (gTask({ date, id }) || {}).text || '';
+  ghost.style.cssText = 'left:' + from.left + 'px;top:' + from.top + 'px;width:' + from.width + 'px;height:' + from.height + 'px';
+  document.body.appendChild(ghost);
+  const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+  const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+  ghost.animate([
+    { transform: 'translate(0,0) scale(1)', opacity: .95 },
+    { transform: 'translate(' + dx * .55 + 'px,' + dy * .55 + 'px) scale(1.12)', opacity: 1, offset: .55 },
+    { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + Math.max(.4, to.width / from.width) + ')', opacity: 0 },
+  ], { duration: 420, easing: 'cubic-bezier(.22,1,.36,1)' }).onfinish = () => ghost.remove();
+  el.animate([{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'scale(1)' }],
+    { duration: 300, delay: 160, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' });
+}
+
+// ---- the picker --------------------------------------------------------
+let gPickSel = new Set();
+let gPickFilter = 'relevant';
+const G_FILTERS = [
+  ['relevant', 'Relevant'], ['todo', 'To Do'], ['progress', 'In Progress'],
+  ['blocked', 'Blocked'], ['backlog', 'Backlog'], ['due', 'Due soon'], ['overdue', 'Overdue'],
+];
+
+function gCandidates() {
+  const onCanvas = new Set(graph.nodes.map((n) => gKey(n.date, n.id)));
+  const rows = [];
+  allTasks().forEach((t) => {
+    if (t.status === 'done') return;
+    if (onCanvas.has(gKey(t._date, t.id))) return;
+    rows.push({ kind: 'task', date: t._date, id: t.id, text: t.text, status: t.status,
+      priority: t.priority, projectId: t.projectId, pickupDate: t.pickupDate, t });
+  });
+  // Backlog is not a task status in this app — it is a separate store. So a
+  // backlog item offered here is promoted onto today's board when picked,
+  // which is the existing route from parked to live work.
+  backlog.filter((b) => !b.promotedTo).forEach((b) => {
+    rows.push({ kind: 'backlog', id: b.id, text: b.text, status: 'backlog',
+      priority: 'normal', projectId: b.projectId, pickupDate: b.pickupDate });
+  });
+  return rows;
+}
+// Deterministic, and it says why. Every reason below is something already in
+// the data — no ranking anybody has to take on faith.
+function gScore(r) {
+  const why = [];
+  let s = 0;
+  const days = r.pickupDate ? dueDaysAway(r.pickupDate) : null;
+  if (days !== null && days < 0) { s += 50; why.push(Math.abs(days) + 'd overdue'); }
+  else if (days === 0) { s += 35; why.push('due today'); }
+  else if (days !== null && days <= 2) { s += 20; why.push('due in ' + days + 'd'); }
+  if (r.status === 'progress') { s += 30; why.push('already started'); }
+  if (r.priority === 'high') { s += 25; why.push('high priority'); }
+  if (r.priority === 'low') s -= 10;
+  if (r.t && (r.t.carryCount || 0) >= 3) { s += 12; why.push('carried ' + r.t.carryCount + '×'); }
+  if (r.t && r.status === 'blocked' && !gBlockers(r.t).length) { s += 8; why.push('no longer blocked'); }
+  if (r.projectId && projects.some((p) => p.id === r.projectId && p.status === 'active')) {
+    s += 10; why.push('active project');
+  }
+  return { s, why };
+}
+
+function gOpenPicker(preset) {
+  gPickSel = new Set();
+  gPickFilter = preset || 'relevant';
+  $('#gPicker').classList.remove('hidden');
+  $('#gPickQ').value = '';
+  renderGPicker();
+  setTimeout(() => $('#gPickQ').focus(), 30);
+}
+function gClosePicker() { $('#gPicker').classList.add('hidden'); gPickSel = new Set(); }
+
+function gPickRows() {
+  const q = ($('#gPickQ').value || '').trim().toLowerCase();
+  let rows = gCandidates();
+  if (q) rows = rows.filter((r) => r.text.toLowerCase().includes(q));
+  else if (gPickFilter === 'todo') rows = rows.filter((r) => r.status === 'todo');
+  else if (gPickFilter === 'progress') rows = rows.filter((r) => r.status === 'progress');
+  else if (gPickFilter === 'blocked') rows = rows.filter((r) => r.status === 'blocked');
+  else if (gPickFilter === 'backlog') rows = rows.filter((r) => r.kind === 'backlog');
+  else if (gPickFilter === 'due') rows = rows.filter((r) => { const d = r.pickupDate ? dueDaysAway(r.pickupDate) : null; return d !== null && d >= 0 && d <= 3; });
+  else if (gPickFilter === 'overdue') rows = rows.filter((r) => { const d = r.pickupDate ? dueDaysAway(r.pickupDate) : null; return d !== null && d < 0; });
+  rows.forEach((r) => { const g = gScore(r); r._s = g.s; r._why = g.why; });
+  if (!q && gPickFilter === 'relevant') rows.sort((a, b) => b._s - a._s);
+  else rows.sort((a, b) => PRIO_RANK[a.priority] - PRIO_RANK[b.priority]);
+  return rows.slice(0, 80);
+}
+
+function renderGPicker() {
+  $('#gPickFilters').innerHTML = G_FILTERS.map(([k, label]) =>
+    '<button class="filter' + (k === gPickFilter ? ' on' : '') + '" data-gf="' + k + '">' + label + '</button>').join('');
+  const rows = gPickRows();
+  const host = $('#gPickList');
+  host.innerHTML = rows.length ? rows.map((r, i) => {
+    const key = (r.kind === 'backlog' ? 'b' : r.date) + '/' + r.id;
+    const proj = r.projectId && (projects.find((p) => p.id === r.projectId) || {}).title;
+    return '<label class="gpick-row' + (gPickSel.has(key) ? ' on' : '') + '" data-i="' + i + '">' +
+      '<input type="checkbox"' + (gPickSel.has(key) ? ' checked' : '') + ' />' +
+      '<span class="gp-dot" style="background:' + (COL_COLOR[r.status] || '#888') + '"></span>' +
+      '<span class="gp-t">' + escapeHtml(r.text) + '</span>' +
+      (proj ? '<span class="gp-tag">🚀 ' + escapeHtml(proj) + '</span>' : '') +
+      (r.priority === 'high' ? '<span class="gp-tag hi">High</span>' : '') +
+      '<span class="gp-st">' + (r.kind === 'backlog' ? 'Backlog' : COL_TITLE[r.status] || r.status) + '</span>' +
+      (r._why.length ? '<span class="gp-why">' + escapeHtml(r._why.join(' · ')) + '</span>' : '') +
+      '</label>';
+  }).join('') : '<div class="tree-none">Nothing left to pull in.</div>';
+
+  $('#gPickAdd').textContent = gPickSel.size ? 'Add ' + gPickSel.size + ' to graph' : 'Add to graph';
+  $('#gPickAdd').disabled = !gPickSel.size;
+
+  $('#gPickFilters').querySelectorAll('[data-gf]').forEach((b) => {
+    b.onclick = () => { gPickFilter = b.dataset.gf; renderGPicker(); };
+  });
+  host.querySelectorAll('[data-i]').forEach((el) => {
+    el.onclick = (e) => {
+      e.preventDefault();
+      const r = rows[+el.dataset.i];
+      const key = (r.kind === 'backlog' ? 'b' : r.date) + '/' + r.id;
+      if (gPickSel.has(key)) gPickSel.delete(key); else gPickSel.add(key);
+      renderGPicker();
+    };
+  });
+}
+
+async function gAddPicked() {
+  const rows = gPickRows();
+  const chosen = rows.filter((r) => gPickSel.has((r.kind === 'backlog' ? 'b' : r.date) + '/' + r.id));
+  if (!chosen.length) return;
+  // Where each row sits right now, so the node can fly from it.
+  const rects = new Map();
+  $('#gPickList').querySelectorAll('[data-i]').forEach((el) => {
+    const r = rows[+el.dataset.i];
+    rects.set((r.kind === 'backlog' ? 'b' : r.date) + '/' + r.id, el.getBoundingClientRect());
+  });
+  gClosePicker();
+  let started = 0;
+  for (const r of chosen) {
+    const from = rects.get((r.kind === 'backlog' ? 'b' : r.date) + '/' + r.id);
+    if (r.kind === 'backlog') {
+      // Promote through the real route, then pull the task it became.
+      const b = backlog.find((x) => x.id === r.id);
+      const t = await createTaskOn(iso(current), b.text, {
+        note: b.note || '', estimateMin: b.estimateMin || null, projectId: b.projectId || null,
+        status: 'progress',
+      });
+      b.promotedTo = t.id; b.promotedOn = iso(current);
+      saveBacklog();
+      await refreshDays();
+      await gPull(iso(current), t.id, r._why.join(' · '), from);
+      started++;
+    } else {
+      const res = await gPull(r.date, r.id, r._why.join(' · '), from);
+      if (res && res.moved) started++;
+    }
+    if (!reduceMotion()) await new Promise((res) => setTimeout(res, 90));   // they arrive one after another
+  }
+  await refreshDays();
+  renderGraphPage();
+  flash(started ? '▶ ' + started + ' moved to In Progress' : '➕ On the canvas');
+}
+
+// Pull a few suggestions, with a little shuffle inside the top band so the
+// same three are not offered forever.
+async function gSuggest() {
+  const rows = gCandidates().map((r) => Object.assign(r, gScore(r)))
+    .filter((r) => r.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 8);
+  if (!rows.length) return flash('Nothing stands out right now.');
+  for (let i = rows.length - 1; i > 0; i--) {         // shuffle the shortlist
+    const j = Math.floor(Math.random() * (i + 1));
+    [rows[i], rows[j]] = [rows[j], rows[i]];
+  }
+  const take = rows.filter((r) => r.kind === 'task').slice(0, Math.max(1, 3 - gNodes().length));
+  if (!take.length) return flash('The canvas already has enough on it.');
+  for (const r of take) await gPull(r.date, r.id, r.why.join(' · '));
+  await refreshDays();
+  renderGraphPage({ fit: true });
+  flash('✨ Pulled ' + take.length + ' in');
+}
+
+// A project opening its own work — a handful of it, not the whole backlog of
+// forty, because the entire point of this page is that it is small.
+async function gOpenProject(projectId) {
+  await loadGraph();
+  const p = projects.find((x) => x.id === projectId);
+  const rows = gCandidates().filter((r) => r.kind === 'task' && r.projectId === projectId)
+    .map((r) => Object.assign(r, gScore(r)))
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 5);
+  if (!rows.length) { flash('Nothing active on that project.'); return; }
+  for (const r of rows) await gPull(r.date, r.id, r.why.join(' · '));
+  await refreshDays();
+  await openPage('graph');
+  renderGraphPage({ fit: true });
+  flash('🚀 ' + rows.length + ' from ' + (p ? p.title : 'the project'));
+}
+
+async function gClear() {
+  if (!graph.nodes.length) return;
+  graph.nodes = [];
+  saveGraph();
+  renderGraphPage();
+  flash('Canvas cleared — every task is untouched');
+}
+
+async function renderGraph() {
+  await loadGraph();
+  gBindViewport();
+  renderGraphPage();
+}
+
 // =====================================================================
 // WIRING
 // =====================================================================
@@ -13447,6 +14278,21 @@ $('#rpAdd').onclick = async () => {
   if (r) { $('#rpNew').value = ''; renderRemindersPage(); }
 };
 $('#rpNew').onkeydown = (e) => { if (e.key === 'Enter') $('#rpAdd').click(); };
+
+
+$('#gAdd').onclick = () => gOpenPicker();
+$('#gEmptyAdd').onclick = () => gOpenPicker();
+$('#gPickClose').onclick = gClosePicker;
+$('#gPicker').onclick = (e) => { if (e.target === $('#gPicker')) gClosePicker(); };
+$('#gPickQ').oninput = renderGPicker;
+$('#gPickQ').onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Escape') gClosePicker(); };
+$('#gPickAdd').onclick = gAddPicked;
+$('#gSuggest').onclick = gSuggest;
+$('#gFitBtn').onclick = gFit;
+$('#gIn').onclick = () => gZoom(1.15);
+$('#gOut').onclick = () => gZoom(1 / 1.15);
+$('#gRelayout').onclick = () => { gLayout(true); saveGraph(); renderGraphPage({ fit: true }); };
+$('#gClearBtn').onclick = gClear;
 
 $('#dueAdd').onclick = dueAdd;
 $('#dueNew').onkeydown = (e) => { if (e.key === 'Enter') dueAdd(); };
