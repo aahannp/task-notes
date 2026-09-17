@@ -125,7 +125,7 @@ Pull two or three things onto a canvas and work them. Nodes are **references** �
 
 **Pulling something in starts it.** A task in To Do moves to In Progress, because putting it on the canvas is the act of picking it up. Backlog isn't a task status here — it's a separate store — so a parked item is promoted through the existing route and lands started. **Blocked is the exception, deliberately:** a task waiting on unfinished work comes onto the canvas still blocked, wearing the reason. Clicking a node does not finish its dependencies.
 
-**Draw the arrows yourself.** Drag from a card's right-hand connector onto another and the first one comes first; click an arrow to cut it. It writes the board's own `dependsOn` — the same field the task panel edits and the board warns on — so there is no second notion of *comes before* anywhere in the app. Loops are refused, and two cards from different days can't be joined, because dependencies here have always been day-local.
+**Draw the arrows yourself**, two ways: drag the connector on a card's right edge onto another card, or press **→ Link** and then click the task that comes after. The second exists because the first is a fourteen-pixel target and a drag, which is fine with a mouse and miserable on a trackpad. Click an arrow to cut it. It writes the board's own `dependsOn` — the same field the task panel edits and the board warns on — so there is no second notion of *comes before* anywhere in the app. Loops are refused, and two cards from different days can't be joined, because dependencies here have always been day-local.
 
 Dependencies become the layout — chains run left to right, everything unrelated sits in a loose grid beside them — and a node you drag keeps where you put it, because a layout pass that overrules the person who moved something is a layout pass nobody trusts. Edges from a finished prerequisite turn green.
 
@@ -302,9 +302,11 @@ The board is where you work a single day. The Tasks page is every task you have,
 
 <br>
 
-## Pages open as tabs
+## Every page, one click away
 
-One cross in one page's corner is a cross you have to go and find, and it says nothing about what else is open. Pages now open as **tabs** across the top — named, closable where they are named, and remembered. Closing the last one puts you back on Today, which is the ground everything else sits on rather than a tab of its own. Escape closes the tab you are on.
+A page covers the sidebar. So the way to a page you were not already on used to be Escape, find it in the sidebar, click — three moves to do one thing. Now a strip across the top carries **every page, always**, with the one you are on lit up: hop straight from Docs to the graph to Review without going home in between. **☰ Today** is the way back to the board.
+
+Nothing up there closes, because there is nothing to close — the strip is a map of the app, not a list of what you happen to have opened. Pages switched off in Settings stay off it, and narrow windows drop the labels rather than the pages.
 
 <br>
 
