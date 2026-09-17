@@ -14154,7 +14154,28 @@ function gStartLink(e, node, el) {
 // board has always had them, so two cards from different days cannot be joined
 // — saying so is better than quietly making an edge that means nothing.
 async function gConnect(from, to) {
-  if (from.date !== to.date) return flash('Those are on different days — a dependency only holds within a day.');
+  // Connect the WORK, not the record. Either card may be pointing at an old
+  // copy of something that has since been carried forward; resolve both to
+  // their latest incarnation first, and repoint the nodes while at it. Only
+  // when the two genuinely live on different days after that — which carrying
+  // makes rare — is there anything to refuse.
+  const liveFrom = gLatest(from.date, from.id);
+  const liveTo = gLatest(to.date, to.id);
+  if (!liveFrom || !liveTo) return flash('One of those tasks is gone.');
+  const repoint = (ref, live) => {
+    const node = graph.nodes.find((n) => n.date === ref.date && n.id === ref.id);
+    if (node && (node.date !== live._date || node.id !== live.id)) {
+      node.date = live._date; node.id = live.id; saveGraph();
+    }
+  };
+  repoint(from, liveFrom); repoint(to, liveTo);
+  from = { date: liveFrom._date, id: liveFrom.id };
+  to = { date: liveTo._date, id: liveTo.id };
+  if (from.date !== to.date) {
+    return flash('“' + liveFrom.text.slice(0, 24) + '” lives on ' + from.date
+      + ' and “' + liveTo.text.slice(0, 24) + '” on ' + to.date
+      + ' — dependencies only hold within a day.');
+  }
   if (from.id === to.id) return;
   const day = allDays.find((d) => d.date === to.date);
   const all = (day && day.tasks) || [];
@@ -14243,8 +14264,13 @@ function wireGraph(vp) {
     // While something is armed, the next card you click becomes the follower.
     el.addEventListener('click', (e) => {
       if (!gArmed) return;
-      if (e.target.closest('button') && !e.target.closest('[data-link]')) return;
       if (gArmed.id === id && gArmed.date === date) return;
+      if (e.target.closest('[data-remove]')) return;
+      // In pick-the-follower mode the whole card is the target — including its
+      // own Link button, because "Link on A, Link on B" is what half of
+      // everyone will naturally do, and re-arming B instead of connecting was
+      // this page quietly ignoring them.
+      e.stopPropagation(); e.preventDefault();
       const from = gArmed;
       gDisarm();
       gConnect(from, { date, id });
@@ -14397,6 +14423,9 @@ async function gFocus(date, id) {
 // work does not stop waiting because a node was clicked. It comes onto the
 // canvas still blocked, wearing the reason.
 async function gPull(date, id, why, fromRect) {
+  // Whatever was picked, put the live copy on the canvas.
+  const live = gLatest(date, id);
+  if (live) { date = live._date; id = live.id; }
   if (graph.nodes.some((n) => n.date === date && n.id === id)) { flash('Already on the canvas.'); return null; }
   const day = allDays.find((d) => d.date === date);
   const raw = day && (day.tasks || []).find((x) => x.id === id);
@@ -14457,9 +14486,39 @@ const G_FILTERS = [
 function gCandidates() {
   const onCanvas = new Set(graph.nodes.map((n) => gKey(n.date, n.id)));
   const rows = [];
+  // A task carried thirteen times is thirteen records and one piece of work.
+  // Offering all thirteen meant you could pull in an old copy, whose node then
+  // lived on an old day and refused to link to anything current — the single
+  // biggest reason connecting "didn't work". Each copy points at its
+  // predecessor through srcId, so anything that is someone's srcId is an old
+  // copy, and only the newest of each chain is offered.
+  const superseded = new Set(allTasks().map((t) => t.srcId).filter(Boolean));
+  // Copies carried before lineage existed have no srcId — only their wording,
+  // which is the same evidence resolveBlocker accepts for them. For each
+  // wording, only the most recent day that has it is offered.
+  // The copy to offer is the one nearest to now: the latest day up to today,
+  // or failing that the earliest scheduled one — a copy sitting on the 30th is
+  // a plan, not the work in hand.
+  const today = iso(new Date());
+  const bestDay = new Map();
   allTasks().forEach((t) => {
     if (t.status === 'done') return;
-    if (onCanvas.has(gKey(t._date, t.id))) return;
+    const key = (t.text || '').trim();
+    const cur = bestDay.get(key);
+    const better = !cur
+      || (t._date <= today && (cur > today || cur < t._date))
+      || (t._date > today && cur > today && t._date < cur);
+    if (better) bestDay.set(key, t._date);
+  });
+  const offered = new Set();
+  allTasks().forEach((t) => {
+    if (t.status === 'done') return;
+    if (superseded.has(t.id)) return;
+    const key = (t.text || '').trim();
+    if (bestDay.get(key) !== t._date) return;
+    if (offered.has(key)) return;               // two records, one wording, one row
+    if (onCanvas.has(gKey(t._date, t.id))) { offered.add(key); return; }
+    offered.add(key);
     rows.push({ kind: 'task', date: t._date, id: t.id, text: t.text, status: t.status,
       priority: t.priority, projectId: t.projectId, pickupDate: t.pickupDate, t });
   });
@@ -14467,6 +14526,9 @@ function gCandidates() {
   // backlog item offered here is promoted onto today's board when picked,
   // which is the existing route from parked to live work.
   backlog.filter((b) => !b.promotedTo).forEach((b) => {
+    // A backlog item that shares its wording with open work is the parked twin
+    // from before parking removed the task — one row, and the live task wins.
+    if (offered.has((b.text || '').trim())) return;
     rows.push({ kind: 'backlog', id: b.id, text: b.text, status: 'backlog',
       priority: 'normal', projectId: b.projectId, pickupDate: b.pickupDate });
   });
