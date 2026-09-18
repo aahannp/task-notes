@@ -2553,8 +2553,17 @@
   .gedge { fill: none; stroke: rgba(170,178,196,.55); stroke-width: 2; }
   .gedge.done { stroke: rgba(63,178,127,.7); }
   /* A two-pixel line is impossible to hit. This one is invisible and fat. */
-  .gedge-hit { fill: none; stroke: transparent; stroke-width: 16; pointer-events: stroke; cursor: pointer; }
-  .gedge-hit:hover { stroke: rgba(229,83,75,.18); }
+  .gedge-hit { fill: none; stroke: transparent; stroke-width: 18; pointer-events: stroke; cursor: pointer; }
+  /* The cut button. Hidden until the pointer is near the arrow, because a ✕ on
+     every edge at rest is noise on a canvas whose whole point is quiet. */
+  .gedge-x { opacity: 0; cursor: pointer; pointer-events: all;
+    transition: opacity var(--t-base); }
+  .gedge-x circle { fill: var(--panel); stroke: rgba(255,255,255,.18); stroke-width: 1; }
+  .gedge-x path { stroke: rgba(255,255,255,.55); stroke-width: 1.8; stroke-linecap: round; fill: none; }
+  .gedge-g:hover .gedge-x { opacity: 1; }
+  .gedge-g:hover .gedge { stroke: rgba(229,83,75,.75); }
+  .gedge-x:hover circle { fill: rgba(229,83,75,.22); stroke: rgba(229,83,75,.7); }
+  .gedge-x:hover path { stroke: #ff9b94; }
   .gedge-draft { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4;
     pointer-events: none; }
 
@@ -14255,8 +14264,22 @@ function gEdgeSvg() {
     const [p1, p2] = gAnchors(gBox(a), gBox(c));
     const d = gCurve(p1, p2);
     const k = e.to.date + '|' + e.to.id + '|' + (e.depId || e.from.id);
-    return '<path class="gedge' + (e.done ? ' done' : '') + '" d="' + d + '" marker-end="url(#gArrow' + (e.done ? 'Done' : '') + ')" />'
-      + '<path class="gedge-hit" d="' + d + '" data-edge="' + k + '"><title>Click to remove this dependency</title></path>';
+    // Where to hang the cut button: the middle of the curve, which for a cubic
+    // is (P0 + 3·C1 + 3·C2 + P3) / 8 rather than the midpoint of its endpoints.
+    const span = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const kk = Math.max(26, Math.min(110, span * 0.42));
+    const c1x = p1.x + p1.nx * kk, c1y = p1.y + p1.ny * kk;
+    const c2x = p2.x + p2.nx * kk, c2y = p2.y + p2.ny * kk;
+    const mx = (p1.x + 3 * c1x + 3 * c2x + p2.x) / 8;
+    const my = (p1.y + 3 * c1y + 3 * c2y + p2.y) / 8;
+    return '<g class="gedge-g">'
+      + '<path class="gedge' + (e.done ? ' done' : '') + '" d="' + d + '" marker-end="url(#gArrow' + (e.done ? 'Done' : '') + ')" />'
+      + '<path class="gedge-hit" d="' + d + '" data-edge="' + k + '"><title>Remove this dependency</title></path>'
+      + '<g class="gedge-x" data-edge="' + k + '" transform="translate(' + mx + ',' + my + ')">'
+        + '<circle r="11"></circle>'
+        + '<path d="M-3.6 -3.6 L3.6 3.6 M3.6 -3.6 L-3.6 3.6"></path>'
+        + '<title>Remove this dependency</title>'
+      + '</g></g>';
   }).join('');
   return '<svg class="gedges" width="' + w + '" height="' + h + '">' +
     '<defs>' +
