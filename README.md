@@ -334,6 +334,16 @@ Glass needs something behind it or it reads as pale grey card, so a layer of fla
 
 <br>
 
+## A note on animation and glass
+
+This app is built on frosted glass — around forty `backdrop-filter` layers. That look has a bill attached, and it is not paid per layer, it is paid per *frame in which anything on screen moves*: the compositor re-renders every blur on the page, every frame, for as long as something is animating.
+
+Which meant five 2.5px equaliser bars bouncing on the Spotify card cost **75% of a CPU core, sustained, for as long as music played** — measured on the real app, GPU process, twenty-second samples. Freezing just those bars: **1.4%**. The property being animated barely mattered (`height` 70.7%, `transform` 75.4%), so this was never a slow-property problem. `contain` did not help either, except `contain: strict`, which "helped" by collapsing the widget to nothing.
+
+So the equaliser holds a static spread at rest and only animates while the pointer is on the card. The rule this leaves behind: **on a glass UI, nothing animates continuously unless someone is looking at it.**
+
+<br>
+
 ## Running it
 
 Requires Node.js. There are no dependencies to install — the server uses only Node's standard library.
