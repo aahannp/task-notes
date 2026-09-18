@@ -2586,6 +2586,8 @@
   .gnode.st-progress { border-left: 3px solid #f5a623; }
   .gnode.st-blocked { border-left: 3px solid #ff6b6b; }
   .gnode.st-todo { border-left: 3px solid #aab2c4; }
+  .gnode.st-done { border-left: 3px solid #3fb27f; opacity: .62; }
+  .gnode.st-done .gn-text { text-decoration: line-through; text-decoration-color: rgba(255,255,255,.35); }
   .gnode.focusing { border-color: rgba(124,155,255,.7);
     box-shadow: 0 0 0 1px rgba(124,155,255,.35), 0 10px 30px rgba(124,155,255,.18); }
   .gn-text { font-size: 13px; line-height: 1.45; color: var(--text); font-weight: 550;
@@ -3935,7 +3937,7 @@
 <div class="modal-overlay hidden" id="gPicker">
   <div class="modal">
     <div class="modal-head"><h3>Pull into the graph</h3>
-      <span class="mcp-state">To Do and Backlog start when you add them</span>
+      <span class="mcp-state" id="gPickDay"></span>
       <button class="modal-close" id="gPickClose">✕</button></div>
     <div class="modal-body">
       <input id="gPickQ" class="tm-input" placeholder="Search your tasks…" autocomplete="off" />
@@ -13971,7 +13973,10 @@ function gSyncToToday() {
   graph.nodes.forEach((n) => {
     const live = gLatest(n.date, n.id);
     if (!live) { gone++; return; }                  // deleted somewhere else
-    if (live.status === 'done') { gone++; return; } // finished elsewhere: off it goes
+    // Finished work stays put and shows as finished. The board keeps a
+    // Finished column; a dependency graph that silently deletes the thing
+    // everything else was waiting on is worse than one that greys it out.
+    // Completing from a node still removes it — that is an explicit act.
     if (live._date !== n.date || live.id !== n.id) {
       moved++;
       next.push(Object.assign({}, n, { date: live._date, id: live.id }));
@@ -14638,57 +14643,36 @@ function gFlyIn(date, id, from) {
 // ---- the picker --------------------------------------------------------
 let gPickSel = new Set();
 let gPickFilter = 'relevant';
+// The board's own columns, in the board's own order, so the picker and the
+// board never describe the same day differently.
 const G_FILTERS = [
   ['relevant', 'Relevant'], ['todo', 'To Do'], ['progress', 'In Progress'],
-  ['blocked', 'Blocked'], ['backlog', 'Backlog'], ['due', 'Due soon'], ['overdue', 'Overdue'],
+  ['blocked', 'Blocked'], ['done', 'Finished'], ['backlog', 'Backlog'],
 ];
 
 function gCandidates() {
+  // The board for the day you are on — the same records the To Do, In Progress,
+  // Blocked and Finished columns are drawing, read from the same array.
+  //
+  // This used to read allTasks(), every day in the history, which is how a copy
+  // of "refine the google doc" from twelve days ago sat next to today's copy of
+  // the same work. Carry-forward already brings anything unfinished onto today,
+  // so the day's board IS the complete picture, and reading it directly means
+  // one record per task with no lineage guessing.
+  const date = iso(current);
   const onCanvas = new Set(graph.nodes.map((n) => gKey(n.date, n.id)));
   const rows = [];
-  // A task carried thirteen times is thirteen records and one piece of work.
-  // Offering all thirteen meant you could pull in an old copy, whose node then
-  // lived on an old day and refused to link to anything current — the single
-  // biggest reason connecting "didn't work". Each copy points at its
-  // predecessor through srcId, so anything that is someone's srcId is an old
-  // copy, and only the newest of each chain is offered.
-  const superseded = new Set(allTasks().map((t) => t.srcId).filter(Boolean));
-  // Copies carried before lineage existed have no srcId — only their wording,
-  // which is the same evidence resolveBlocker accepts for them. For each
-  // wording, only the most recent day that has it is offered.
-  // The copy to offer is the one nearest to now: the latest day up to today,
-  // or failing that the earliest scheduled one — a copy sitting on the 30th is
-  // a plan, not the work in hand.
-  const today = iso(new Date());
-  const bestDay = new Map();
-  allTasks().forEach((t) => {
-    if (t.status === 'done') return;
-    const key = (t.text || '').trim();
-    const cur = bestDay.get(key);
-    const better = !cur
-      || (t._date <= today && (cur > today || cur < t._date))
-      || (t._date > today && cur > today && t._date < cur);
-    if (better) bestDay.set(key, t._date);
+  (tasks || []).forEach((raw) => {
+    const t = normalize(raw);
+    if (onCanvas.has(gKey(date, t.id))) return;
+    rows.push({ kind: 'task', date, id: t.id, text: t.text, status: t.status,
+      priority: t.priority, projectId: t.projectId, pickupDate: t.pickupDate,
+      t: Object.assign({ _date: date }, t) });
   });
-  const offered = new Set();
-  allTasks().forEach((t) => {
-    if (t.status === 'done') return;
-    if (superseded.has(t.id)) return;
-    const key = (t.text || '').trim();
-    if (bestDay.get(key) !== t._date) return;
-    if (offered.has(key)) return;               // two records, one wording, one row
-    if (onCanvas.has(gKey(t._date, t.id))) { offered.add(key); return; }
-    offered.add(key);
-    rows.push({ kind: 'task', date: t._date, id: t.id, text: t.text, status: t.status,
-      priority: t.priority, projectId: t.projectId, pickupDate: t.pickupDate, t });
-  });
-  // Backlog is not a task status in this app — it is a separate store. So a
-  // backlog item offered here is promoted onto today's board when picked,
-  // which is the existing route from parked to live work.
+  // Backlog is not a task status in this app — it is a separate store, and a
+  // parked item has no day at all. Picking one promotes it onto this board
+  // first, which is the existing route from parked to live work.
   backlog.filter((b) => !b.promotedTo).forEach((b) => {
-    // A backlog item that shares its wording with open work is the parked twin
-    // from before parking removed the task — one row, and the live task wins.
-    if (offered.has((b.text || '').trim())) return;
     rows.push({ kind: 'backlog', id: b.id, text: b.text, status: 'backlog',
       priority: 'normal', projectId: b.projectId, pickupDate: b.pickupDate });
   });
@@ -14728,21 +14712,23 @@ function gPickRows() {
   const q = ($('#gPickQ').value || '').trim().toLowerCase();
   let rows = gCandidates();
   if (q) rows = rows.filter((r) => r.text.toLowerCase().includes(q));
-  else if (gPickFilter === 'todo') rows = rows.filter((r) => r.status === 'todo');
-  else if (gPickFilter === 'progress') rows = rows.filter((r) => r.status === 'progress');
-  else if (gPickFilter === 'blocked') rows = rows.filter((r) => r.status === 'blocked');
   else if (gPickFilter === 'backlog') rows = rows.filter((r) => r.kind === 'backlog');
-  else if (gPickFilter === 'due') rows = rows.filter((r) => { const d = r.pickupDate ? dueDaysAway(r.pickupDate) : null; return d !== null && d >= 0 && d <= 3; });
-  else if (gPickFilter === 'overdue') rows = rows.filter((r) => { const d = r.pickupDate ? dueDaysAway(r.pickupDate) : null; return d !== null && d < 0; });
+  else if (BOARD_ORDER.includes(gPickFilter)) rows = rows.filter((r) => r.status === gPickFilter);
+  else rows = rows.filter((r) => r.status !== 'done');   // Relevant is live work
   rows.forEach((r) => { const g = gScore(r); r._s = g.s; r._why = g.why; });
   if (!q && gPickFilter === 'relevant') rows.sort((a, b) => b._s - a._s);
-  else rows.sort((a, b) => PRIO_RANK[a.priority] - PRIO_RANK[b.priority]);
-  return rows.slice(0, 80);
+  else rows.sort((a, b) => (BOARD_ORDER.indexOf(a.status) - BOARD_ORDER.indexOf(b.status))
+    || (PRIO_RANK[a.priority] - PRIO_RANK[b.priority]));
+  return rows.slice(0, 120);
 }
 
 function renderGPicker() {
   $('#gPickFilters').innerHTML = G_FILTERS.map(([k, label]) =>
     '<button class="filter' + (k === gPickFilter ? ' on' : '') + '" data-gf="' + k + '">' + label + '</button>').join('');
+  const day = iso(current);
+  const isToday = day === iso(new Date());
+  $('#gPickDay').textContent = (isToday ? "Today's board" : fmtShort(day))
+    + '  ·  To Do and Backlog start when you add them';
   const rows = gPickRows();
   const host = $('#gPickList');
   host.innerHTML = rows.length ? rows.map((r, i) => {
