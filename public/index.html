@@ -3916,6 +3916,7 @@
         <span class="g-zoom" id="gZoomLabel">100%</span>
         <button class="btn-ghost sm" id="gIn" title="Zoom in" aria-label="Zoom in">＋</button>
         <button class="btn-ghost sm" id="gRelayout" title="Lay it out again from the dependencies">Reset layout</button>
+        <button class="btn-ghost sm" id="gShowAll" title="Put the whole board back on the canvas">Show all</button>
         <button class="btn-ghost sm" id="gClearBtn" title="Take everything off the canvas — no task is deleted">Clear</button>
       </div>
       
@@ -13906,6 +13907,11 @@ function dueAdd() {
 let graph = { nodes: [], view: { zoom: 1, x: 0, y: 0 } };
 let graphLoaded = false;
 let gDragNode = null, gPan = null, gSelected = null, gNeedsFit = false;
+// Set when a layout had to guess a node's height because it had never been
+// rendered. The guess is always too small — a card with a wrapped title and a
+// waiting line is nearly twice the default — so the pass that follows the
+// first measurement has to run again with the real numbers.
+let gLayoutDirty = false;
 
 const NODE_W = 244, NODE_H = 92, GAP_X = 80, GAP_Y = 56;
 const gKey = (date, id) => date + '/' + id;
@@ -13926,6 +13932,9 @@ function normGraph(g) {
   const v = g.view || {};
   return {
     nodes: (Array.isArray(g.nodes) ? g.nodes : []).map(normGraphNode).filter((n) => n.date && n.id),
+    // What you have taken OFF the canvas. The canvas now mirrors the day's
+    // board, so the interesting state is the exception, not the selection.
+    hidden: Array.isArray(g.hidden) ? g.hidden.filter((k) => typeof k === 'string') : [],
     view: { zoom: +v.zoom > 0 ? Math.min(2.5, Math.max(0.3, +v.zoom)) : 1, x: +v.x || 0, y: +v.y || 0 },
   };
 }
@@ -13963,6 +13972,26 @@ function gTask(n) {
   const day = allDays.find((d) => d.date === n.date);
   const t = day && (day.tasks || []).find((x) => x.id === n.id);
   return t ? Object.assign({ _date: n.date }, normalize(t)) : null;
+}
+
+// The canvas IS the day's board. Every task on the day you are looking at gets
+// a node unless you have taken it off — which is the opposite of how this
+// started, and is what "in sync with the board" actually means. Nothing here
+// touches a task: appearing on the canvas is not an action, it is a view.
+function gSyncBoard() {
+  const date = iso(current);
+  const hidden = new Set(graph.hidden || []);
+  const have = new Set(graph.nodes.map((n) => gKey(n.date, n.id)));
+  let added = 0;
+  (tasks || []).forEach((raw) => {
+    const t = normalize(raw);
+    const key = gKey(date, t.id);
+    if (have.has(key) || hidden.has(key)) return;
+    graph.nodes.push(normGraphNode({ date, id: t.id }));
+    added++;
+  });
+  if (added) { gLayout(false); saveGraph(); }
+  return added;
 }
 
 // Move every node onto today's copy of its work. Called when the page opens,
@@ -14069,22 +14098,30 @@ function gLayout(force) {
     if (!cols.has(d)) cols.set(d, []);
     cols.get(d).push(x);
   });
+  // Columns are handed out globally, not per depth. Numbering a wrapped lane
+  // as (depth + lane) meant depth 0's second lane and depth 1's first lane
+  // were the same column, starting at the same y — which is exactly where the
+  // cards landed on top of each other.
+  let colIndex = 0;
   [...cols.keys()].sort((a, b) => a - b).forEach((d) => {
     const col = cols.get(d);
     // One long column of unrelated tasks is a list, not a graph — wrap it.
     const perCol = Math.max(1, Math.ceil(Math.sqrt(col.length)));
-    let y = 30, lane = 0, inLane = 0;
+    const lanes = Math.max(1, Math.ceil(col.length / perCol));
+    const laneY = new Array(lanes).fill(30);
     col.forEach((x, i) => {
-      if (inLane >= perCol) { lane++; inLane = 0; y = 30; }
-      const h = gBox(x.n).h || NODE_H;
-      if (!force && x.n.x != null) { inLane++; y += h + GAP_Y; return; }  // dragged: left alone
+      const lane = Math.min(lanes - 1, Math.floor(i / perCol));
+      if (!gSize.has(gKey(x.n.date, x.n.id))) gLayoutDirty = true;   // guessing
       // Stack on measured heights. A fixed step overlapped every card that
-      // wrapped onto a third line and left a hole under every short one.
-      x.n.x = 40 + (d + lane) * (NODE_W + GAP_X);
-      x.n.y = y;
-      y += h + GAP_Y;
-      inLane++;
+      // wrapped and left a hole under every short one.
+      const h = gBox(x.n).h || NODE_H;
+      if (force || x.n.x == null) {
+        x.n.x = 40 + (colIndex + lane) * (NODE_W + GAP_X);
+        x.n.y = laneY[lane];
+      }
+      laneY[lane] += h + GAP_Y;
     });
+    colIndex += lanes;
   });
 }
 
@@ -14249,6 +14286,14 @@ function renderGraphPage(opts) {
   // sizes, and the guess was a constant.
   vp.innerHTML = items.map(({ n, t }) => gNodeHtml(n, t)).join('');
   gMeasure(vp);
+  // Everything has a real size now. If the positions were computed from
+  // guesses, redo them once — otherwise tall cards land on top of each other.
+  if (gLayoutDirty && !(opts && opts._again)) {
+    gLayoutDirty = false;
+    gLayout(true);
+    saveGraph();
+    return renderGraphPage(Object.assign({}, opts || {}, { _again: true }));
+  }
   vp.insertAdjacentHTML('afterbegin', gEdgeSvg());
   gApplyView();
 
@@ -14530,6 +14575,9 @@ async function gRemove(date, id) {
   const el = $('#gCanvas').querySelector('.gnode[data-k="' + gKey(date, id) + '"]');
   const drop = () => {
     graph.nodes = graph.nodes.filter((n) => !(n.date === date && n.id === id));
+    // Remembered, or the board would put it straight back on the next open.
+    const key = gKey(date, id);
+    if (!graph.hidden.includes(key)) graph.hidden.push(key);
     saveGraph(); renderGraphPage();
   };
   if (!el || reduceMotion()) return drop();
@@ -14543,6 +14591,8 @@ async function gComplete(date, id) {
   logActivity('task-done', 'Finished a task from the graph');
   const finish = () => {
     graph.nodes = graph.nodes.filter((n) => !(n.date === date && n.id === id));
+    const key = gKey(date, id);
+    if (!graph.hidden.includes(key)) graph.hidden.push(key);
     saveGraph();
     renderGraphPage();          // the rest rearrange, and any edge off it redraws
     flash('✅ Done');
@@ -14591,23 +14641,18 @@ async function gPull(date, id, why, fromRect) {
   // Whatever was picked, put the live copy on the canvas.
   const live = gLatest(date, id);
   if (live) { date = live._date; id = live.id; }
+  graph.hidden = (graph.hidden || []).filter((k) => k !== gKey(date, id));
   if (graph.nodes.some((n) => n.date === date && n.id === id)) { flash('Already on the canvas.'); return null; }
   const day = allDays.find((d) => d.date === date);
   const raw = day && (day.tasks || []).find((x) => x.id === id);
   if (!raw) return null;
   const t = normalize(raw);
 
-  let moved = false;
-  if (t.status === 'todo') {
-    await mutateTask(date, id, (x) => { x.status = 'progress'; x.doneAt = null; });
-    moved = true;
-  } else if (t.status === 'blocked') {
-    const waiting = gBlockers(Object.assign({ _date: date }, t));
-    if (!waiting.length) {                 // blocked by nothing: the flag is stale
-      await mutateTask(date, id, (x) => { x.status = 'progress'; x.doneAt = null; });
-      moved = true;
-    }
-  }
+  // No status change. The canvas mirrors the board, so a task being on it says
+  // nothing about whether you have started it — and a view that quietly moves
+  // eight things into In Progress the moment you open a page is a view nobody
+  // can trust. The board, or a node's own buttons, change a status.
+  const moved = false;
   const node = normGraphNode({ date, id, why: why || '' });
   graph.nodes.push(node);
   gLayout(false);
@@ -14728,7 +14773,7 @@ function renderGPicker() {
   const day = iso(current);
   const isToday = day === iso(new Date());
   $('#gPickDay').textContent = (isToday ? "Today's board" : fmtShort(day))
-    + '  ·  To Do and Backlog start when you add them';
+    + '  ·  already on the canvas unless you took it off';
   const rows = gPickRows();
   const host = $('#gPickList');
   host.innerHTML = rows.length ? rows.map((r, i) => {
@@ -14796,7 +14841,7 @@ async function gAddPicked() {
   }
   await refreshDays();
   renderGraphPage();
-  flash(started ? '▶ ' + started + ' moved to In Progress' : '➕ On the canvas');
+  flash('➕ On the canvas');
 }
 
 // Pull a few suggestions, with a little shuffle inside the top band so the
@@ -14838,16 +14883,31 @@ async function gOpenProject(projectId) {
 
 async function gClear() {
   if (!graph.nodes.length) return;
+  graph.nodes.forEach((n) => {
+    const key = gKey(n.date, n.id);
+    if (!graph.hidden.includes(key)) graph.hidden.push(key);
+  });
   graph.nodes = [];
   saveGraph();
   renderGraphPage();
   flash('Canvas cleared — every task is untouched');
+}
+// Undo every hiding for this day and let the board fill the canvas again.
+async function gShowAll() {
+  const date = iso(current);
+  graph.hidden = (graph.hidden || []).filter((k) => !k.startsWith(date + '/'));
+  gSyncBoard();
+  gLayout(true);
+  saveGraph();
+  renderGraphPage({ fit: true });
+  flash("Showing the whole board");
 }
 
 async function renderGraph() {
   await loadGraph();
   await refreshDays();
   const { moved, gone } = gSyncToToday();
+  gSyncBoard();
   gBindViewport();
   renderGraphPage();
   if (moved || gone) {
@@ -14893,6 +14953,7 @@ $('#gFitBtn').onclick = gFit;
 $('#gIn').onclick = () => gZoom(1.15);
 $('#gOut').onclick = () => gZoom(1 / 1.15);
 $('#gRelayout').onclick = () => { gLayout(true); saveGraph(); renderGraphPage({ fit: true }); };
+$('#gShowAll').onclick = gShowAll;
 $('#gClearBtn').onclick = gClear;
 
 $('#dueAdd').onclick = dueAdd;
