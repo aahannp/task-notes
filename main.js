@@ -1,6 +1,6 @@
 // Electron main process — wraps the local Task Notes server in a native window,
 // plus a small always-on-top Focus companion window.
-const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut, Notification, dialog } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut, Notification, dialog, Tray, nativeImage } = require('electron');
 const https = require('https');
 const path = require('path');
 const os = require('os');
@@ -47,6 +47,7 @@ function saveMiniState() {
 }
 
 function createWindow(port) {
+  trayFollowDisk(false);          // the window is back; go back to being pushed
   win = new BrowserWindow({
     width: 1200,
     height: 860,
@@ -65,7 +66,7 @@ function createWindow(port) {
     return { action: 'deny' };
   });
 
-  win.on('closed', () => { win = null; destroyMini(); });
+  win.on('closed', () => { win = null; destroyMini(); trayFollowDisk(true); });
   // Stepping away from the machine is the moment the other laptop might be
   // picked up, so it is the moment worth pushing.
   win.on('blur', () => { if (!quitting) sync.syncNow('blur'); });
@@ -152,6 +153,7 @@ ipcMain.on('focus:state', (_e, state) => {
   if (active && !miniDismissed && (!mini || mini.isDestroyed())) createMini();
   else if (!active && mini && !mini.isDestroyed()) destroyMini();
   if (mini && !mini.isDestroyed()) mini.webContents.send('focus:state', state);
+  applyTrayState(state);
 });
 // Whether the companion is currently on screen, so the app can label its
 // pop-out control correctly.
@@ -165,6 +167,195 @@ ipcMain.on('focus:request', () => {
 ipcMain.on('focus:control', (_e, action) => {
   if (win && !win.isDestroyed()) win.webContents.send('focus:control', action);
 });
+
+
+// --- Menu bar timer -------------------------------------------------------
+// The same session, third view: a status item that reads like the Clock app's
+// timer — a dial glyph plus the running time, visible whatever is on screen.
+//
+// It is DISPLAY ONLY. Clicking does nothing on purpose: a menu here would be a
+// fourth place to pause a session that already has two, and the point of this
+// is to answer "how long have I been at this" without leaving what you are in.
+//
+// The icons are drawn as greyscale+alpha PNGs and marked as template images,
+// so macOS tints them to match the menu bar in light mode, dark mode and under
+// the highlight — a coloured bitmap would look wrong in at least one of those.
+const TRAY_ICON_1X = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAiklEQVR42p1RCRGAIBDcCEQwClGMQASbGIUIRCACEXB5PRRHx2UYOG5v7wGQ2BC5H6Bg4EnwPNXdvSJkp82kQPvijnDQ1dK8R0lRjHBddqOKoh3ORIb8Fr1Uec030wgpb8PO2IJUTyf0q9CykuAnbQsFWQN6J6KGsYvyMnTxOocPk2x/YfOa/sV/HCd5Pec4TiutAAAAAElFTkSuQmCC';
+const TRAY_ICON_2X = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAA+klEQVR42uVVURHDIAyNhEqohEpASiUgAQeTUAlIqIRJQEIkbBy0jCN5PbZxt4+Fnx5J3iPwkhJhM/RIy9CH9kuAiSx54gOA47eNe93JrqTWi+N+B8hCQUk+V4j+S1urUFtqN/H7BbtesZ+HtYrXlsIWVHs40hfh2eiWCPg4nXoXDqSfHlNBOI0/u+Th5+S5l0IyzSQrzIeTtjViCjqRB/xZjV5Q+TaQgWj3tD8LSG4D8wPpunA9sTrArl7YGwAmQsiy1FjublxwB+gVNEmrr4B10BrQAVaiRsRaN+BeqPsV9sJVN7bpAU2mL+fBgIk0YCYOmMoD/gv/Z08RBPPO157rsAAAAABJRU5ErkJggg==';
+
+let tray = null;
+let trayTimer = null;
+let trayState = { active: false, accumulatedSec: 0, runningSince: null, label: '', totalSec: 0 };
+
+function trayImage() {
+  const img = nativeImage.createFromBuffer(Buffer.from(TRAY_ICON_1X, 'base64'), { scaleFactor: 1 });
+  img.addRepresentation({ scaleFactor: 2, buffer: Buffer.from(TRAY_ICON_2X, 'base64') });
+  img.setTemplateImage(true);
+  return img;
+}
+
+function createTray() {
+  if (process.platform !== 'darwin' || tray) return;
+  try {
+    tray = new Tray(trayImage());
+    tray.setIgnoreDoubleClickEvents(true);
+    tray.on('click', trayStartGeneralFocus);
+    applyTrayState(trayStateFromDisk());   // correct from the first frame
+    paintTray();
+  } catch (e) {
+    console.warn('Menu bar timer unavailable:', e.message);   // never block startup
+  }
+}
+
+// Clicking starts a general focus session — and only that. While a session is
+// running the click is deliberately dead: the menu bar is a readout, and a
+// stray click there should never pause the thing you are timing.
+//
+// Which writer depends on whether the window exists. With a window, the
+// renderer owns `meta` in memory and must be the one to append, or its next
+// save would write the session straight back out of existence. Without one,
+// the server's appendSession is exactly the second-writer path — it appends
+// rather than replacing the array, so nothing is lost either way.
+let trayStarting = false;
+function trayStartGeneralFocus() {
+  if (trayState.active || trayStarting) return;
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('focus:control', 'start-general');
+    return;
+  }
+  trayStarting = true;
+  const now = Date.now();
+  const body = JSON.stringify({
+    appendSession: {
+      start: now, end: null, accumulatedSec: 0, runningSince: now,
+      taskId: null, taskText: '', projectId: null,
+    },
+  });
+  const req = require('http').request({
+    host: '127.0.0.1', port: appPort, method: 'PATCH',
+    path: '/api/meta?date=' + isoDay(new Date()),
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+  }, (res) => {
+    res.resume();
+    res.on('end', () => {
+      trayStarting = false;
+      // Don't make the user watch up to two seconds of nothing happening.
+      applyTrayState(trayStateFromDisk());
+    });
+  });
+  req.on('error', (e) => { trayStarting = false; console.warn('Menu bar could not start a session:', e.message); });
+  req.end(body);
+}
+
+function clockText(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  const mm = String(m).padStart(2, '0'), ss = String(s).padStart(2, '0');
+  return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+function fmtTotal(sec) {
+  const m = Math.round(sec / 60);
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+}
+
+function paintTray() {
+  if (!tray || tray.isDestroyed()) return;
+  const st = trayState;
+  const running = !!st.runningSince;
+  // Idle keeps the dial and drops the text — the glyph alone is the "nothing
+  // running" state, and an empty title means no width taken in the menu bar.
+  if (!st.active) {
+    tray.setTitle('');
+    tray.setToolTip(st.totalSec ? `Focused today · ${fmtTotal(st.totalSec)}` : 'Task Notes — no focus session');
+    return;
+  }
+  const elapsed = (st.accumulatedSec || 0) + (running ? (Date.now() - st.runningSince) / 1000 : 0);
+  // monospacedDigit: without it the menu bar item twitches wider and narrower
+  // every second as the digits change width, which is maddening in peripheral
+  // vision. The pause glyph is what distinguishes a held session — a tray title
+  // cannot be dimmed, macOS owns its colour.
+  tray.setTitle((running ? '' : '⏸ ') + clockText(elapsed), { fontType: 'monospacedDigit' });
+  tray.setToolTip((st.label || 'Free focus') + (running ? '' : ' (paused)')
+    + (st.totalSec ? ` — focused today · ${fmtTotal(st.totalSec)}` : ''));
+}
+
+// With no window there are no more pushes — but the session is not the
+// renderer's, it is a record on disk, and it keeps running whether or not
+// anything is looking at it. So when the window goes away the tray stops
+// waiting to be told and reads the same file the server writes.
+//
+// The window stays the fast path while it exists: a push costs nothing, and
+// polling a file once a second for a number we are already being handed would
+// be work for its own sake.
+function isoDay(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+    + '-' + String(d.getDate()).padStart(2, '0');
+}
+function readMetaFile(day) {
+  // Meta is written by rename, so a read never catches a half-written file.
+  try {
+    return JSON.parse(fs.readFileSync(path.join(process.env.TASKNOTES_DATA, `${day}.meta.json`), 'utf8'));
+  } catch { return null; }
+}
+function sessionSeconds(s) {
+  if (s.end != null) return s.seconds || s.accumulatedSec || 0;
+  return (s.accumulatedSec || 0) + (s.runningSince ? (Date.now() - s.runningSince) / 1000 : 0);
+}
+function trayStateFromDisk() {
+  const sessions = (readMetaFile(isoDay(new Date())) || {}).sessions || [];
+  let open = sessions.find((s) => s.end == null);
+  // A session filed before midnight stays in the day it began, so without this
+  // the menu bar would blank at 00:00 on a session still plainly running.
+  if (!open) {
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    open = ((readMetaFile(isoDay(y)) || {}).sessions || []).find((s) => s.end == null);
+  }
+  const todayTotalSec = sessions.reduce((sum, s) => sum + sessionSeconds(s), 0);
+  if (!open) return { active: false, todayTotalSec };
+  return {
+    active: true,
+    accumulatedSec: open.accumulatedSec || 0,
+    runningSince: open.runningSince || null,
+    label: open.taskText || '',
+    todayTotalSec,
+  };
+}
+// Two seconds is well under the resolution anyone reads a menu bar at, and the
+// clock itself is derived from runningSince — the poll only has to notice
+// pause, resume and end, not carry the ticking.
+const TRAY_POLL_MS = 2000;
+let trayDiskTimer = null;
+function trayFollowDisk(on) {
+  clearInterval(trayDiskTimer);
+  trayDiskTimer = null;
+  if (!on) return;
+  const poll = () => applyTrayState(trayStateFromDisk());
+  poll();
+  trayDiskTimer = setInterval(poll, TRAY_POLL_MS);
+}
+
+// The renderer only pushes on CHANGE, not every second, so the ticking is ours:
+// we hold the same (accumulatedSec, runningSince) the session does and derive
+// the time from the clock. That keeps one timer of record in the app, and means
+// a sleeping laptop wakes up showing the right number rather than a drifted one.
+function applyTrayState(state) {
+  trayState = {
+    active: !!(state && state.active),
+    accumulatedSec: (state && state.accumulatedSec) || 0,
+    runningSince: (state && state.runningSince) || null,
+    label: (state && state.label) || '',
+    totalSec: (state && state.todayTotalSec) || 0,
+  };
+  // Only (re)start the tick when the running-ness actually changes. The disk
+  // poll calls this every 2s, and tearing the 1s interval down and up each time
+  // would make the seconds visibly stutter.
+  const shouldTick = !!(trayState.active && trayState.runningSince);
+  if (shouldTick !== !!trayTimer) {
+    clearInterval(trayTimer);
+    trayTimer = shouldTick ? setInterval(paintTray, 1000) : null;
+  }
+  paintTray();
+}
 
 
 // --- Global Quick Capture ----------------------------------------------
@@ -245,6 +436,7 @@ app.whenReady().then(async () => {
     // removed on quit, so a stale file means "not running".
     if (server.writePortFile) server.writePortFile(appPort);
     createWindow(appPort);
+    createTray();
     clearInterval(syncTimer);
     syncTimer = setInterval(() => { if (!quitting) sync.syncNow('timer'); }, SYNC_EVERY_MS);
   });
@@ -265,6 +457,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch {} });
+app.on('will-quit', () => { clearInterval(trayDiskTimer); clearInterval(trayTimer); if (tray && !tray.isDestroyed()) tray.destroy(); tray = null; });
 
 app.on('before-quit', saveMiniState);
 // Downloading the new build, and then getting out of the way. An unsigned app

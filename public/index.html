@@ -4827,6 +4827,9 @@ function focusStatePayload() {
     accumulatedSec: s ? (s.accumulatedSec || 0) : 0,
     runningSince: s ? s.runningSince : null,
     label: s ? (s.taskText || 'Free focus') : '',
+    // For the menu bar tooltip: the day's total, which the idle status item
+    // has nothing else to show.
+    todayTotalSec: focusedTotal(),
     track: spotState && spotState.running && spotState.name
       ? (spotState.name + (spotState.artist ? ' — ' + spotState.artist : '')) : '',
     playing: !!(spotState && spotState.state === 'playing'),
@@ -4846,6 +4849,10 @@ if (DESKTOP) {
   // Control actions from the mini run here, through the existing functions.
   window.tn.onControl((action) => {
     if (action === 'toggle') primaryFocusAction();
+    // From the menu bar: a session with no task attached, whatever happens to
+    // be selected in the focus picker. Reusing 'toggle' would silently adopt a
+    // task the user picked and abandoned some time ago.
+    else if (action === 'start-general') { fmProject = null; fmSelectedTask = null; startFocus(); }
     else if (action === 'end') endFocus();
     else if (action === 'prev') spotifyControl('previous');
     else if (action === 'next') spotifyControl('next');
