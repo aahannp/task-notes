@@ -16,6 +16,10 @@ contextBridge.exposeInMainWorld('tn', {
   // session it applies to, and a later one still pops out.
   dismissMini: (sessionKey) => ipcRenderer.send('mini:dismiss', sessionKey),
   miniIsOpen: () => ipcRenderer.invoke('mini:isOpen'),
+  // The address a pad should open at in a browser (see main.js).
+  webBase: (docId) => ipcRenderer.invoke('web:base', docId),
+  // Light or dark, so the window frame matches the page.
+  setTheme: (t) => ipcRenderer.send('theme:set', t),
   pushState: (state) => ipcRenderer.send('focus:state', state),
 
   // native shell → any window

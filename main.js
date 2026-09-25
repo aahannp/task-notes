@@ -1,6 +1,6 @@
 // Electron main process — wraps the local Task Notes server in a native window,
 // plus a small always-on-top Focus companion window.
-const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut, Notification, dialog, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, screen, globalShortcut, Notification, dialog, Tray, nativeImage, nativeTheme } = require('electron');
 const https = require('https');
 const path = require('path');
 const os = require('os');
@@ -54,7 +54,9 @@ function createWindow(port) {
     minWidth: 720,
     minHeight: 560,
     title: 'Task Notes',
-    backgroundColor: '#0f1115',
+    // The page decides light or dark (see theme:set); until it has, match
+    // macOS so the first frame is not the wrong one.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#ffffff',
     titleBarStyle: 'hiddenInset',
     webPreferences: { contextIsolation: true, preload: path.join(__dirname, 'preload.js') },
   });
@@ -158,6 +160,15 @@ ipcMain.on('focus:state', (_e, state) => {
 // Whether the companion is currently on screen, so the app can label its
 // pop-out control correctly.
 ipcMain.handle('mini:isOpen', () => !!(mini && !mini.isDestroyed()));
+// The page's Dark Mode switch, carried to the window itself: the title bar,
+// menus and scroll bars follow it, and so does the colour a window shows
+// before its page has drawn.
+ipcMain.on('theme:set', (_e, t) => {
+  if (t !== 'light' && t !== 'dark') return;
+  nativeTheme.themeSource = t;
+  const bg = t === 'dark' ? '#1e1e1e' : '#ffffff';
+  if (win && !win.isDestroyed()) win.setBackgroundColor(bg);
+});
 
 // Where a document opens in a browser, as a pad. This window's own port is
 // picked afresh every launch, so a link to it dies with the app; the

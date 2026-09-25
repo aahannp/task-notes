@@ -3,9 +3,22 @@
 <head>
 <meta charset="utf-8" />
 <title>Focus</title>
+<script>
+  // Light or dark, as the app is set: the same 'tn.theme' the Dark Mode switch
+  // writes (same origin), decided before first paint and followed after.
+  (function () {
+    function pick() {
+      var t = null;
+      try { t = localStorage.getItem('tn.theme'); } catch (e) {}
+      return t === 'light' || t === 'dark' ? t : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    }
+    document.documentElement.dataset.theme = pick();
+    addEventListener('storage', function (e) { if (e.key === 'tn.theme') document.documentElement.dataset.theme = pick(); });
+  })();
+</script>
 <style>
   :root {
-    --line: rgba(255,255,255,0.13);
+    --line: rgb(var(--ink) / 0.13);
     --text: #eef0f7;
     --muted: #a6adbf;
     --accent: #7c9bff;
@@ -19,7 +32,7 @@
   .card { position: relative; overflow: hidden; height: 100%; display: flex; flex-direction: column; padding: 11px 14px 7px;
     background: rgba(18,21,28,.95);
     border: 1px solid var(--line); border-radius: 15px;
-    box-shadow: 0 14px 40px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.13);
+    box-shadow: 0 14px 40px rgba(0,0,0,.55), inset 0 1px 0 rgb(var(--ink) / .13);
     backdrop-filter: saturate(150%) blur(18px); -webkit-backdrop-filter: saturate(150%) blur(18px);
     -webkit-app-region: drag; }
   .top { display: flex; align-items: center; gap: 7px; }
@@ -32,14 +45,14 @@
   .x { -webkit-app-region: no-drag; margin-left: 2px; width: 20px; height: 20px; min-width: 20px;
     padding: 0; font-size: 10px; line-height: 1; background: none; border: none; color: var(--muted);
     border-radius: 6px; opacity: .55; }
-  .x:hover { opacity: 1; color: #ff8f8f; background: rgba(255,107,129,.14); }
+  .x:hover { opacity: 1; color: var(--c-ff8f8f); background: rgba(255,107,129,.14); }
   .x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
   .timer { font-size: 34px; font-weight: 250; letter-spacing: -1.4px; font-variant-numeric: tabular-nums;
     text-align: center; margin: 2px 0 1px; line-height: 1.02; }
   .task { font-size: 11.5px; color: var(--muted); text-align: center; margin-bottom: 6px; flex-shrink: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .track { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted);
-    padding: 5px 8px; border-radius: 8px; background: rgba(255,255,255,.05); margin-bottom: 6px; min-height: 25px; }
+    padding: 5px 8px; border-radius: 8px; background: rgb(var(--ink) / .05); margin-bottom: 6px; min-height: 25px; }
   .track.hidden { display: none; }
   .track-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Says something is playing. It is not analysing audio — Spotify plays in
@@ -56,22 +69,22 @@
   .vol { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; -webkit-app-region: no-drag; }
   .vol.hidden { display: none; }
   .vol button { min-width: 26px; height: 24px; padding: 0; font-size: 11px; background: none; border: none; }
-  .vol button:hover { background: rgba(255,255,255,.1); }
+  .vol button:hover { background: rgb(var(--ink) / .1); }
   /* The visible track stays thin while the control keeps a grabbable height. */
   .vol input { -webkit-appearance: none; appearance: none; flex: 1; height: 16px;
     background: transparent; cursor: pointer; -webkit-app-region: no-drag; }
-  .vol input::-webkit-slider-runnable-track { height: 4px; border-radius: 99px; background: rgba(255,255,255,.22); }
+  .vol input::-webkit-slider-runnable-track { height: 4px; border-radius: 99px; background: rgb(var(--ink) / .22); }
   .vol input::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%;
     background: #1db954; margin-top: -3.5px; cursor: pointer; }
   .ctrls { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: auto; -webkit-app-region: no-drag; }
-  button { -webkit-app-region: no-drag; background: rgba(255,255,255,.07); border: 1px solid var(--line);
+  button { -webkit-app-region: no-drag; background: rgb(var(--ink) / .07); border: 1px solid var(--line);
     color: var(--text); font-family: inherit; font-size: 12px; border-radius: 8px; cursor: pointer;
     height: 28px; min-width: 34px; padding: 0 9px; transition: .13s; display: grid; place-items: center; }
-  button:hover { background: rgba(255,255,255,.14); }
+  button:hover { background: rgb(var(--ink) / .14); }
   button:active { transform: scale(.94); }
   .primary { background: var(--accent); border-color: transparent; color: #fff; min-width: 42px; }
   .primary:hover { filter: brightness(1.1); background: var(--accent); }
-  .end { color: #ff8f8f; }
+  .end { color: var(--c-ff8f8f); }
   .end:hover { background: rgba(255,107,129,.16); border-color: rgba(255,107,129,.4); }
   .sep { width: 1px; height: 17px; background: var(--line); margin: 0 2px; }
   .idle { flex: 1; display: grid; place-items: center; font-size: 11.5px; color: var(--muted); text-align: center; }
@@ -82,14 +95,14 @@
   .jotbtn { -webkit-app-region: no-drag; margin-left: auto; width: 20px; height: 20px; min-width: 20px;
     padding: 0; font-size: 14px; line-height: 1; background: none; border: none; color: var(--muted);
     border-radius: 6px; opacity: .6; }
-  .jotbtn:hover { opacity: 1; color: var(--text); background: rgba(255,255,255,.12); }
+  .jotbtn:hover { opacity: 1; color: var(--text); background: rgb(var(--ink) / .12); }
   .jotbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; opacity: 1; }
   .jot { position: absolute; inset: 0; z-index: 3; -webkit-app-region: no-drag;
     display: flex; flex-direction: column; justify-content: center; gap: 9px;
     padding: 14px 15px; border-radius: 15px;
     /* Opaque, and with no blur of its own: the card already frosts the
        desktop behind the window, and this only has to cover the card. */
-    background: #10131a;
+    background: var(--field);
     animation: jotIn .13s ease-out; }
   .jot.hidden { display: none; }
   @keyframes jotIn { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
@@ -99,16 +112,30 @@
   .jot-row { display: flex; align-items: center; gap: 7px; }
   .jot input { flex: 1; min-width: 0; -webkit-app-region: no-drag;
     -webkit-user-select: text; user-select: text;
-    background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 9px;
+    background: rgb(var(--ink) / .06); border: 1px solid var(--line); border-radius: 9px;
     color: var(--text); font-family: inherit; font-size: 13px; padding: 8px 10px; outline: none; }
   .jot input::placeholder { color: #5d6478; }
-  .jot input:focus { border-color: var(--accent); background: rgba(255,255,255,.09); }
+  .jot input:focus { border-color: var(--accent); background: rgb(var(--ink) / .09); }
   .jot-add { background: var(--accent); border-color: transparent; color: #fff;
     font-size: 16px; height: 32px; min-width: 32px; padding: 0; }
   .jot-add:hover { background: var(--accent); filter: brightness(1.1); }
   .jot-hint { font-size: 10px; color: #5d6478; min-height: 12px; }
   .jot-hint.ok { color: var(--green); }
-  .jot-hint.bad { color: #ff8f8f; }
+  .jot-hint.bad { color: var(--c-ff8f8f); }
+
+  /* Rustpad's two modes, as in the app: flat, no blur. */
+  html[data-theme="light"] {
+    --ink: 26 32 44; --text: #2d3748; --muted: #718096; --accent: #3182ce; --faint: #a0aec0;
+    --card: #ffffff; --field: #f7fafc; --green: #2f855a; --c-ff8f8f: #c53030; --c-6fd6a4: #2f855a;
+  }
+  html[data-theme="dark"] {
+    --ink: 255 255 255; --text: #e2e8f0; --muted: #a0aec0; --accent: #3182ce; --faint: #718096;
+    --card: #252526; --field: #1e1e1e; --green: #3fb27f; --c-ff8f8f: #ff8f8f; --c-6fd6a4: #6fd6a4;
+  }
+  html[data-theme] .card { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,.22), inset 0 0 0 1px rgb(var(--ink) / .08); }
+  html[data-theme] input::placeholder, html[data-theme] .hint, html[data-theme] .jot-hint { color: var(--faint); }
+  html[data-theme] .jot input { background: var(--field); }
 </style>
 </head>
 <body>

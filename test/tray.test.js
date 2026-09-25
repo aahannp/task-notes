@@ -48,6 +48,8 @@ const stubs = {
   ipcMain: { on(ch, fn) { (this._h || (this._h = {}))[ch] = fn; }, handle() {} },
   Tray: function () { return stubTray; },
   nativeImage: { createFromBuffer: () => ({ addRepresentation() {}, setTemplateImage() {} }) },
+  // main.js picks the window's first colour from it before the page can.
+  nativeTheme: { shouldUseDarkColors: true, themeSource: 'system' },
 };
 stubs.BrowserWindow.getAllWindows = () => [];
 
