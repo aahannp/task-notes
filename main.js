@@ -158,6 +158,30 @@ ipcMain.on('focus:state', (_e, state) => {
 // Whether the companion is currently on screen, so the app can label its
 // pop-out control correctly.
 ipcMain.handle('mini:isOpen', () => !!(mini && !mini.isDestroyed()));
+
+// Where a document opens in a browser, as a pad. This window's own port is
+// picked afresh every launch, so a link to it dies with the app; the
+// background server (the LaunchAgent's `node server.js`) keeps 4321 for good,
+// so a bookmark there keeps working. It is only used when it demonstrably has
+// this document — 4321 could be a different copy with different data — and
+// otherwise the pad opens here, on this window's address.
+const WEB_PORT = 4321;
+ipcMain.handle('web:base', (_e, id) => new Promise((resolve) => {
+  const own = `http://127.0.0.1:${appPort}`;
+  if (appPort === WEB_PORT) return resolve(`http://localhost:${WEB_PORT}`);
+  const probe = id ? '/api/documents/' + encodeURIComponent(String(id)) : '/api/rev';
+  const req = require('http').get({ host: '127.0.0.1', port: WEB_PORT, path: probe, timeout: 800 }, (res) => {
+    let body = '';
+    res.on('data', (c) => { body += c; });
+    res.on('end', () => {
+      let ok = res.statusCode === 200;
+      if (ok && !id) { try { ok = !!JSON.parse(body).stores; } catch { ok = false; } }
+      resolve(ok ? `http://localhost:${WEB_PORT}` : own);
+    });
+  });
+  req.on('timeout', () => req.destroy());
+  req.on('error', () => resolve(own));
+}));
 // Mini window asks for a fresh broadcast (on open / reload).
 ipcMain.on('focus:request', () => {
   if (win && !win.isDestroyed()) win.webContents.send('focus:request');

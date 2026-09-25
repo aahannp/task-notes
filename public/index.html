@@ -7863,10 +7863,19 @@ function toggleDocZen() {
   if (docZen) { docMode = 'edit'; renderDocSurface(); $('#docEditor').focus(); }
 }
 
+// The same document in a plain editor, in a browser tab — public/pad.html.
+// From the desktop app a new window goes to the default browser (see
+// setWindowOpenHandler in main.js); in a browser it is simply a new tab.
+async function openPad(id) {
+  let base = location.origin;
+  if (window.tn && window.tn.webBase) { try { base = await window.tn.webBase(id || null); } catch {} }
+  window.open(base + '/pad' + (id ? '#' + encodeURIComponent(id) : ''), '_blank', 'noopener');
+}
 function openDocMenu() {
   const d = docById(docActive); if (!d) return;
   const items = [
     ['Rename', () => { $('#docTitle').focus(); $('#docTitle').select(); }],
+    ['Open as pad in browser', () => openPad(docActive)],
     [d.status === 'archived' ? 'Restore' : 'Archive', async () => {
       await archiveDoc(docActive, d.status === 'archived');
       renderDocTree(); renderDocSurface();

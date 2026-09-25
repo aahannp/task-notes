@@ -455,6 +455,9 @@ function docSummary(d) {
     taskId: d.taskId || null, ideaId: d.ideaId || null,
     version: d.version || 1, createdAt: d.createdAt, updatedAt: d.updatedAt,
     archivedAt: d.archivedAt || null,
+    // For the pad's syntax colouring. Empty means markdown, which is what
+    // every document written before the pad existed is.
+    language: d.language || '',
   };
 }
 
@@ -543,6 +546,8 @@ function serveStatic(req, res) {
   // Strip the query BEFORE testing for the root, so "/?x=1" still serves the app.
   let urlPath = req.url.split('?')[0];
   if (urlPath === '/' || urlPath === '') urlPath = '/index.html';
+  // A document opened on its own, in a browser tab: /pad#<id>.
+  if (urlPath === '/pad' || urlPath === '/pad/') urlPath = '/pad.html';
   const filePath = path.join(PUBLIC_DIR, path.normalize(urlPath));
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403);
@@ -920,7 +925,31 @@ function handleNutrition(req, res, u) {
   return fail(404, 'no such nutrition endpoint: ' + M + ' ' + u.pathname);
 }
 
+// This server is for this Mac alone, and "listening on localhost" is not
+// enough to make that true. A page on any website can send requests to
+// localhost from your browser: CORS stops it reading the answers, but not
+// writing — and DNS rebinding gets around the reading too, by pointing a
+// hostname it controls at 127.0.0.1. So two checks, on every request:
+//   - Host must name this machine. A rebinding page arrives with its own
+//     hostname in Host, and is turned away before anything is read.
+//   - A write carrying an Origin must come from one of this machine's own
+//     pages. The app's windows, the pad in a browser tab and the MCP server
+//     all pass; the MCP server sends no Origin at all.
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+const LOCAL_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+function notLocal(req) {
+  if (!LOCAL_HOST.test(String(req.headers.host || ''))) return 'host';
+  const origin = req.headers.origin;
+  if (origin && req.method !== 'GET' && req.method !== 'HEAD' && !LOCAL_ORIGIN.test(origin)) return 'origin';
+  return null;
+}
+
 const server = http.createServer((req, res) => {
+  const refused = notLocal(req);
+  if (refused) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    return res.end('Task Notes only answers this Mac (' + refused + ').');
+  }
   const u = new URL(req.url, `http://localhost:${PORT}`);
 
   if (u.pathname === '/api/nutrition' || u.pathname.startsWith('/api/nutrition/')) return handleNutrition(req, res, u);
@@ -1549,6 +1578,7 @@ const server = http.createServer((req, res) => {
           projectId: p.projectId || null, learningId: p.learningId || null,
           taskId: p.taskId || null, ideaId: p.ideaId || null,
           version: 1, createdAt: now, updatedAt: now, archivedAt: null,
+          language: typeof p.language === 'string' && /^[a-z0-9+#-]{0,32}$/.test(p.language) ? p.language : '',
         };
         docs.unshift(d);
         writeDocs(docs);
@@ -1600,6 +1630,8 @@ const server = http.createServer((req, res) => {
         if (Array.isArray(p.tags)) doc.tags = p.tags.slice(0, 30);
         if (typeof p.folder === 'string') doc.folder = p.folder;
         if (typeof p.pinned === 'boolean') doc.pinned = p.pinned;
+        // Not a content change: it moves no version and snapshots nothing.
+        if (typeof p.language === 'string' && /^[a-z0-9+#-]{0,32}$/.test(p.language)) doc.language = p.language;
         ['projectId', 'learningId', 'taskId', 'ideaId'].forEach((k) => {
           if (k in p) doc[k] = p[k] || null;
         });
@@ -1879,7 +1911,9 @@ const server = http.createServer((req, res) => {
 // the caller can listen on any free port.
 if (require.main === module) {
   sync.init(DATA_DIR);
-  server.listen(PORT, () => {
+  // 127.0.0.1, not every interface. Without a host, listen() binds all of
+  // them, and anyone on the same Wi-Fi could read and edit everything.
+  server.listen(PORT, '127.0.0.1', () => {
     writePortFile(PORT);
     console.log(`\n  ✅ Task Notes running at  http://localhost:${PORT}`);
     console.log(`  📁 Data stored in         ${DATA_DIR}\n`);
