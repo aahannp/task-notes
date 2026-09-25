@@ -38,7 +38,13 @@
     --glass-hi-strong: inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.18);
   }
   * { box-sizing: border-box; }
-  html { background: #08090d; }
+  /* Always a scroll track, whether or not there is anything to scroll, so
+     the column is the same width on every page. Without it a short page drops
+     the scrollbar and the header and nav jump 10px wider — the frame moving is
+     exactly what switching pages must not do. scrollbar-gutter would be the
+     quieter way to say this, but Chromium does not reserve a gutter on the
+     root. With macOS overlay scrollbars this changes nothing visible. */
+  html { background: #08090d; overflow-y: scroll; }
   body {
     margin: 0; padding: 0;
     background: var(--bg);
@@ -2755,6 +2761,37 @@
   @media (max-width: 1000px) { .pt-t { display: none; } .ptab { padding: 8px 9px 7px; } }
   /* The pages sit under the strip rather than behind it. */
   body.has-ptabs.page-open .page { top: 42px; }
+
+  /* Pages live inside the frame.
+     Each page used to be a full-window layer over the board with its own tab
+     strip, so opening any of them swapped the whole layout out from under you
+     — a different header, a different nav, a different width. A page now
+     takes the board's place in the same column: the header and the main nav
+     stay exactly where they are on Today, and only what is below them
+     changes. (The pages are moved into .wrap once, at start-up.) */
+  body.page-open .wrap > .page { position: relative; inset: auto; top: auto; z-index: auto; overflow: visible;
+    background: none; -webkit-backdrop-filter: none; backdrop-filter: none; margin-top: 18px; }
+  .wrap > .page > .page-inner, .wrap > .page > .page-inner.wide,
+  .wrap > #page-projects .page-inner, .wrap > #page-learning .page-inner, .wrap > #page-ideas .page-inner {
+    max-width: none; margin: 0; padding: 8px 0 0; }
+  /* The board is what a page replaces. The full-screen player is the one
+     thing in here that has to keep working over a page. */
+  body.page-open .wrap > :not(header):not(.mainnav):not(.page):not(#spotFull) { display: none !important; }
+  body.page-open .ptabs { display: none; }
+  /* The board's own footer. Pages used to cover it; now they sit beside it. */
+  body.page-open > .progress { display: none; }
+  /* Docs and the graph are workspaces, not documents: they scroll inside
+     themselves, so they fill what is left of the window below the nav
+     instead of growing the page. --page-top is measured when one opens. */
+  body.page-open .wrap > #page-docs, body.page-open .wrap > #page-graph {
+    height: calc(100vh - var(--page-top, 170px) - 20px); min-height: 420px; padding: 0; overflow: hidden;
+    border: 1px solid var(--line); border-radius: 15px; }
+  .wrap > #page-docs .ws { height: 100%; max-height: none; }
+  /* That row was a window drag handle because it used to be the top of the
+     window, and it cleared the traffic lights for the same reason. */
+  .wrap > #page-docs .ws-tabrow { -webkit-app-region: no-drag; }
+  .wrap > #page-docs .ws.side-hidden .ws-tabrow { padding-left: 10px; }
+  body.page-full .wrap { padding-bottom: 20px; }
 
   /* Full-screen now playing */
   .spotfull { position: fixed; inset: 0; z-index: 400; background: #07080c; overflow: hidden; }
@@ -6172,6 +6209,23 @@ function projectById(id) { return projects.find((p) => p.id === id); }
 // =====================================================================
 // PAGE ROUTING — each area is a full-screen surface over the Today board.
 // =====================================================================
+// Pages render inside the frame, under the main nav, in the board's place —
+// see the CSS note on `.wrap > .page`. Moving the elements keeps every
+// handler already bound to them.
+(function pagesIntoFrame() {
+  const nav = document.querySelector('.wrap > .mainnav');
+  if (nav) nav.after(...document.querySelectorAll('body > .page'));
+})();
+// Where a page starts, so Docs and the graph can fill the rest of the window.
+// Re-measured on resize because the header wraps on a narrow window.
+function measurePageTop() {
+  const el = activePage && document.getElementById('page-' + activePage);
+  if (!el) return;
+  document.documentElement.style.setProperty('--page-top', Math.round(el.getBoundingClientRect().top + window.scrollY) + 'px');
+}
+addEventListener('resize', measurePageTop);
+let todayScrollY = 0;      // where the board was, to come back to it
+
 const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders', 'focus', 'due', 'graph', 'nutrition'];
 const PAGE_TITLE = {
   tasks: 'Tasks', projects: 'Projects', learning: 'Learning', docs: 'Docs', ideas: 'Ideas',
@@ -6253,9 +6307,16 @@ function renderPageTabs() {
 async function openPage(name) {
   await loadStores();
   await refreshDays();
+  // Leaving the board: remember where it was scrolled to, then start the page
+  // at the top — it is the same scroll now, not a layer with its own.
+  if (!activePage) todayScrollY = window.scrollY;
+  const switching = activePage !== name;
   PAGES.forEach((p) => $('#page-' + p).classList.toggle('hidden', p !== name));
   activePage = name;
   document.body.classList.add('page-open');
+  document.body.classList.toggle('page-full', name === 'docs' || name === 'graph');
+  if (switching) window.scrollTo(0, 0);
+  measurePageTop();
   renderPageTabs();
   syncNav();
   if (name === 'tasks') renderTasksPage();
@@ -6278,9 +6339,12 @@ function closePage() {
   PAGES.forEach((p) => $('#page-' + p).classList.add('hidden'));
   closeProjectDetail(); closeLearnDetail();
   activePage = null;
-  document.body.classList.remove('page-open');
+  document.body.classList.remove('page-open', 'page-full');
   renderPageTabs();
   syncNav();
+  // Directly, not in a frame callback: scrollTo lays out the board first on
+  // its own, and a frame callback never runs while the window is hidden.
+  window.scrollTo(0, todayScrollY);
 }
 function syncNav() {
   document.querySelectorAll('.nav-btn').forEach((b) => {
@@ -8520,7 +8584,9 @@ const Z_POPOVER = 900;
 // Anything covering the page has to stop the page moving underneath it. The
 // overlays are declared in markup and toggled with `.hidden`, so rather than
 // touching every open/close site this watches their class attribute.
-const OVERLAY_SEL = '.modal-overlay, .page, .detail, .lsession, .cmdk, .sheet, .fwrap, .capbar, .remblock';
+// Not .page: a page is part of the frame now and scrolls with the document —
+// locking it the way an overlay is locked would leave a long page unscrollable.
+const OVERLAY_SEL = '.modal-overlay, .detail, .lsession, .cmdk, .sheet, .fwrap, .capbar, .remblock';
 function anyOverlayOpen() {
   return [...document.querySelectorAll(OVERLAY_SEL)].some((el) => !el.classList.contains('hidden'))
     || !!document.querySelector('.pickpop');
