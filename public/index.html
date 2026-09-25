@@ -1679,6 +1679,207 @@
     .ck-prog i, .ck-txt, .ck-label::after, .ck-box, .ck-box path, .ck-rep .ck-rep-ic { transition: none; }
   }
 
+  /* ---- Nutrition ----
+     Calm and dense: flat panels on the existing tokens, one accent for
+     progress, numbers in tabular figures so columns line up. No gradients and
+     no new blur layers — every glass pane costs compositing, and a page of
+     numbers has no need to refract anything. Nothing here animates on its
+     own; the only motion is a bar settling after you log something. */
+  .nu-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
+    white-space: nowrap; margin: -1px; padding: 0; border: 0; }
+  .nu-bar-top { justify-content: space-between; }
+  .nu-daynav { display: flex; align-items: center; gap: 6px; }
+  .nu-daynav[hidden] { display: none; }
+  .nu-navbtn, .nu-today { font-family: var(--ui); background: var(--panel); border: 1px solid var(--line);
+    color: var(--text); border-radius: var(--r-sm); height: 32px; cursor: pointer; }
+  .nu-navbtn { width: 32px; font-size: 17px; line-height: 1; }
+  .nu-today { padding: 0 12px; font-size: 12.5px; color: var(--muted); }
+  .nu-navbtn:hover, .nu-today:hover { border-color: var(--line-2); color: var(--text); }
+  .nu-today[disabled] { opacity: .45; cursor: default; }
+  .nu-date { font-size: 12.5px; padding: 6px 9px; height: 32px; }
+  .nu-date-label { font-size: 13px; color: var(--muted); margin: -8px 0 14px; }
+
+  .nu-card { background: var(--panel); border: 1px solid var(--line); border-radius: 15px; padding: 16px 18px; }
+  .nu-card h3, .nu-meal-h h3 { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .6px; margin: 0; }
+  .nu-card > h3 { margin-bottom: 12px; }
+  .nu-num, .nu-m-val b, .nu-e-num b, .nu-wstats b, .nu-table td { font-variant-numeric: tabular-nums; }
+
+  /* The dashboard: two numbers that matter, two that help. */
+  .nu-dash { background: var(--panel); border: 1px solid var(--line); border-radius: 15px;
+    padding: 18px 20px 16px; margin-bottom: 14px; }
+  .nu-dash-primary { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .nu-dash-secondary { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 16px;
+    padding-top: 14px; border-top: 1px solid var(--line); }
+  .nu-m-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .nu-m-label { font-size: 12px; font-weight: 650; color: var(--muted); letter-spacing: .2px; }
+  .nu-m-left { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .nu-metric.over .nu-m-left { color: var(--text); }
+  .nu-m-val { margin: 4px 0 9px; color: var(--muted); font-size: 13px; }
+  .nu-m-val b { color: var(--text); font-weight: 650; letter-spacing: -.4px; }
+  .nu-metric.big .nu-m-val b { font-size: 30px; }
+  .nu-metric.small .nu-m-val { margin: 2px 0 7px; }
+  .nu-metric.small .nu-m-val b { font-size: 17px; }
+  .nu-m-sub { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  .nu-track { height: 6px; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
+  .nu-metric.small .nu-track { height: 4px; }
+  .nu-track i { display: block; height: 100%; border-radius: 99px; background: var(--accent);
+    transition: width var(--t-slow) var(--ease-out); }
+  /* Past the target the bar is simply full, in the text colour: a fact, not
+     an alarm. The words beside it say by how much. */
+  .nu-metric.over .nu-track i { background: var(--text); opacity: .55; }
+
+  .nu-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start; }
+  @media (max-width: 900px) { .nu-grid { grid-template-columns: 1fr; } }
+  .nu-meals { display: flex; flex-direction: column; gap: 10px; }
+
+  /* Meals */
+  .nu-meal { background: var(--panel); border: 1px solid var(--line); border-radius: 15px; padding: 12px 14px; }
+  .nu-meal.empty { padding: 9px 14px; }
+  .nu-meal-h { display: flex; align-items: center; gap: 10px; min-height: 30px; }
+  .nu-meal-sum { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .nu-meal-acts { margin-left: auto; display: flex; gap: 4px; }
+  .nu-act { font-family: var(--ui); font-size: 12px; padding: 5px 10px; border-radius: var(--r-sm);
+    border: 1px solid transparent; background: none; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .nu-act:hover { color: var(--text); background: var(--panel-2); border-color: var(--line); }
+  .nu-act.primary { color: var(--text); border-color: var(--line); background: var(--panel-2); }
+  .nu-act.primary:hover { border-color: var(--accent); }
+  .nu-act[aria-expanded="true"] { color: var(--text); background: var(--panel-2); border-color: var(--line); }
+
+  .nu-entries { margin-top: 6px; display: flex; flex-direction: column; }
+  .nu-entry { display: grid; grid-template-columns: minmax(0, 1fr) 64px 58px auto; align-items: center;
+    gap: 10px; padding: 7px 6px; border-radius: var(--r-sm); }
+  .nu-entry + .nu-entry { border-top: 1px solid var(--line); }
+  .nu-entry:hover, .nu-entry:focus-within { background: var(--panel-2); }
+  .nu-e-name { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nu-e-sub { font-size: 11.5px; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nu-e-notes { font-style: italic; }
+  .nu-est { font-size: 11px; color: var(--muted); margin-left: 5px; cursor: help; }
+  .nu-e-num { text-align: right; font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .nu-e-num b { font-size: 13.5px; color: var(--text); font-weight: 600; margin-right: 3px; }
+  .nu-e-acts { display: flex; gap: 2px; opacity: 0; transition: opacity var(--t-fast); }
+  .nu-entry:hover .nu-e-acts, .nu-entry:focus-within .nu-e-acts { opacity: 1; }
+  .nu-icon { width: 26px; height: 26px; border-radius: var(--r-sm); border: 1px solid transparent; background: none;
+    color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; font-family: var(--ui); }
+  .nu-icon:hover { color: var(--text); border-color: var(--line); background: var(--panel); }
+  .nu-icon.del:hover { color: #ff8f8f; border-color: rgba(255,107,129,.4); }
+  .nu-empty { font-size: 12.5px; color: var(--muted); padding: 4px 2px; }
+
+  /* Add / edit forms — the one interaction that has to be fast. */
+  .nu-add, .nu-edit, .nu-copy { margin-top: 10px; padding: 12px; border: 1px solid var(--line-2);
+    border-radius: var(--r-md); background: var(--panel-2); }
+  .nu-edit { margin: 4px 0; }
+  .nu-search { width: 100%; font-size: 14px; padding: 10px 12px; }
+  .nu-results { margin-top: 8px; display: flex; flex-direction: column; gap: 1px; max-height: 320px; overflow-y: auto; }
+  .nu-rsec { font-size: 10.5px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--muted);
+    padding: 8px 8px 3px; }
+  .nu-opt { display: flex; align-items: baseline; gap: 10px; padding: 7px 9px; border-radius: var(--r-sm); cursor: pointer; }
+  .nu-opt:hover, .nu-opt.active { background: var(--panel-3); }
+  .nu-opt.active { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
+  .nu-opt-name { font-size: 13.5px; }
+  .nu-opt-meta { font-size: 11.5px; color: var(--muted); margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .nu-opt.new .nu-opt-name { color: var(--accent); }
+  .nu-pick-food { font-size: 14px; margin-bottom: 10px; }
+  .nu-pick-food span { font-size: 12px; color: var(--muted); margin-left: 6px; }
+  .nu-pick-note { font-size: 11.5px; color: var(--muted); margin: -4px 0 10px; }
+  .nu-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .nu-row + .nu-row { margin-top: 10px; }
+  .nu-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .nu-field input, .nu-field select { font-size: 13px; padding: 7px 9px; min-width: 0; }
+  .nu-field.w-s input { width: 84px; }
+  .nu-field.w-m input, .nu-field.w-m select { width: 120px; }
+  .nu-field.grow { flex: 1; min-width: 160px; }
+  .nu-field.grow input { width: 100%; }
+  .nu-check { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text); padding-bottom: 8px; }
+  .nu-foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .nu-preview { font-size: 12.5px; color: var(--text); font-variant-numeric: tabular-nums; margin-right: auto; }
+  .nu-preview.err { color: #ff8f8f; }
+  .nu-ghost { font-family: var(--ui); font-size: 12.5px; padding: 7px 12px; border-radius: var(--r-sm);
+    border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; }
+  .nu-ghost:hover { color: var(--text); border-color: var(--line-2); }
+  .nu-foot .addbtn { padding: 0 16px; height: 32px; font-size: 13px; }
+  .nu-err { font-size: 12px; color: #ff8f8f; margin-top: 8px; }
+
+  .nu-undo { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted);
+    padding: 8px 12px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel); }
+  .nu-undo button { font-family: var(--ui); font-size: 12.5px; font-weight: 600; background: none; border: none;
+    color: var(--accent); cursor: pointer; padding: 0; }
+
+  /* Bodyweight */
+  .nu-side { display: flex; flex-direction: column; gap: 14px; }
+  .nu-wlog { display: flex; gap: 8px; align-items: center; }
+  .nu-wlog input { width: 100%; font-size: 15px; padding: 8px 10px; }
+  .nu-wlog .nu-unit { font-size: 12.5px; color: var(--muted); }
+  .nu-wlog .addbtn { height: 36px; padding: 0 14px; font-size: 13px; }
+  .nu-wfor { font-size: 11.5px; color: var(--muted); margin: 6px 0 0; }
+  .nu-wstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0 10px; }
+  .nu-wstats div { display: flex; flex-direction: column; gap: 2px; }
+  .nu-wstats span { font-size: 10.5px; color: var(--muted); font-weight: 600; letter-spacing: .3px; }
+  .nu-wstats b { font-size: 17px; font-weight: 650; }
+  .nu-wstats b small { font-size: 11px; color: var(--muted); font-weight: 500; margin-left: 2px; }
+  .nu-chart { display: block; width: 100%; height: auto; }
+  .nu-chart .grid { stroke: var(--line); stroke-width: 1; }
+  .nu-chart .lbl { fill: var(--muted); font-size: 9px; font-family: var(--ui); }
+  .nu-chart .dot { fill: var(--muted); opacity: .6; }
+  .nu-chart .avg { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .nu-chart-empty { font-size: 12.5px; color: var(--muted); padding: 18px 0 8px; }
+  .nu-chart-key { display: flex; gap: 14px; font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .nu-chart-key i { display: inline-block; width: 12px; height: 2px; background: var(--accent); vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+  .nu-chart-key i.d { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); opacity: .6; }
+  .nu-wlist { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 6px; }
+  .nu-wrow { display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 12.5px; }
+  .nu-wrow .d { color: var(--muted); flex: 1; }
+  .nu-wrow b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .nu-wrow input { width: 76px; font-size: 12.5px; padding: 4px 7px; }
+  .nu-wrow .nu-icon { opacity: 0; }
+  .nu-wrow:hover .nu-icon, .nu-wrow:focus-within .nu-icon { opacity: 1; }
+
+  /* History */
+  .nu-hgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 900px) { .nu-hgrid { grid-template-columns: 1fr; } }
+  .nu-srow { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 2px; font-size: 13px; }
+  .nu-srow span { color: var(--muted); }
+  .nu-srow b { font-weight: 650; font-variant-numeric: tabular-nums; }
+  .nu-note { font-size: 11.5px; color: var(--muted); margin: 10px 0 0; }
+  .nu-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .nu-table th { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted);
+    text-align: right; padding: 0 8px 8px; }
+  .nu-table th:first-child, .nu-table td:first-child { text-align: left; }
+  .nu-table td { padding: 7px 8px; text-align: right; border-top: 1px solid var(--line); }
+  .nu-table tr.off td { color: var(--muted); }
+  .nu-table tr.sel td { background: var(--panel-2); }
+  .nu-table .nu-dayb { font-family: var(--ui); font-size: 12.5px; font-weight: 650; letter-spacing: .3px;
+    background: none; border: none; color: var(--text); cursor: pointer; padding: 0; text-transform: uppercase; }
+  .nu-table .nu-dayb:hover { color: var(--accent); }
+  .nu-table .sub { font-size: 11px; color: var(--muted); margin-left: 4px; }
+
+  /* Foods and targets */
+  .nu-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .nu-toolbar input { flex: 1; font-size: 13.5px; padding: 9px 11px; }
+  .nu-toolbar .addbtn { height: 36px; padding: 0 14px; font-size: 13px; }
+  .nu-food { display: grid; grid-template-columns: minmax(0, 1fr) 130px 72px 60px 60px 60px 88px; gap: 10px;
+    align-items: center; padding: 9px 8px; border-top: 1px solid var(--line); font-size: 13px; }
+  .nu-food:first-child { border-top: none; }
+  .nu-food.arch { opacity: .55; }
+  .nu-food .n { overflow: hidden; }
+  .nu-food .n div:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nu-food .n div + div { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nu-food .srv { font-size: 12px; color: var(--muted); }
+  .nu-food .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .nu-food .v small { color: var(--muted); font-size: 10.5px; margin-left: 2px; }
+  .nu-food-h { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); border-top: none; padding-bottom: 4px; }
+  .nu-food-h .v { text-align: right; }
+  .nu-food .nu-e-acts { justify-content: flex-end; }
+  .nu-goal { display: flex; gap: 4px; }
+  .nu-thist { margin-top: 6px; }
+  .nu-thist div { font-size: 12.5px; color: var(--muted); padding: 4px 0; font-variant-numeric: tabular-nums; }
+  .nu-thist b { color: var(--text); font-weight: 600; }
+  .nu-saved { font-size: 12.5px; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nu-track i, .nu-e-acts { transition: none; }
+  }
+
   /* ---- Focus log ---- */
   .fx-date { margin-left: auto; font-size: 12.5px; padding: 7px 10px; }
   .fx-history { display: flex; align-items: flex-end; gap: 4px; height: 74px; margin-bottom: 26px;
@@ -3429,6 +3630,8 @@
   <path d="M10 19.2a2.2 2.2 0 004 0"/></symbol>
 <symbol id="i-focus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.6"/><path d="M12 3.5V1.4M12 22.6v-2.1M20.5 12h2.1M1.4 12h2.1"/></symbol>
+<symbol id="i-nutrition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 7.6c-1.7-1.3-4.7-1.4-6.1.9-1.7 2.7-.5 7.6 2 10.2 1.3 1.4 2.7 1.5 4.1.8 1.4.7 2.8.6 4.1-.8 2.5-2.6 3.7-7.5 2-10.2-1.4-2.3-4.4-2.2-6.1-.9z"/><path d="M12 7.6c0-2 .9-3.7 2.8-4.6"/></symbol>
 <symbol id="i-review" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
   <path d="M4 20V4M4 20h16"/><path d="M7.5 16.5l3.5-4.5 3 2.5L20 7"/></symbol>
 </svg>
@@ -3447,6 +3650,7 @@
     <button class="nav-btn" data-page="due"><svg class="ico" viewBox="0 0 24 24"><use href="#i-reminders"/></svg>Due<span class="nav-badge" id="dueBadge"></span></button>
     <button class="nav-btn" data-page="reminders"><svg class="ico" viewBox="0 0 24 24"><use href="#i-reminders"/></svg>Reminders</button>
     <button class="nav-btn" data-page="focus"><svg class="ico" viewBox="0 0 24 24"><use href="#i-focus"/></svg>Focus</button>
+    <button class="nav-btn" data-page="nutrition"><svg class="ico" viewBox="0 0 24 24"><use href="#i-nutrition"/></svg>Nutrition</button>
     <button class="nav-btn" data-page="review"><svg class="ico" viewBox="0 0 24 24"><use href="#i-review"/></svg>Review</button>
   </nav>
 
@@ -4127,6 +4331,30 @@
   </div>
 </div>
 
+<!-- ============ NUTRITION ============ -->
+<div class="page hidden" id="page-nutrition">
+  <div class="page-inner wide">
+    <div class="page-head">
+      <div><h2>🍽 Nutrition</h2><p class="page-sub">What you have eaten, what is left, and which way your weight is actually going.</p></div>
+    </div>
+    <div class="page-bar nu-bar-top">
+      <div class="filters" id="nuViews" role="tablist" aria-label="Nutrition views">
+        <button type="button" role="tab" data-nuview="day">Day</button>
+        <button type="button" role="tab" data-nuview="history">History</button>
+        <button type="button" role="tab" data-nuview="foods">Foods</button>
+        <button type="button" role="tab" data-nuview="targets">Targets</button>
+      </div>
+      <div class="nu-daynav" id="nuDayNav">
+        <button type="button" class="nu-navbtn" id="nuPrev" aria-label="Previous day">‹</button>
+        <label class="nu-date-wrap"><span class="nu-sr">Day shown</span><input type="date" id="nuDate" class="nu-date" /></label>
+        <button type="button" class="nu-navbtn" id="nuNext" aria-label="Next day">›</button>
+        <button type="button" class="nu-today" id="nuToday">Today</button>
+      </div>
+    </div>
+    <div id="nuBody"></div>
+  </div>
+</div>
+
 <!-- ============ CALENDAR (day / week / month / year) ============ -->
 <div class="page hidden" id="page-calendar">
   <div class="page-inner wide">
@@ -4352,6 +4580,7 @@
   </div>
 </div>
 
+<script src="/nutrition-core.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 
@@ -5176,6 +5405,7 @@ async function markRev(day) {
     const r = await (await fetch('/api/rev?date=' + day)).json();
     knownRev.date = day;
     knownRev.tasks = r.tasks || 0;
+    knownRev.nutrition = r.nutrition || 0;
     knownRev.stores = r.stores || {};
   } catch {}
 }
@@ -5198,7 +5428,12 @@ async function pollExternalChanges() {
   const tasksMoved = knownRev.tasks && r.tasks && r.tasks !== knownRev.tasks;
   const storesMoved = Object.keys(r.stores || {})
     .filter((k) => knownRev.stores[k] && r.stores[k] !== knownRev.stores[k]);
-  if (!tasksMoved && !storesMoved.length) return;
+  // The day's food log, when it is the page on screen — Claude logging lunch
+  // should appear without a reload. Compared against 0 rather than guarded on
+  // it, because the first thing logged on a day is what creates the file.
+  const nutMoved = activePage === 'nutrition' && (r.nutrition || 0) !== (knownRev.nutrition || 0);
+  knownRev.nutrition = r.nutrition || 0;
+  if (!tasksMoved && !storesMoved.length && !nutMoved) return;
 
   if (storesMoved.length) {
     knownRev.stores = r.stores;
@@ -5937,15 +6172,15 @@ function projectById(id) { return projects.find((p) => p.id === id); }
 // =====================================================================
 // PAGE ROUTING — each area is a full-screen surface over the Today board.
 // =====================================================================
-const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders', 'focus', 'due', 'graph'];
+const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders', 'focus', 'due', 'graph', 'nutrition'];
 const PAGE_TITLE = {
   tasks: 'Tasks', projects: 'Projects', learning: 'Learning', docs: 'Docs', ideas: 'Ideas',
   inbox: 'Inbox', review: 'Review', calendar: 'Calendar', reminders: 'Reminders',
-  focus: 'Focus', due: 'Due', graph: 'Task Graph',
+  focus: 'Focus', due: 'Due', graph: 'Task Graph', nutrition: 'Nutrition',
 };
 const PAGE_ICON = {
   tasks: '✓', projects: '🚀', learning: '🧠', docs: '📄', ideas: '💡', inbox: '📥',
-  review: '📊', calendar: '📅', reminders: '🔔', focus: '🎧', due: '⏳', graph: '🕸',
+  review: '📊', calendar: '📅', reminders: '🔔', focus: '🎧', due: '⏳', graph: '🕸', nutrition: '🍽',
 };
 let activePage = null;
 
@@ -6035,6 +6270,7 @@ async function openPage(name) {
   if (name === 'focus') renderFocusPage();
   if (name === 'due') renderDuePage();
   if (name === 'graph') await renderGraph();
+  if (name === 'nutrition') await renderNutritionPage();
 }
 // Back to the board. The tabs stay open — that is the point of a tab — so
 // coming back to a page puts you where you left it.
@@ -7825,6 +8061,12 @@ function docCommands() {
     { ic: '📅', t: 'Open Calendar', run: () => openPage('calendar') },
     { ic: '🗓', t: 'Day planner — day types, jump to a day', run: () => openCalendar() },
     { ic: '🎯', t: 'Start focus session', run: () => { closePage(); fmProject = null; openFocusMode(); } },
+    { ic: '🍽', t: 'Open Nutrition', run: () => nuOpen() },
+    { ic: '🍽', t: 'Nutrition today', run: () => nuOpen({ today: true }) },
+    { ic: '＋', t: 'Log food', run: () => nuOpen({ today: true, add: NU.mealForHour(new Date().getHours()) }) },
+    { ic: '⚖', t: 'Log weight', run: () => nuOpen({ today: true, weight: true }) },
+    ...['breakfast', 'lunch', 'dinner'].map((m) => ({ ic: '↻', t: 'Repeat ' + m,
+      run: async () => { await nuOpen({ today: true }); await nuRepeat(m, iso(new Date())); } })),
   ].filter(Boolean);
 }
 async function openCmdk() {
@@ -9092,7 +9334,7 @@ const SETTING_SECTIONS = [
 const SETTING_PAGES = [
   ['tasks', 'Tasks'], ['projects', 'Projects'], ['learning', 'Learning'], ['docs', 'Docs'],
   ['ideas', 'Ideas'], ['inbox', 'Inbox'], ['calendar', 'Calendar'], ['reminders', 'Reminders'],
-  ['focus', 'Focus'], ['review', 'Review'], ['due', 'Due'], ['graph', 'Graph'],
+  ['focus', 'Focus'], ['review', 'Review'], ['due', 'Due'], ['graph', 'Graph'], ['nutrition', 'Nutrition'],
 ];
 
 let settings = null;
@@ -13722,7 +13964,10 @@ function renderReviewPage() {
   const frozen = key < thisMon && reviews[key] && reviews[key].snapshot;
   $('#wrFrozen').style.display = frozen ? '' : 'none';
 
-  const nothing = !w.tasksTotal && !w.focusSeconds && !w.learnSeconds && !w.activity.length;
+  // A week where you only tracked food is still a week with something in it.
+  const nuWeek = weekNutritionCache.get(w.start);
+  const nothing = !w.tasksTotal && !w.focusSeconds && !w.learnSeconds && !w.activity.length
+    && !(nuWeek && (nuWeek.daysLogged || nuWeek.weight.readings));
   if (nothing) {
     $('#wrBody').innerHTML = `<div class="empty"><div class="empty-ic">📊</div><div class="empty-t">Not enough activity yet.</div><div class="empty-s">Give the week something to work with.</div></div>`;
   } else {
@@ -13797,6 +14042,7 @@ function renderReviewPage() {
            </div>
            ${(w.docNames || []).length ? `<div class="wr-learned">${w.docNames.map((n) => `<div class="wr-learned-i" style="color:#9db4ff">📄 ${escapeHtml(n)}</div>`).join('')}</div>` : '<div class="pd-hint">No document activity.</div>'}
          </section>
+         ${nuReviewHtml(w)}
 
          <section class="wr-sec">
            <h3>Ideas</h3>
@@ -13904,10 +14150,1069 @@ function renderReviewPage() {
   if (!nothing && calStatus.available && !weekMeetingCache.has(w.start)) {
     loadWeekMeetings(w.start, w.end).then(() => { if (activePage === 'review') renderReviewPage(); });
   }
+  nuReviewLoad(w);                    // fetched once per week; re-renders only if there is data
   const save = () => { r.well = $('#wrWell').value; r.bad = $('#wrBad').value; r.next = $('#wrNextWeek').value; saveReviews(); };
   $('#wrWell').oninput = save; $('#wrBad').oninput = save; $('#wrNextWeek').oninput = save;
 }
 
+
+// =====================================================================
+// NUTRITION — calories, protein and bodyweight.
+//
+// The page draws what the server hands it. The only arithmetic it does itself
+// is the live preview while you type a quantity, and that comes from the same
+// nutrition-core.js the server uses to write the entry — so the number beside
+// the Add button is the number that lands.
+//
+// The day shown follows the board: open Nutrition while the board is on the
+// 23rd and you see the 23rd. Stepping days in here does not move the board.
+// =====================================================================
+const NU = window.Nutrition;
+// Anything from disk that goes into markup is escaped, ids included.
+const nuA = (v) => escapeHtml(String(v == null ? '' : v));
+let nuView = 'day';
+let nuDate = null;          // YYYY-MM-DD on screen
+let nuBoardDay = null;      // the board's day when nuDate last followed it
+let nuGen = 0;              // drops a slow render that a newer one has overtaken
+let nuDay = null;           // /day for nuDate
+let nuWeightData = null;    // /weights for the chart
+let nuQuick = { recent: [], frequent: [] };
+let nuFoods = [];
+let nuAdd = null;           // the open add panel: { meal, q, active, options, pick, custom, err }
+let nuEdit = null;          // entry id being edited
+let nuCopy = null;          // meal whose copy-from row is open
+let nuWEdit = null;         // weigh-in id being edited
+let nuFoodEdit = null;      // food id being edited, or 'new'
+let nuFoodQ = '';
+let nuShowArchived = false;
+let nuUndo = null, nuUndoT = null;
+let nuFocusNext = null;     // element id to focus after the next paint
+const weekNutritionCache = new Map();
+
+async function nuApi(method, p, body) {
+  const r = await fetch('/api/nutrition' + p, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let j = {};
+  try { j = await r.json(); } catch {}
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  if (method !== 'GET') { weekNutritionCache.clear(); await nuRebaseRev(); }
+  return j;
+}
+// Our own write is not news. Without this the external-change poll sees the
+// file move and announces "updated from elsewhere" about every food you log.
+async function nuRebaseRev() {
+  try {
+    const day = iso(current);
+    const r = await (await fetch('/api/rev?date=' + day)).json();
+    if (knownRev.date === day) knownRev.nutrition = r.nutrition || 0;
+    ['nutrition', 'nutrition-foods', 'nutrition-weights'].forEach((k) => {
+      if (r.stores && r.stores[k] != null) knownRev.stores[k] = r.stores[k];
+    });
+  } catch {}
+}
+
+// ------------------------------------------------------------ formatting
+const nuK = (n) => (n == null ? '—' : Math.round(n).toLocaleString());
+const nuG = (n) => (n == null ? '—' : (Math.round(n * 10) / 10).toLocaleString());
+const nuMealLabel = (m) => NU.MEAL_LABEL[m];
+const nuShort = (d) => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+const nuDayLabel = (d) => new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+const nuSigned = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n).toFixed(1);
+function nuUnitWord(u, q) { return q !== 1 && u.length > 2 && !/s$/.test(u) ? u + 's' : u; }
+// "2 servings · 400 ml", "3 eggs", "200 g" — whichever reads as the amount.
+function nuQtyText(e) {
+  const q = Math.round(Number(e.quantity) * 100) / 100;
+  const s = e.serving || {};
+  if (e.unit !== 'serving') return q.toLocaleString() + ' ' + nuUnitWord(e.unit, q);
+  if (s.unit && s.unit !== 'serving') {
+    if ((s.size || 1) === 1) return q.toLocaleString() + ' ' + nuUnitWord(s.unit, q);
+    const amt = Math.round(q * s.size * 10) / 10;
+    return q.toLocaleString() + ' ' + (q === 1 ? 'serving' : 'servings') + ' · ' + amt.toLocaleString() + ' ' + nuUnitWord(s.unit, amt);
+  }
+  return q.toLocaleString() + ' ' + (q === 1 ? 'serving' : 'servings');
+}
+function nuPerText(f) {
+  const per = f.servingSize === 1 && f.servingUnit !== 'serving' ? '1 ' + f.servingUnit : f.servingSize + ' ' + f.servingUnit;
+  return 'per ' + per + ' · ' + nuK(f.calories) + ' kcal · ' + nuG(f.protein) + ' g protein';
+}
+function nuMacroText(m) {
+  return nuK(m.calories) + ' kcal · ' + nuG(m.protein) + ' g protein · ' + nuG(m.carbs) + ' g carbs · ' + nuG(m.fat) + ' g fat';
+}
+function nuMealOptions(sel) {
+  return NU.MEALS.map((m) => '<option value="' + m + '"' + (m === sel ? ' selected' : '') + '>' + nuMealLabel(m) + '</option>').join('');
+}
+function nuFocus() {
+  if (!nuFocusNext) return;
+  const el = document.getElementById(nuFocusNext);
+  nuFocusNext = null;
+  if (!el) return;
+  el.focus();
+  if (el.tagName === 'INPUT' && el.type !== 'date' && el.select) { try { el.select(); } catch {} }
+}
+
+// ------------------------------------------------------------------ page
+async function renderNutritionPage() {
+  const board = iso(current);
+  if (nuBoardDay !== board) { nuBoardDay = board; nuDate = board; }
+  document.querySelectorAll('#nuViews [data-nuview]').forEach((b) => {
+    const on = b.dataset.nuview === nuView;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+  $('#nuDayNav').hidden = !(nuView === 'day' || nuView === 'history');
+  $('#nuDate').value = nuDate;
+  $('#nuToday').disabled = nuDate === iso(new Date());
+  try {
+    if (nuView === 'day') await nuRenderDay();
+    else if (nuView === 'history') await nuRenderHistory();
+    else if (nuView === 'foods') await nuRenderFoods();
+    else await nuRenderTargets();
+  } catch (e) {
+    $('#nuBody').innerHTML = '<div class="empty"><div class="empty-t">Nutrition could not load.</div><div class="empty-s">'
+      + escapeHtml(e.message) + '</div></div>';
+  }
+}
+function nuGo(date) {
+  nuDate = date;
+  nuAdd = null; nuEdit = null; nuCopy = null; nuWEdit = null;
+  renderNutritionPage();
+}
+// From the palette and anywhere else that wants a particular view of the page.
+async function nuOpen(o) {
+  o = o || {};
+  if (o.today) { nuBoardDay = iso(current); nuDate = iso(new Date()); }
+  nuView = o.view || 'day';
+  nuEdit = null; nuCopy = null; nuWEdit = null;
+  if (o.add) { nuAdd = { meal: o.add, q: '', active: 0 }; nuFocusNext = 'nuSearch'; }
+  else if (o.weight) nuFocusNext = 'nuKg';
+  await openPage('nutrition');
+}
+
+// ------------------------------------------------------------------- day
+async function nuRenderDay() {
+  const gen = ++nuGen, date = nuDate;
+  const [day, weights, quick, foods] = await Promise.all([
+    nuApi('GET', '/day?date=' + date),
+    nuApi('GET', '/weights?from=' + NU.shiftDay(date, -59) + '&to=' + date),
+    nuApi('GET', '/quick?date=' + date),
+    nuApi('GET', '/foods'),
+  ]);
+  if (gen !== nuGen || nuView !== 'day' || date !== nuDate) return;
+  nuDay = day; nuWeightData = weights; nuQuick = quick; nuFoods = foods.foods;
+  nuPaintDay();
+}
+function nuPaintDay() {
+  const v = nuDay;
+  if (!v) return;
+  $('#nuBody').innerHTML =
+    '<p class="nu-date-label">' + escapeHtml(nuDayLabel(v.date)) + (v.date === iso(new Date()) ? ' · today' : '') + '</p>'
+    + nuDashHtml(v)
+    + '<div id="nuUndoSlot"></div>'
+    + '<div class="nu-grid"><div class="nu-meals">' + NU.MEALS.map((m) => nuMealHtml(v, m)).join('') + '</div>'
+    + '<aside class="nu-side">' + nuWeightHtml() + '</aside></div>';
+  nuRenderUndo();
+  nuBindDay();
+  nuFocus();
+  nuPaintPreview();
+  nuPaintEditPreview();
+}
+
+function nuMetricHtml(label, k, unit, v, big) {
+  const r = v.remaining[k];
+  const fmt = k === 'calories' ? nuK : nuG;
+  const have = v.totals[k];
+  const miss = v.totals.missing[k];
+  const cls = 'nu-metric ' + (big ? 'big' : 'small');
+  // Unknown is not zero: say how many entries this total could not count.
+  const missNote = miss ? '<div class="nu-m-sub">' + miss + (miss === 1 ? ' entry has' : ' entries have')
+    + ' no ' + label.toLowerCase() + ' value, so this is a floor</div>' : '';
+  if (!r) {
+    return '<div class="' + cls + '"><div class="nu-m-top"><span class="nu-m-label">' + label + '</span>'
+      + '<span class="nu-m-left">No target</span></div>'
+      + '<div class="nu-m-val"><b>' + fmt(have) + '</b> ' + unit + '</div>' + missNote + '</div>';
+  }
+  const over = r.over > 0;
+  const left = over ? fmt(r.over) + ' ' + unit + ' over' : fmt(r.left) + ' ' + unit + ' left';
+  return '<div class="' + cls + (over ? ' over' : '') + '">'
+    + '<div class="nu-m-top"><span class="nu-m-label">' + label + '</span><span class="nu-m-left">' + left + '</span></div>'
+    + '<div class="nu-m-val"><b>' + fmt(have) + '</b> / ' + fmt(r.target) + ' ' + unit + '</div>'
+    + '<div class="nu-track" role="progressbar" aria-label="' + label + '" aria-valuemin="0" aria-valuemax="' + r.target
+    + '" aria-valuenow="' + Math.min(have, r.target) + '" aria-valuetext="' + fmt(have) + ' of ' + fmt(r.target) + ' ' + unit + ', ' + left + '">'
+    + '<i style="width:' + Math.round(r.pct * 100) + '%"></i></div>'
+    + missNote + '</div>';
+}
+function nuDashHtml(v) {
+  return '<section class="nu-dash" aria-label="Totals for the day">'
+    + '<div class="nu-dash-primary">' + nuMetricHtml('Calories', 'calories', 'kcal', v, true)
+    + nuMetricHtml('Protein', 'protein', 'g', v, true) + '</div>'
+    + '<div class="nu-dash-secondary">' + nuMetricHtml('Fat', 'fat', 'g', v, false)
+    + nuMetricHtml('Carbs', 'carbs', 'g', v, false) + '</div>'
+    + '</section>';
+}
+
+function nuMealHtml(v, m) {
+  const meal = v.meals[m], L = nuMealLabel(m), has = meal.entries.length > 0;
+  const adding = !!(nuAdd && nuAdd.meal === m);
+  let h = '<section class="nu-meal' + (has || adding || nuCopy === m ? '' : ' empty') + '" aria-labelledby="nuMH-' + m + '">'
+    + '<header class="nu-meal-h"><h3 id="nuMH-' + m + '">' + L + '</h3>'
+    + (has ? '<span class="nu-meal-sum">' + nuK(meal.totals.calories) + ' kcal · ' + nuG(meal.totals.protein) + ' g protein</span>' : '')
+    + '<div class="nu-meal-acts">'
+    + '<button type="button" class="nu-act primary" id="nuAddBtn-' + m + '" data-nuadd="' + m + '" aria-expanded="' + adding
+    + '" aria-label="Add food to ' + L + '">+ Add food</button>'
+    + '<button type="button" class="nu-act" data-nurepeat="' + m + '" aria-label="Repeat the last ' + L.toLowerCase()
+    + '" title="Log the most recent earlier ' + L.toLowerCase() + ' again">Repeat</button>'
+    + '<button type="button" class="nu-act" data-nucopy="' + m + '" aria-expanded="' + (nuCopy === m)
+    + '" aria-label="Copy ' + L.toLowerCase() + ' from another day">Copy from…</button>'
+    + '</div></header>';
+  if (nuCopy === m) h += nuCopyHtml(m);
+  if (has) h += '<div class="nu-entries" role="list" aria-label="' + L + '">' + meal.entries.map(nuEntryHtml).join('') + '</div>';
+  if (adding) h += nuAddHtml();
+  return h + '</section>';
+}
+
+function nuEntryHtml(e) {
+  if (nuEdit === e.id) return '<div role="listitem">' + nuEditHtml(e) + '</div>';
+  const name = escapeHtml(e.name);
+  return '<div class="nu-entry" role="listitem">'
+    + '<div><div class="nu-e-name">' + name
+    + (e.estimate ? '<span class="nu-est" title="A typical value, not from a label">≈</span>' : '') + '</div>'
+    + '<div class="nu-e-sub">' + escapeHtml(nuQtyText(e)) + (e.notes ? ' · <span class="nu-e-notes">' + escapeHtml(e.notes) + '</span>' : '') + '</div></div>'
+    + '<div class="nu-e-num"><b>' + nuK(e.calories) + '</b>kcal</div>'
+    + '<div class="nu-e-num"><b>' + nuG(e.protein) + '</b>g P</div>'
+    + '<div class="nu-e-acts">'
+    + '<button type="button" class="nu-icon" data-nuedit="' + nuA(e.id) + '" aria-label="Edit ' + name + '" title="Edit">✎</button>'
+    + '<button type="button" class="nu-icon" data-nudup="' + nuA(e.id) + '" aria-label="Log ' + name + ' again" title="Duplicate">⧉</button>'
+    + '<button type="button" class="nu-icon del" data-nudel="' + nuA(e.id) + '" aria-label="Remove ' + name + '" title="Remove">×</button>'
+    + '</div></div>';
+}
+function nuEditHtml(e) {
+  const s = e.serving || {};
+  const units = ['serving'].concat(s.unit && s.unit !== 'serving' ? [s.unit] : []);
+  return '<div class="nu-edit" role="group" aria-label="Edit ' + escapeHtml(e.name) + '">'
+    + '<div class="nu-pick-food"><b>' + escapeHtml(e.name) + '</b><span>logged at '
+    + escapeHtml(nuPerText({ servingSize: s.size, servingUnit: s.unit, calories: s.calories, protein: s.protein })) + '</span></div>'
+    + '<div class="nu-row">'
+    + '<label class="nu-field w-s">Quantity<input id="nuEQty" type="number" inputmode="decimal" step="any" min="0" value="' + e.quantity + '"></label>'
+    + '<label class="nu-field w-m">Unit<select id="nuEUnit">' + units.map((u) => '<option value="' + escapeHtml(u) + '"'
+      + (u === e.unit ? ' selected' : '') + '>' + escapeHtml(u === 'serving' ? 'servings' : u) + '</option>').join('') + '</select></label>'
+    + '<label class="nu-field w-m">Meal<select id="nuEMeal">' + nuMealOptions(e.meal) + '</select></label>'
+    + '<label class="nu-field grow">Notes<input id="nuENotes" type="text" autocomplete="off" value="' + escapeHtml(e.notes || '') + '"></label>'
+    + '</div>'
+    + '<div class="nu-foot"><output class="nu-preview" id="nuEPreview" aria-live="polite"></output>'
+    + '<button type="button" class="nu-ghost" id="nuECancel">Cancel</button>'
+    + '<button type="button" class="addbtn" id="nuESave" data-id="' + nuA(e.id) + '">Save</button></div>'
+    + '<div class="nu-err" id="nuEErr" hidden></div></div>';
+}
+function nuEditing() {
+  if (!nuEdit || !nuDay) return null;
+  for (const m of NU.MEALS) {
+    const e = nuDay.meals[m].entries.find((x) => x.id === nuEdit);
+    if (e) return e;
+  }
+  return null;
+}
+// Worked out from the entry's own copy of the numbers — the same thing the
+// server does — so editing an old day never pulls in today's library values.
+function nuPaintEditPreview() {
+  const out = $('#nuEPreview'), e = nuEditing();
+  if (!out || !e) return;
+  try {
+    out.textContent = nuMacroText(NU.requantify(e, $('#nuEQty').value, $('#nuEUnit').value));
+    out.classList.remove('err');
+  } catch { out.textContent = 'Enter how much'; out.classList.add('err'); }
+}
+
+function nuCopyHtml(m) {
+  const L = nuMealLabel(m).toLowerCase();
+  return '<div class="nu-copy" role="group" aria-label="Copy ' + L + ' from another day"><div class="nu-row">'
+    + '<button type="button" class="nu-ghost" id="nuCopyYesterday">Yesterday’s ' + L + '</button>'
+    + '<label class="nu-field">From day<input type="date" id="nuCopyDate" value="' + NU.shiftDay(nuDate, -1) + '"></label>'
+    + '<label class="nu-field w-m">Meal<select id="nuCopyMeal">' + nuMealOptions(m) + '</select></label>'
+    + '<button type="button" class="addbtn" id="nuCopyGo" style="height:34px;padding:0 14px;font-size:13px">Copy</button>'
+    + '<button type="button" class="nu-ghost" id="nuCopyCancel">Cancel</button>'
+    + '</div><div class="nu-err" id="nuCopyErr" hidden></div></div>';
+}
+
+// ---------------------------------------------------------------- adding
+function nuAddHtml() {
+  const a = nuAdd, L = nuMealLabel(a.meal);
+  if (a.pick) return nuPickHtml(a);
+  if (a.custom) return nuCustomHtml(a);
+  return '<div class="nu-add" role="group" aria-label="Add food to ' + L + '">'
+    + '<input class="nu-search" id="nuSearch" type="text" autocomplete="off" spellcheck="false"'
+    + ' placeholder="Search your foods — amul, egg, roti…" role="combobox" aria-expanded="true"'
+    + ' aria-controls="nuResults" aria-autocomplete="list" aria-label="Search saved foods for ' + L + '"'
+    + ' aria-activedescendant="nuOpt' + (a.active || 0) + '" value="' + escapeHtml(a.q || '') + '">'
+    + '<div class="nu-results" id="nuResults" role="listbox" aria-label="Foods">' + nuResultsHtml() + '</div></div>';
+}
+// What the list offers, in order. With nothing typed: what you actually eat —
+// frequent first, then recent — and the whole library only when there is no
+// history yet. With something typed: the matches, then "new food".
+function nuOptions() {
+  const q = (nuAdd.q || '').trim();
+  const out = [];
+  if (!q) {
+    const seen = new Set();
+    const take = (x, section) => {
+      if (!x.food || seen.has(x.food.id)) return;
+      seen.add(x.food.id);
+      out.push({ kind: 'food', food: x.food, qty: x.lastQuantity, unit: x.lastUnit, section });
+    };
+    (nuQuick.frequent || []).forEach((x) => take(x, 'Frequent'));
+    (nuQuick.recent || []).forEach((x) => take(x, 'Recent'));
+    if (!out.length) nuFoods.forEach((f) => out.push({ kind: 'food', food: f, section: 'Your foods' }));
+    return out;
+  }
+  NU.searchFoods(nuFoods, q).slice(0, 8).forEach((f) => {
+    const used = (nuQuick.recent || []).find((x) => x.food && x.food.id === f.id);
+    out.push({ kind: 'food', food: f, qty: used && used.lastQuantity, unit: used && used.lastUnit, section: 'Matches' });
+  });
+  out.push({ kind: 'new', section: out.length ? 'Matches' : 'Nothing saved matches' });
+  return out;
+}
+function nuResultsHtml() {
+  const opts = nuAdd.options = nuOptions();
+  if (nuAdd.active == null || nuAdd.active >= opts.length) nuAdd.active = 0;
+  let h = '', sec = null;
+  opts.forEach((o, i) => {
+    if (o.section !== sec) { sec = o.section; h += '<div class="nu-rsec" role="presentation">' + escapeHtml(sec) + '</div>'; }
+    const on = i === nuAdd.active;
+    const head = '<div class="nu-opt' + (o.kind === 'new' ? ' new' : '') + (on ? ' active' : '') + '" role="option" id="nuOpt' + i
+      + '" data-nuopt="' + i + '" aria-selected="' + on + '">';
+    if (o.kind === 'new') {
+      h += head + '<span class="nu-opt-name">+ New food “' + escapeHtml(nuAdd.q.trim()) + '”…</span></div>';
+      return;
+    }
+    const f = o.food;
+    const last = o.qty != null
+      ? ' · last ' + nuQtyText({ quantity: o.qty, unit: o.unit || 'serving', serving: { size: f.servingSize, unit: f.servingUnit } }) : '';
+    h += head + '<span class="nu-opt-name">' + escapeHtml(f.name)
+      + (f.estimate ? '<span class="nu-est" title="A typical value, not from a label">≈</span>' : '') + '</span>'
+      + '<span class="nu-opt-meta">' + escapeHtml(nuPerText(f) + last) + '</span></div>';
+  });
+  return h || '<div class="nu-empty">No foods yet.</div>';
+}
+function nuUnitsFor(f) { return ['serving'].concat(f.servingUnit !== 'serving' ? [f.servingUnit] : []); }
+function nuPickHtml(a) {
+  const f = a.pick.food, L = nuMealLabel(a.meal);
+  const note = f.estimate ? '≈ A typical value, not a label.' + (f.notes ? ' ' + f.notes : '') : (f.notes || '');
+  return '<div class="nu-add" role="group" aria-label="How much ' + escapeHtml(f.name) + ' for ' + L + '">'
+    + '<div class="nu-pick-food"><b>' + escapeHtml(f.name) + '</b><span>' + escapeHtml(nuPerText(f)) + '</span></div>'
+    + (note ? '<div class="nu-pick-note">' + escapeHtml(note) + '</div>' : '')
+    + '<div class="nu-row">'
+    + '<label class="nu-field w-s">Quantity<input id="nuQty" type="number" inputmode="decimal" step="any" min="0" value="'
+    + escapeHtml(String(a.pick.qty)) + '"></label>'
+    + '<label class="nu-field w-m">Unit<select id="nuUnit">' + nuUnitsFor(f).map((u) => '<option value="' + escapeHtml(u) + '"'
+      + (u === a.pick.unit ? ' selected' : '') + '>' + escapeHtml(u === 'serving' ? 'servings' : u) + '</option>').join('') + '</select></label>'
+    + '<label class="nu-field grow">Notes<input id="nuNotes" type="text" autocomplete="off"'
+    + ' placeholder="air fried, restaurant, with 10 g olive oil…" value="' + escapeHtml(a.pick.notes || '') + '"></label>'
+    + '</div>'
+    + '<div class="nu-foot"><output class="nu-preview" id="nuPreview" aria-live="polite"></output>'
+    + '<button type="button" class="nu-ghost" id="nuBack">Back</button>'
+    + '<button type="button" class="addbtn" id="nuAddGo">Add to ' + L.toLowerCase() + '</button></div>'
+    + '<div class="nu-err" id="nuAddErr"' + (a.err ? '' : ' hidden') + '>' + escapeHtml(a.err || '') + '</div></div>';
+}
+function nuPaintPreview() {
+  const out = $('#nuPreview');
+  if (!out || !nuAdd || !nuAdd.pick) return;
+  try {
+    const e = NU.makeEntry(nuAdd.pick.food, { meal: nuAdd.meal, quantity: $('#nuQty').value, unit: $('#nuUnit').value });
+    out.textContent = nuMacroText(e);
+    out.classList.remove('err');
+  } catch { out.textContent = 'Enter how much'; out.classList.add('err'); }
+}
+function nuCustomHtml(a) {
+  const c = a.custom, L = nuMealLabel(a.meal);
+  const num = (id, label, v, extra) => '<label class="nu-field w-s">' + label + '<input id="' + id + '" type="number" inputmode="decimal"'
+    + ' step="any" min="0" value="' + escapeHtml(v == null ? '' : String(v)) + '"' + (extra || '') + '></label>';
+  return '<div class="nu-add" role="group" aria-label="New food for ' + L + '">'
+    + '<div class="nu-row">'
+    + '<label class="nu-field grow">Name<input id="nuCName" type="text" autocomplete="off" value="' + escapeHtml(c.name || '') + '"></label>'
+    + '<label class="nu-field w-m">Brand<input id="nuCBrand" type="text" autocomplete="off" placeholder="optional" value="' + escapeHtml(c.brand || '') + '"></label>'
+    + '</div><div class="nu-row">'
+    + num('nuCCal', 'Calories', c.calories, ' required') + num('nuCPro', 'Protein g', c.protein)
+    + num('nuCCarb', 'Carbs g', c.carbs) + num('nuCFat', 'Fat g', c.fat)
+    + num('nuCSize', 'Per serving of', c.size == null ? 1 : c.size)
+    + '<label class="nu-field w-m">Unit<input id="nuCUnit" type="text" autocomplete="off" placeholder="g, ml, piece" value="' + escapeHtml(c.unit || 'serving') + '"></label>'
+    + '</div><div class="nu-row">'
+    + '<label class="nu-check"><input type="checkbox" id="nuCSave"' + (c.save === false ? '' : ' checked') + '> Save to my foods</label>'
+    + '</div>'
+    + '<div class="nu-pick-note">The numbers are for one serving. Saved, it can be picked by name next time and you choose how much next; not saved, it is logged once as one serving.</div>'
+    + '<div class="nu-foot"><span class="nu-preview"></span>'
+    + '<button type="button" class="nu-ghost" id="nuBack">Back</button>'
+    + '<button type="button" class="addbtn" id="nuCustomGo">Add to ' + L.toLowerCase() + '</button></div>'
+    + '<div class="nu-err" id="nuAddErr"' + (a.err ? '' : ' hidden') + '>' + escapeHtml(a.err || '') + '</div></div>';
+}
+function nuReadCustom() {
+  const v = (id) => { const x = $('#' + id); return x ? x.value : ''; };
+  const n = (id) => (v(id).trim() === '' ? null : Number(v(id)));
+  return { name: v('nuCName').trim(), brand: v('nuCBrand').trim(), calories: n('nuCCal'), protein: n('nuCPro'),
+    carbs: n('nuCCarb'), fat: n('nuCFat'), size: n('nuCSize'), unit: v('nuCUnit').trim() || 'serving',
+    save: !!($('#nuCSave') && $('#nuCSave').checked) };
+}
+
+function nuOpenAdd(meal) {
+  if (nuAdd && nuAdd.meal === meal) { nuCloseAdd(); return; }
+  nuAdd = { meal, q: '', active: 0 };
+  nuEdit = null; nuCopy = null;
+  nuFocusNext = 'nuSearch';
+  nuPaintDay();
+}
+function nuCloseAdd() {
+  const m = nuAdd && nuAdd.meal;
+  nuAdd = null;
+  nuFocusNext = m ? 'nuAddBtn-' + m : null;
+  nuPaintDay();
+}
+function nuBackToSearch() {
+  nuAdd.pick = null; nuAdd.custom = null; nuAdd.err = null;
+  nuFocusNext = 'nuSearch';
+  nuPaintDay();
+}
+function nuChoose(i) {
+  const o = nuAdd.options && nuAdd.options[i];
+  if (!o) return;
+  nuAdd.err = null;
+  if (o.kind === 'new') {
+    nuAdd.custom = { name: nuAdd.q.trim() };
+    nuFocusNext = 'nuCCal';
+  } else {
+    // The amount you had last time, because that is usually the amount again.
+    const units = nuUnitsFor(o.food);
+    nuAdd.pick = { food: o.food, qty: o.qty != null ? o.qty : 1, unit: units.includes(o.unit) ? o.unit : 'serving', notes: '' };
+    nuFocusNext = 'nuQty';
+  }
+  nuPaintDay();
+}
+function nuHighlight() {
+  const box = $('#nuResults');
+  if (!box) return;
+  box.querySelectorAll('[data-nuopt]').forEach((el) => {
+    const on = +el.dataset.nuopt === nuAdd.active;
+    el.classList.toggle('active', on);
+    el.setAttribute('aria-selected', String(on));
+    if (on) el.scrollIntoView({ block: 'nearest' });
+  });
+  $('#nuSearch').setAttribute('aria-activedescendant', 'nuOpt' + nuAdd.active);
+}
+async function nuSubmitPick() {
+  const a = nuAdd;
+  const body = { date: nuDate, meal: a.meal, foodId: a.pick.food.id,
+    quantity: parseFloat($('#nuQty').value), unit: $('#nuUnit').value, notes: $('#nuNotes').value };
+  try {
+    const r = await nuApi('POST', '/log', body);
+    flash('Logged ' + r.entry.name + ' · ' + nuK(r.entry.calories) + ' kcal');
+    // Straight back to the search: a meal is usually more than one thing.
+    nuAdd = { meal: a.meal, q: '', active: 0 };
+    nuFocusNext = 'nuSearch';
+    await nuRenderDay();
+  } catch (e) {
+    Object.assign(a.pick, { qty: $('#nuQty').value, unit: body.unit, notes: body.notes });
+    a.err = e.message;
+    nuFocusNext = 'nuQty';
+    nuPaintDay();
+  }
+}
+async function nuSubmitCustom() {
+  const a = nuAdd, c = nuReadCustom();
+  a.custom = c;
+  try {
+    if (!c.name) throw new Error('Give it a name.');
+    if (c.calories == null) throw new Error('Calories are needed — the rest can be left blank.');
+    if (c.save) {
+      // Saved first, then the usual "how much" step: a food saved per 100 g
+      // is rarely eaten as exactly 100 g.
+      const r = await nuApi('POST', '/foods', { name: c.name, brand: c.brand, servingSize: c.size || 1, servingUnit: c.unit,
+        calories: c.calories, protein: c.protein, carbs: c.carbs, fat: c.fat });
+      nuFoods = nuFoods.concat(r.food);
+      a.custom = null;
+      a.pick = { food: r.food, qty: 1, unit: 'serving', notes: '' };
+      a.err = null;
+      nuFocusNext = 'nuQty';
+      nuPaintDay();
+      return;
+    }
+    const r = await nuApi('POST', '/log', { date: nuDate, meal: a.meal,
+      custom: { name: c.name, brand: c.brand, calories: c.calories, protein: c.protein, carbs: c.carbs, fat: c.fat } });
+    flash('Logged ' + r.entry.name + ' · ' + nuK(r.entry.calories) + ' kcal');
+    nuAdd = { meal: a.meal, q: '', active: 0 };
+    nuFocusNext = 'nuSearch';
+    await nuRenderDay();
+  } catch (e) {
+    a.err = e.message;
+    nuPaintDay();
+  }
+}
+
+// ------------------------------------------------------- undo / removals
+//
+// Removing is a tombstone on the server, so it can always be put back; the
+// strip here is how you get to that without a trip anywhere.
+function nuOfferUndo(text, undo) {
+  clearTimeout(nuUndoT);
+  nuUndo = { text, undo };
+  nuUndoT = setTimeout(() => { nuUndo = null; nuRenderUndo(); }, 15000);
+  nuRenderUndo();
+}
+function nuRenderUndo() {
+  const el = $('#nuUndoSlot');
+  if (!el) return;
+  if (!nuUndo) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="nu-undo" role="status"><span>' + escapeHtml(nuUndo.text) + '</span>'
+    + '<button type="button" id="nuUndoBtn">Undo</button></div>';
+  $('#nuUndoBtn').onclick = async () => {
+    const u = nuUndo;
+    nuUndo = null;
+    clearTimeout(nuUndoT);
+    try { await u.undo(); } catch (e) { flash(e.message); }
+    renderNutritionPage();
+  };
+}
+function nuFindEntry(id) {
+  for (const m of NU.MEALS) {
+    const e = nuDay && nuDay.meals[m].entries.find((x) => x.id === id);
+    if (e) return e;
+  }
+  return null;
+}
+async function nuRemoveEntry(id) {
+  const date = nuDate, e = nuFindEntry(id);
+  try {
+    await nuApi('DELETE', '/log?date=' + date + '&id=' + encodeURIComponent(id));
+    nuOfferUndo('Removed ' + (e ? e.name : 'it') + (e ? ' from ' + nuMealLabel(e.meal).toLowerCase() : ''),
+      () => nuApi('PATCH', '/log?date=' + date + '&id=' + encodeURIComponent(id), { restore: true }));
+    await nuRenderDay();
+  } catch (err) { flash(err.message); }
+}
+async function nuRepeat(meal, date) {
+  date = date || nuDate;
+  try {
+    const r = await nuApi('POST', '/copy', { toDate: date, meal });
+    const n = r.count + ' item' + (r.count === 1 ? '' : 's');
+    nuOfferUndo('Added ' + n + ' from ' + nuShort(r.from) + '’s ' + nuMealLabel(meal).toLowerCase(),
+      async () => { for (const e of r.entries) await nuApi('DELETE', '/log?date=' + date + '&id=' + encodeURIComponent(e.id)); });
+    flash('↻ ' + nuMealLabel(meal) + ' from ' + nuShort(r.from));
+    if (activePage === 'nutrition' && nuView === 'day' && nuDate === date) await nuRenderDay();
+  } catch (e) { flash(e.message.charAt(0).toUpperCase() + e.message.slice(1)); }
+}
+async function nuCopyFrom(fromDate, fromMeal, toMeal) {
+  const err = $('#nuCopyErr');
+  try {
+    const r = await nuApi('POST', '/copy', { fromDate, fromMeal, toDate: nuDate, toMeal });
+    nuCopy = null;
+    const date = nuDate;
+    nuOfferUndo('Copied ' + r.count + ' from ' + nuShort(r.from) + '’s ' + nuMealLabel(fromMeal).toLowerCase(),
+      async () => { for (const e of r.entries) await nuApi('DELETE', '/log?date=' + date + '&id=' + encodeURIComponent(e.id)); });
+    await nuRenderDay();
+  } catch (e) {
+    if (err) { err.textContent = e.message.charAt(0).toUpperCase() + e.message.slice(1); err.hidden = false; }
+  }
+}
+
+// ---------------------------------------------------------------- weight
+function nuWeightHtml() {
+  const w = nuWeightData || { trend: [], weights: [] };
+  const s = nuDay.weight || {};
+  const today = nuDate === iso(new Date());
+  const stat = (label, v) => '<div><span>' + label + '</span><b>' + (v != null ? v.toFixed(1) + '<small>kg</small>' : '—') + '</b></div>';
+  const rows = (w.weights || []).slice(0, 5).map((x) => {
+    const d = nuShort(x.date);
+    if (nuWEdit === x.id) {
+      return '<div class="nu-wrow"><span class="d">' + d + '</span>'
+        + '<label class="nu-sr" for="nuWEditKg">Weight on ' + d + '</label>'
+        + '<input id="nuWEditKg" type="number" inputmode="decimal" step="0.1" min="20" max="400" value="' + x.kg + '">'
+        + '<button type="button" class="nu-ghost" id="nuWEditSave" data-id="' + nuA(x.id) + '">Save</button></div>';
+    }
+    return '<div class="nu-wrow"><span class="d">' + d + '</span><b>' + x.kg.toFixed(1) + ' kg</b>'
+      + '<button type="button" class="nu-icon" data-nuwedit="' + nuA(x.id) + '" aria-label="Edit the weigh-in on ' + d + '" title="Edit">✎</button>'
+      + '<button type="button" class="nu-icon del" data-nuwdel="' + nuA(x.id) + '" aria-label="Remove the weigh-in on ' + d + '" title="Remove">×</button></div>';
+  }).join('');
+  return '<section class="nu-card" aria-labelledby="nuWH"><h3 id="nuWH">Bodyweight</h3>'
+    + '<form class="nu-wlog" id="nuWForm"><label class="nu-sr" for="nuKg">Weight in kilograms for ' + escapeHtml(nuDayLabel(nuDate)) + '</label>'
+    + '<input id="nuKg" type="number" inputmode="decimal" step="0.1" min="20" max="400" placeholder="'
+    + (s.latest ? s.latest.kg.toFixed(1) : 'kg') + '" value="' + (s.today != null ? s.today : '') + '">'
+    + '<span class="nu-unit">kg</span><button type="submit" class="addbtn">' + (s.today != null ? 'Update' : 'Log') + '</button></form>'
+    + '<p class="nu-wfor">' + (today ? 'For today' : 'For ' + escapeHtml(nuShort(nuDate))) + (s.today != null ? ' · logging again corrects it' : '') + '</p>'
+    + '<div class="nu-wstats">' + stat(today ? 'Today' : 'This day', s.today) + stat('7-day avg', s.avg7) + stat('30-day avg', s.avg30) + '</div>'
+    + nuChartSvg(w.trend, NU.shiftDay(nuDate, -59), nuDate, 300, 120)
+    + (rows ? '<div class="nu-wlist">' + rows + '</div>' : '')
+    + '</section>';
+}
+// A static picture: weigh-ins as faint dots, the 7-day average as the line.
+// The line is what to read — a single morning moves with water and salt.
+function nuChartSvg(trend, from, to, W, H) {
+  const pts = (trend || []).filter((t) => t.date >= from && t.date <= to);
+  if (pts.length < 2) {
+    return '<div class="nu-chart-empty">' + (pts.length ? 'One weigh-in so far. The trend needs a few more.' : 'No weigh-ins in this stretch yet.') + '</div>';
+  }
+  const L = 30, R = 6, T = 8, B = 16;
+  // The axis starts at the first reading, not the window's edge — otherwise
+  // the first fortnight of use is a squiggle in the right-hand quarter of an
+  // otherwise empty box.
+  if (pts[0].date > from) from = pts[0].date;
+  const days = NU.dayRange(from, to), n = days.length;
+  const at = new Map(days.map((d, i) => [d, i]));
+  const vals = pts.flatMap((p) => [p.kg, p.avg7]).filter((v) => v != null);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi - lo < 1) { const mid = (hi + lo) / 2; lo = mid - 0.5; hi = mid + 0.5; }
+  const pad = (hi - lo) * 0.08;
+  const ylo = lo - pad, yhi = hi + pad;
+  const x = (d) => L + (at.get(d) / Math.max(1, n - 1)) * (W - L - R);
+  const y = (v) => T + ((yhi - v) / (yhi - ylo)) * (H - T - B);
+  let g = '';
+  [lo, (lo + hi) / 2, hi].forEach((v) => {
+    const yy = y(v).toFixed(1);
+    g += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '"/>'
+      + '<text class="lbl" x="' + (L - 5) + '" y="' + (y(v) + 3).toFixed(1) + '" text-anchor="end">' + v.toFixed(1) + '</text>';
+  });
+  g += '<text class="lbl" x="' + L + '" y="' + (H - 3) + '">' + nuShort(from) + '</text>'
+    + '<text class="lbl" x="' + (W - R) + '" y="' + (H - 3) + '" text-anchor="end">' + nuShort(to) + '</text>';
+  const dots = pts.map((p) => '<circle class="dot" cx="' + x(p.date).toFixed(1) + '" cy="' + y(p.kg).toFixed(1) + '" r="2.2">'
+    + '<title>' + nuShort(p.date) + ' · ' + p.kg + ' kg</title></circle>').join('');
+  const line = '<polyline class="avg" points="' + pts.filter((p) => p.avg7 != null)
+    .map((p) => x(p.date).toFixed(1) + ',' + y(p.avg7).toFixed(1)).join(' ') + '"/>';
+  const a = pts[0], b = pts[pts.length - 1];
+  const label = 'Bodyweight ' + nuShort(a.date) + ' to ' + nuShort(b.date) + ': the 7-day average went from ' + a.avg7 + ' to ' + b.avg7 + ' kg';
+  return '<svg class="nu-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + escapeHtml(label) + '">' + g + dots + line + '</svg>'
+    + '<div class="nu-chart-key" aria-hidden="true"><span><i></i>7-day average</span><span><i class="d"></i>Weigh-ins</span></div>';
+}
+
+// ------------------------------------------------------------- day wiring
+function nuBindDay() {
+  const body = $('#nuBody');
+  const each = (sel, fn) => body.querySelectorAll(sel).forEach(fn);
+  each('[data-nuadd]', (b) => { b.onclick = () => nuOpenAdd(b.dataset.nuadd); });
+  each('[data-nurepeat]', (b) => { b.onclick = () => nuRepeat(b.dataset.nurepeat); });
+  each('[data-nucopy]', (b) => {
+    b.onclick = () => {
+      nuCopy = nuCopy === b.dataset.nucopy ? null : b.dataset.nucopy;
+      nuFocusNext = nuCopy ? 'nuCopyYesterday' : null;
+      nuPaintDay();
+    };
+  });
+  each('[data-nuedit]', (b) => { b.onclick = () => { nuEdit = b.dataset.nuedit; nuAdd = null; nuFocusNext = 'nuEQty'; nuPaintDay(); }; });
+  each('[data-nudup]', (b) => {
+    b.onclick = async () => {
+      try {
+        const r = await nuApi('POST', '/duplicate', { date: nuDate, id: b.dataset.nudup });
+        flash('Logged ' + r.entry.name + ' again');
+        await nuRenderDay();
+      } catch (e) { flash(e.message); }
+    };
+  });
+  each('[data-nudel]', (b) => { b.onclick = () => nuRemoveEntry(b.dataset.nudel); });
+
+  // editing an entry
+  const eq = $('#nuEQty');
+  if (eq) {
+    eq.oninput = nuPaintEditPreview;
+    $('#nuEUnit').onchange = nuPaintEditPreview;
+    $('#nuECancel').onclick = () => { const id = nuEdit; nuEdit = null; nuPaintDay(); const b = body.querySelector('[data-nuedit="' + id + '"]'); if (b) b.focus(); };
+    const save = async () => {
+      try {
+        await nuApi('PATCH', '/log?date=' + nuDate + '&id=' + encodeURIComponent(nuEdit), {
+          quantity: parseFloat(eq.value), unit: $('#nuEUnit').value, meal: $('#nuEMeal').value, notes: $('#nuENotes').value,
+        });
+        nuEdit = null;
+        await nuRenderDay();
+      } catch (e) { const x = $('#nuEErr'); x.textContent = e.message; x.hidden = false; }
+    };
+    $('#nuESave').onclick = save;
+    [eq, $('#nuENotes')].forEach((el) => { el.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } }; });
+  }
+
+  // copy-from
+  if ($('#nuCopyGo')) {
+    $('#nuCopyYesterday').onclick = () => nuCopyFrom(NU.shiftDay(nuDate, -1), nuCopy, nuCopy);
+    $('#nuCopyGo').onclick = () => nuCopyFrom($('#nuCopyDate').value, $('#nuCopyMeal').value, nuCopy);
+    $('#nuCopyCancel').onclick = () => { const m = nuCopy; nuCopy = null; nuPaintDay(); const b = body.querySelector('[data-nucopy="' + m + '"]'); if (b) b.focus(); };
+  }
+
+  // the add panel
+  const s = $('#nuSearch');
+  if (s) {
+    const bindOpts = () => {
+      $('#nuResults').querySelectorAll('[data-nuopt]').forEach((el) => {
+        el.onmousedown = (e) => e.preventDefault();        // keep focus in the search box
+        el.onclick = () => nuChoose(+el.dataset.nuopt);
+      });
+    };
+    s.oninput = () => { nuAdd.q = s.value; nuAdd.active = 0; $('#nuResults').innerHTML = nuResultsHtml(); bindOpts(); nuHighlight(); };
+    s.onkeydown = (e) => {
+      const n = (nuAdd.options || []).length;
+      if (e.key === 'ArrowDown') { e.preventDefault(); nuAdd.active = Math.min(n - 1, nuAdd.active + 1); nuHighlight(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); nuAdd.active = Math.max(0, nuAdd.active - 1); nuHighlight(); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (n) nuChoose(nuAdd.active); }
+    };
+    bindOpts();
+  }
+  if ($('#nuQty')) {
+    $('#nuQty').oninput = nuPaintPreview;
+    $('#nuUnit').onchange = nuPaintPreview;
+    $('#nuAddGo').onclick = nuSubmitPick;
+    ['#nuQty', '#nuNotes'].forEach((q) => { $(q).onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); nuSubmitPick(); } }; });
+  }
+  if ($('#nuCustomGo')) {
+    $('#nuCustomGo').onclick = nuSubmitCustom;
+    body.querySelectorAll('.nu-add input[type="number"], .nu-add input[type="text"]').forEach((el) => {
+      el.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); nuSubmitCustom(); } };
+    });
+  }
+  if ($('#nuBack')) $('#nuBack').onclick = nuBackToSearch;
+
+  // weight
+  $('#nuWForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const kg = parseFloat($('#nuKg').value);
+    if (!(kg > 0)) { $('#nuKg').focus(); return; }
+    try {
+      const r = await nuApi('POST', '/weights', { date: nuDate, kg });
+      flash((r.updated ? 'Updated to ' : 'Logged ') + r.weight.kg + ' kg');
+      await nuRenderDay();
+    } catch (err) { flash(err.message); }
+  };
+  each('[data-nuwedit]', (b) => { b.onclick = () => { nuWEdit = b.dataset.nuwedit; nuFocusNext = 'nuWEditKg'; nuPaintDay(); }; });
+  each('[data-nuwdel]', (b) => {
+    b.onclick = async () => {
+      const id = b.dataset.nuwdel;
+      const w = (nuWeightData.weights || []).find((x) => x.id === id);
+      try {
+        await nuApi('DELETE', '/weights?id=' + encodeURIComponent(id));
+        nuOfferUndo('Removed the ' + (w ? nuShort(w.date) + ' ' : '') + 'weigh-in',
+          () => nuApi('PATCH', '/weights?id=' + encodeURIComponent(id), { restore: true }));
+        await nuRenderDay();
+      } catch (e) { flash(e.message); }
+    };
+  });
+  if ($('#nuWEditSave')) {
+    const save = async () => {
+      try {
+        await nuApi('PATCH', '/weights?id=' + encodeURIComponent(nuWEdit), { kg: parseFloat($('#nuWEditKg').value) });
+        nuWEdit = null;
+        await nuRenderDay();
+      } catch (e) { flash(e.message); }
+    };
+    $('#nuWEditSave').onclick = save;
+    $('#nuWEditKg').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } };
+  }
+}
+
+// --------------------------------------------------------------- history
+async function nuRenderHistory() {
+  const gen = ++nuGen, to = nuDate;
+  const mon = iso(mondayOf(new Date(to + 'T12:00:00')));
+  const weeks = [0, 1, 2, 3, 4, 5].map((i) => { const f = NU.shiftDay(mon, -7 * i); return { from: f, to: NU.shiftDay(f, 6) }; });
+  const all = await Promise.all([
+    nuApi('GET', '/summary?from=' + NU.shiftDay(to, -6) + '&to=' + to),
+    nuApi('GET', '/history?from=' + NU.shiftDay(to, -13) + '&to=' + to),
+    nuApi('GET', '/weights?from=' + NU.shiftDay(to, -89) + '&to=' + to),
+  ].concat(weeks.map((w) => nuApi('GET', '/summary?from=' + w.from + '&to=' + w.to))));
+  if (gen !== nuGen || nuView !== 'history' || to !== nuDate) return;
+  const [sum, hist, wts] = all, wk = all.slice(3);
+  const st = wts.stats;
+  const stat = (label, v) => '<div><span>' + label + '</span><b>' + (v != null ? v.toFixed(1) + '<small>kg</small>' : '—') + '</b></div>';
+  $('#nuBody').innerHTML =
+    '<div class="nu-hgrid">'
+    + nuSummaryHtml(sum, 'Last 7 days')
+    + '<section class="nu-card" aria-labelledby="nuHW"><h3 id="nuHW">Bodyweight · 90 days</h3>'
+    + '<div class="nu-wstats">' + stat('Latest', st.latest && st.latest.kg) + stat('7-day avg', st.avg7) + stat('30-day avg', st.avg30) + '</div>'
+    + nuChartSvg(wts.trend, NU.shiftDay(to, -89), to, 520, 170) + '</section>'
+    + '</div>'
+    + nuDaysTableHtml(hist.days)
+    + nuWeeksTableHtml(weeks, wk);
+  $('#nuBody').querySelectorAll('[data-nuday]').forEach((b) => {
+    b.onclick = () => { nuView = 'day'; nuGo(b.dataset.nuday); };
+  });
+}
+function nuSummaryHtml(s, title) {
+  const head = '<section class="nu-card" aria-labelledby="nuSumH"><h3 id="nuSumH">' + escapeHtml(title) + '</h3>';
+  if (!s.daysLogged && !s.weight.readings) {
+    return head + '<div class="nu-empty">Nothing logged from ' + nuShort(s.from) + ' to ' + nuShort(s.to) + '.</div></section>';
+  }
+  const row = (k, v) => '<div class="nu-srow"><span>' + k + '</span><b>' + v + '</b></div>';
+  const a = s.averages, w = s.weight;
+  let h = head;
+  if (s.daysLogged) {
+    h += row('Calories', nuK(a.calories) + ' kcal/day') + row('Protein', nuG(a.protein) + ' g/day')
+      + row('Carbs', nuG(a.carbs) + ' g/day') + row('Fat', nuG(a.fat) + ' g/day')
+      + row('Calorie target, ' + s.calorieTarget.rule, s.calorieTarget.hit + ' / ' + s.calorieTarget.of + ' days')
+      + row('Protein target hit', s.proteinTarget.hit + ' / ' + s.proteinTarget.of + ' days');
+  }
+  if (w.readings) {
+    h += row('Weight', w.change != null
+      ? w.first.kg.toFixed(1) + ' → ' + w.last.kg.toFixed(1) + ' kg (' + nuSigned(w.change) + ')'
+      : w.last.kg.toFixed(1) + ' kg');
+    h += row('Average weight', w.average.toFixed(1) + ' kg');
+  }
+  return h + '<p class="nu-note">Averages cover the ' + s.daysLogged + ' of ' + s.days + ' days with food logged. '
+    + 'A day you did not track is left out, not counted as zero.</p></section>';
+}
+function nuDaysTableHtml(days) {
+  const rows = days.slice().reverse().map((d) => {
+    const t = d.totals, tg = d.targets;
+    const lab = new Date(d.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+    const over = d.logged && tg.calories != null && t.calories > tg.calories
+      ? '<span class="sub">+' + nuK(t.calories - tg.calories) + '</span>' : '';
+    const cell = (v, f) => (d.logged ? f(v) : '—');
+    return '<tr class="' + (d.logged ? '' : 'off') + (d.date === nuDate ? ' sel' : '') + '">'
+      + '<td><button type="button" class="nu-dayb" data-nuday="' + nuA(d.date) + '" aria-label="Open ' + escapeHtml(nuDayLabel(d.date)) + '">' + escapeHtml(lab) + '</button></td>'
+      + '<td>' + cell(t.calories, nuK) + over + '</td><td>' + cell(t.protein, nuG) + '</td>'
+      + '<td>' + cell(t.carbs, nuG) + '</td><td>' + cell(t.fat, nuG) + '</td>'
+      + '<td>' + (d.weight != null ? d.weight.toFixed(1) : '—') + '</td></tr>';
+  }).join('');
+  return '<section class="nu-card" style="margin-bottom:14px" aria-labelledby="nuDaysH"><h3 id="nuDaysH">Days</h3>'
+    + '<table class="nu-table"><thead><tr><th scope="col">Day</th><th scope="col">Calories</th><th scope="col">Protein g</th>'
+    + '<th scope="col">Carbs g</th><th scope="col">Fat g</th><th scope="col">Weight kg</th></tr></thead><tbody>' + rows + '</tbody></table></section>';
+}
+function nuWeeksTableHtml(weeks, sums) {
+  const rows = weeks.map((w, i) => {
+    const s = sums[i];
+    const lab = nuShort(w.from) + ' – ' + nuShort(w.to);
+    if (!s.daysLogged && !s.weight.readings) {
+      return '<tr class="off"><td>' + escapeHtml(lab) + '</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>';
+    }
+    const ch = s.weight.change;
+    return '<tr><td>' + escapeHtml(lab) + '</td><td>' + s.daysLogged + '</td>'
+      + '<td>' + (s.daysLogged ? nuK(s.averages.calories) : '—') + '</td>'
+      + '<td>' + (s.daysLogged ? nuG(s.averages.protein) : '—') + '</td>'
+      + '<td>' + (s.daysLogged ? s.proteinTarget.hit + ' / ' + s.proteinTarget.of : '—') + '</td>'
+      + '<td>' + (ch != null ? nuSigned(ch) : (s.weight.average != null ? s.weight.average.toFixed(1) : '—')) + '</td></tr>';
+  }).join('');
+  return '<section class="nu-card" aria-labelledby="nuWeeksH"><h3 id="nuWeeksH">Weeks</h3>'
+    + '<table class="nu-table"><thead><tr><th scope="col">Week</th><th scope="col">Days logged</th><th scope="col">Avg kcal</th>'
+    + '<th scope="col">Avg protein g</th><th scope="col">Protein target</th><th scope="col">Weight change kg</th></tr></thead><tbody>'
+    + rows + '</tbody></table></section>';
+}
+
+// ----------------------------------------------------------------- foods
+async function nuRenderFoods() {
+  const gen = ++nuGen;
+  const r = await nuApi('GET', '/foods?include_archived=true');
+  if (gen !== nuGen || nuView !== 'foods') return;
+  nuPaintFoods(r.foods);
+}
+function nuPaintFoods(all) {
+  nuFoods = all.filter((f) => !f.archived);
+  const q = nuFoodQ.trim().toLowerCase();
+  const list = all.filter((f) => (nuShowArchived || !f.archived)
+    && (!q || (f.name + ' ' + (f.brand || '')).toLowerCase().includes(q)))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const v = (n, u) => '<div class="v">' + (n == null ? '—' : nuG(n)) + (u ? '<small>' + u + '</small>' : '') + '</div>';
+  const rows = list.map((f) => {
+    if (nuFoodEdit === f.id) return '<div role="listitem">' + nuFoodFormHtml(f) + '</div>';
+    const name = escapeHtml(f.name);
+    return '<div class="nu-food' + (f.archived ? ' arch' : '') + '" role="listitem">'
+      + '<div class="n"><div>' + name + (f.estimate ? '<span class="nu-est" title="A typical value, not from a label">≈</span>' : '')
+      + (f.brand && !f.name.includes(f.brand) ? ' <span class="nu-e-sub" style="display:inline">· ' + escapeHtml(f.brand) + '</span>' : '') + '</div>'
+      + (f.notes ? '<div>' + escapeHtml(f.notes) + '</div>' : '') + '</div>'
+      + '<div class="srv">per ' + escapeHtml(f.servingSize + ' ' + f.servingUnit) + '</div>'
+      + '<div class="v">' + nuK(f.calories) + '<small>kcal</small></div>' + v(f.protein, 'P') + v(f.carbs, 'C') + v(f.fat, 'F')
+      + '<div class="nu-e-acts" style="opacity:1">'
+      + (f.archived
+        ? '<button type="button" class="nu-act" data-nufrestore="' + nuA(f.id) + '" aria-label="Restore ' + name + '">Restore</button>'
+        : '<button type="button" class="nu-icon" data-nufedit="' + nuA(f.id) + '" aria-label="Edit ' + name + '" title="Edit">✎</button>'
+          + '<button type="button" class="nu-icon del" data-nufarch="' + nuA(f.id) + '" aria-label="Archive ' + name + '" title="Archive">🗄</button>')
+      + '</div></div>';
+  }).join('');
+  $('#nuBody').innerHTML =
+    '<div class="nu-toolbar">'
+    + '<label class="nu-sr" for="nuFoodQ">Filter foods</label>'
+    + '<input id="nuFoodQ" type="text" autocomplete="off" placeholder="Filter your foods…" value="' + escapeHtml(nuFoodQ) + '">'
+    + '<button type="button" class="nu-act" id="nuFoodArch" aria-pressed="' + nuShowArchived + '">'
+    + (nuShowArchived ? 'Hide archived' : 'Show archived') + '</button>'
+    + '<button type="button" class="addbtn" id="nuFoodNew">+ New food</button></div>'
+    + (nuFoodEdit === 'new' ? nuFoodFormHtml(null) : '')
+    + '<section class="nu-card">'
+    + '<div class="nu-food nu-food-h" aria-hidden="true"><div>Food</div><div>Serving</div><div class="v">Calories</div><div class="v">Protein</div><div class="v">Carbs</div><div class="v">Fat</div><div></div></div>'
+    + '<div role="list" aria-label="Saved foods">' + (rows || '<div class="nu-empty" style="padding:10px 8px">No foods match.</div>') + '</div></section>'
+    + '<p class="nu-note">Changing a food changes what you log from now on. Anything already logged keeps the numbers it was logged with. '
+    + '≈ marks a typical value rather than one off a label — worth replacing with your own.</p>';
+  nuBindFoods(all);
+  nuFocus();
+}
+function nuFoodFormHtml(f) {
+  const x = f || { name: '', brand: '', servingSize: 1, servingUnit: 'serving', notes: '', estimate: false };
+  const t = (id, label, v, cls) => '<label class="nu-field ' + (cls || 'w-m') + '">' + label + '<input id="' + id + '" type="text" autocomplete="off" value="' + escapeHtml(v == null ? '' : String(v)) + '"></label>';
+  const n = (id, label, v) => '<label class="nu-field w-s">' + label + '<input id="' + id + '" type="number" inputmode="decimal" step="any" min="0" value="' + (v == null ? '' : v) + '"></label>';
+  return '<div class="nu-edit nu-foodform" role="group" aria-label="' + (f ? 'Edit ' + escapeHtml(f.name) : 'New food') + '" style="margin-bottom:12px">'
+    + '<div class="nu-row">' + t('nuFName', 'Name', x.name, 'grow') + t('nuFBrand', 'Brand', x.brand) + '</div>'
+    + '<div class="nu-row">' + n('nuFSize', 'Serving size', x.servingSize) + t('nuFUnit', 'Serving unit', x.servingUnit)
+    + n('nuFCal', 'Calories', x.calories) + n('nuFPro', 'Protein g', x.protein) + n('nuFCarb', 'Carbs g', x.carbs) + n('nuFFat', 'Fat g', x.fat) + '</div>'
+    + '<div class="nu-row">' + t('nuFNotes', 'Notes', x.notes, 'grow')
+    + '<label class="nu-check"><input type="checkbox" id="nuFEst"' + (x.estimate ? ' checked' : '') + '> A typical value, not from a label</label></div>'
+    + '<div class="nu-foot"><span class="nu-preview"></span><button type="button" class="nu-ghost" id="nuFCancel">Cancel</button>'
+    + '<button type="button" class="addbtn" id="nuFSave">' + (f ? 'Save' : 'Add food') + '</button></div>'
+    + '<div class="nu-err" id="nuFErr" hidden></div></div>';
+}
+function nuBindFoods(all) {
+  const body = $('#nuBody');
+  const q = $('#nuFoodQ');
+  q.oninput = () => { nuFoodQ = q.value; nuPaintFoods(all); const el = $('#nuFoodQ'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); };
+  $('#nuFoodArch').onclick = () => { nuShowArchived = !nuShowArchived; nuPaintFoods(all); };
+  $('#nuFoodNew').onclick = () => { nuFoodEdit = 'new'; nuFocusNext = 'nuFName'; nuPaintFoods(all); };
+  body.querySelectorAll('[data-nufedit]').forEach((b) => { b.onclick = () => { nuFoodEdit = b.dataset.nufedit; nuFocusNext = 'nuFName'; nuPaintFoods(all); }; });
+  body.querySelectorAll('[data-nufarch]').forEach((b) => {
+    b.onclick = async () => {
+      try {
+        const r = await nuApi('PATCH', '/foods?id=' + encodeURIComponent(b.dataset.nufarch), { archived: true });
+        flash('🗄 Archived ' + r.food.name + ' — “Show archived” brings it back');
+        nuRenderFoods();
+      } catch (e) { flash(e.message); }
+    };
+  });
+  body.querySelectorAll('[data-nufrestore]').forEach((b) => {
+    b.onclick = async () => {
+      try { await nuApi('PATCH', '/foods?id=' + encodeURIComponent(b.dataset.nufrestore), { archived: false }); nuRenderFoods(); }
+      catch (e) { flash(e.message); }
+    };
+  });
+  if ($('#nuFSave')) {
+    const v = (id) => $('#' + id).value;
+    const n = (id) => (v(id).trim() === '' ? null : Number(v(id)));
+    const save = async () => {
+      const patch = { name: v('nuFName').trim(), brand: v('nuFBrand').trim(), servingSize: n('nuFSize') || 1,
+        servingUnit: v('nuFUnit').trim() || 'serving', calories: n('nuFCal'), protein: n('nuFPro'),
+        carbs: n('nuFCarb'), fat: n('nuFFat'), notes: v('nuFNotes'), estimate: $('#nuFEst').checked };
+      try {
+        if (nuFoodEdit === 'new') await nuApi('POST', '/foods', patch);
+        else await nuApi('PATCH', '/foods?id=' + encodeURIComponent(nuFoodEdit), patch);
+        flash('Saved ' + patch.name);
+        nuFoodEdit = null;
+        nuRenderFoods();
+      } catch (e) { const x = $('#nuFErr'); x.textContent = e.message; x.hidden = false; }
+    };
+    $('#nuFSave').onclick = save;
+    $('#nuFCancel').onclick = () => { nuFoodEdit = null; nuPaintFoods(all); };
+    body.querySelectorAll('.nu-foodform input[type="text"], .nu-foodform input[type="number"]').forEach((el) => {
+      el.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } };
+    });
+  }
+}
+
+// --------------------------------------------------------------- targets
+async function nuRenderTargets() {
+  const gen = ++nuGen;
+  const [r, w] = await Promise.all([nuApi('GET', '/settings'), nuApi('GET', '/weights')]);
+  if (gen !== nuGen || nuView !== 'targets') return;
+  const s = r.settings, t = r.targets, today = r.today;
+  const n = (id, label, v, unit, hint) => '<label class="nu-field w-m">' + label
+    + '<input id="' + id + '" type="number" inputmode="decimal" step="any" min="0" value="' + (v == null ? '' : v) + '"'
+    + (hint ? ' placeholder="' + hint + '"' : '') + '></label>' + (unit ? '<span class="nu-saved" style="padding-bottom:9px">' + unit + '</span>' : '');
+  const hist = s.targets.slice().reverse().map((x) => '<div><b>' + (x.from ? 'From ' + escapeHtml(nuDayLabel(x.from)) : 'From the start') + '</b> — '
+    + nuK(x.calories) + ' kcal · ' + nuG(x.protein) + ' g protein · fat ' + (x.fat != null ? nuG(x.fat) + ' g' : 'off')
+    + ' · carbs ' + (x.carbs != null ? nuG(x.carbs) + ' g' : 'off') + '</div>').join('');
+  const latest = w.stats && w.stats.latest;
+  $('#nuBody').innerHTML =
+    '<div class="nu-hgrid">'
+    + '<section class="nu-card" aria-labelledby="nuTH"><h3 id="nuTH">Daily targets</h3>'
+    + '<div class="nu-row">' + n('nuTCal', 'Calories', t.calories, 'kcal') + n('nuTPro', 'Protein', t.protein, 'g') + '</div>'
+    + '<div class="nu-row">' + n('nuTFat', 'Fat', t.fat, 'g', 'no target') + n('nuTCarb', 'Carbs', t.carbs, 'g', 'no target') + '</div>'
+    + '<div class="nu-row"><label class="nu-field">Starting<input id="nuTFrom" type="date" value="' + today + '"></label></div>'
+    + '<p class="nu-note">A change applies from the day you choose onward. Earlier days keep the targets they had, so last week is still judged by last week’s numbers. Leave fat or carbs blank to track them without a target.</p>'
+    + '</section>'
+    + '<section class="nu-card" aria-labelledby="nuPH"><h3 id="nuPH">You</h3>'
+    + '<div class="nu-row"><label class="nu-field w-m">Goal<select id="nuPGoal">'
+    + [['cut', 'Cut'], ['maintain', 'Maintain'], ['gain', 'Gain']].map(([k, l]) => '<option value="' + k + '"' + (s.goal === k ? ' selected' : '') + '>' + l + '</option>').join('')
+    + '</select></label></div>'
+    + '<div class="nu-row">' + n('nuPKg', 'Bodyweight', s.weightKg, 'kg') + n('nuPCm', 'Height', s.heightCm, 'cm') + n('nuPAge', 'Age', s.age, 'years') + '</div>'
+    + '<p class="nu-note">' + (latest ? 'Your latest weigh-in is ' + latest.kg.toFixed(1) + ' kg on ' + nuShort(latest.date) + '. ' : '')
+    + 'Targets are yours to set — nothing here works them out from these numbers or changes them for you. The goal decides whether a day counts as within the calorie target by being at or under it (cut, maintain) or at or over it (gain).</p>'
+    + '</section></div>'
+    + '<div class="nu-foot" style="margin:0 0 14px"><span class="nu-saved" id="nuTSaved" role="status"></span>'
+    + '<button type="button" class="addbtn" id="nuTSave" style="height:36px;padding:0 18px">Save</button></div>'
+    + '<div class="nu-err" id="nuTErr" hidden></div>'
+    + '<section class="nu-card" aria-labelledby="nuTHH"><h3 id="nuTHH">Target history</h3><div class="nu-thist">' + hist + '</div></section>';
+  $('#nuTSave').onclick = async () => {
+    const val = (id) => $('#' + id).value.trim();
+    const num = (id) => (val(id) === '' ? null : Number(val(id)));
+    const patch = {};
+    // Only what changed, so saving your height does not stamp a new target entry.
+    [['calories', 'nuTCal'], ['protein', 'nuTPro'], ['fat', 'nuTFat'], ['carbs', 'nuTCarb']].forEach(([k, id]) => {
+      if (num(id) !== t[k]) patch[k] = num(id);
+    });
+    if (Object.keys(patch).length) patch.effectiveFrom = val('nuTFrom') || today;
+    if ($('#nuPGoal').value !== s.goal) patch.goal = $('#nuPGoal').value;
+    [['weightKg', 'nuPKg'], ['heightCm', 'nuPCm'], ['age', 'nuPAge']].forEach(([k, id]) => {
+      if (num(id) !== s[k]) patch[k] = num(id);
+    });
+    const err = $('#nuTErr');
+    err.hidden = true;
+    if (!Object.keys(patch).length) { $('#nuTSaved').textContent = 'Nothing changed.'; return; }
+    try {
+      await nuApi('PATCH', '/settings', patch);
+      await nuRenderTargets();
+      $('#nuTSaved').textContent = 'Saved.';
+    } catch (e) { err.textContent = e.message.charAt(0).toUpperCase() + e.message.slice(1); err.hidden = false; }
+  };
+}
+
+// --------------------------------------------------------- weekly review
+// A compact block in the week's review, and only when there is something in
+// it. Fetched once per week shown and dropped whenever nutrition is written.
+function nuReviewHtml(w) {
+  const s = weekNutritionCache.get(w.start);
+  if (!s || (!s.daysLogged && !s.weight.readings)) return '';
+  const row = (k, v) => '<div class="wr-row"><span>' + k + '</span><b>' + v + '</b></div>';
+  let h = '<section class="wr-sec"><h3>Nutrition</h3><div class="wr-rows">';
+  if (s.daysLogged) {
+    h += row('Average calories', nuK(s.averages.calories))
+      + row('Average protein', nuG(s.averages.protein) + ' g')
+      + row('Protein target', s.proteinTarget.hit + ' / ' + s.proteinTarget.of + ' days')
+      + row('Calorie target', s.calorieTarget.hit + ' / ' + s.calorieTarget.of + ' days');
+  }
+  if (s.weight.readings) {
+    h += row('Weight', s.weight.change != null
+      ? s.weight.first.kg.toFixed(1) + ' → ' + s.weight.last.kg.toFixed(1) + ' kg' : s.weight.last.kg.toFixed(1) + ' kg');
+  }
+  return h + '</div></section>';
+}
+function nuReviewLoad(w) {
+  if (weekNutritionCache.has(w.start)) return;
+  weekNutritionCache.set(w.start, null);             // in flight — do not ask twice
+  nuApi('GET', '/summary?from=' + w.start + '&to=' + w.end)
+    .then((s) => { weekNutritionCache.set(w.start, s); if (activePage === 'review' && (s.daysLogged || s.weight.readings)) renderReviewPage(); })
+    .catch(() => {});
+}
+
+// ----------------------------------------------------------------- wiring
+function nuInit() {
+  document.querySelectorAll('#nuViews [data-nuview]').forEach((b) => {
+    b.onclick = () => { nuView = b.dataset.nuview; nuAdd = null; nuEdit = null; nuCopy = null; renderNutritionPage(); };
+  });
+  // Arrow keys across the tabs, as a tab list is expected to behave.
+  $('#nuViews').onkeydown = (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const tabs = [...document.querySelectorAll('#nuViews [data-nuview]')];
+    const i = tabs.findIndex((b) => b.dataset.nuview === nuView);
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+    e.preventDefault();
+    nuView = next.dataset.nuview;
+    renderNutritionPage().then(() => next.focus());
+  };
+  $('#nuPrev').onclick = () => nuGo(NU.shiftDay(nuDate, -1));
+  $('#nuNext').onclick = () => nuGo(NU.shiftDay(nuDate, 1));
+  $('#nuToday').onclick = () => nuGo(iso(new Date()));
+  $('#nuDate').onchange = () => { if (NU.isDay($('#nuDate').value)) nuGo($('#nuDate').value); };
+  // Escape inside a nutrition form backs out of that form. It must stop here:
+  // further up, Escape closes the whole page.
+  $('#nuBody').addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const t = e.target;
+    let handled = true;
+    if (t.closest('.nu-add')) { if (nuAdd && (nuAdd.pick || nuAdd.custom)) nuBackToSearch(); else nuCloseAdd(); }
+    else if (t.closest('.nu-foodform')) { nuFoodEdit = null; nuRenderFoods(); }
+    else if (t.closest('.nu-edit')) { nuEdit = null; nuPaintDay(); }
+    else if (t.closest('.nu-copy')) { const m = nuCopy; nuCopy = null; nuFocusNext = m ? 'nuAddBtn-' + m : null; nuPaintDay(); }
+    else if (nuWEdit && t.closest('.nu-wrow')) { nuWEdit = null; nuPaintDay(); }
+    else handled = false;
+    if (handled) { e.preventDefault(); e.stopPropagation(); }
+  });
+}
+nuInit();
 
 // =====================================================================
 // DUE — the one page that answers "what has to be done by when".

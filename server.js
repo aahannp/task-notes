@@ -320,11 +320,16 @@ const COLLECTIONS = {
   settings: 'settings.json',
   graph: 'graph.json',
   checklist: 'checklist.json',
+  // Nutrition's long-lived stores. Each day's food log is a per-day sidecar
+  // instead (see NUTRITION below), like a day's meta.
+  nutrition: 'nutrition.json',
+  'nutrition-foods': 'nutrition-foods.json',
+  'nutrition-weights': 'nutrition-weights.json',
 };
 // reviews is an object keyed by week-start; everything else is an array.
 // `graph` is a workspace, not a list: a set of references to real tasks plus
 // where they sit on the canvas. It owns no task data of its own.
-const OBJECT_COLLECTIONS = new Set(['reviews', 'settings', 'graph']);
+const OBJECT_COLLECTIONS = new Set(['reviews', 'settings', 'graph', 'nutrition']);
 
 function collectionFile(name) { return path.join(DATA_DIR, COLLECTIONS[name]); }
 function readCollection(name) {
@@ -553,8 +558,372 @@ function serveStatic(req, res) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// NUTRITION — calories, protein and bodyweight.
+//
+// Stored the way the rest of the app is. The long-lived stores — settings,
+// the food library, weigh-ins — are ordinary collections, so they get atomic
+// writes, server-side updatedAt and the /api/rev refresh like everything else.
+// Each day's food log is a sidecar next to that day's tasks, so two laptops
+// editing different days never touch the same file.
+//
+// Every rule about the numbers lives in public/nutrition-core.js, which the
+// page loads too. This is only the storage and the HTTP around it.
+//
+// Nothing here removes data. "Deleting" a logged food or a weigh-in stamps
+// deletedAt and keeps the record, so the page can offer Undo and a slip of the
+// trackpad never costs a day's history; a saved food is archived, never
+// dropped, because old entries may still point at it.
+// ---------------------------------------------------------------------------
+const Nutrition = require('./public/nutrition-core.js');
+const nid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+function nutritionFileFor(date) { return path.join(DATA_DIR, `${date}.nutrition.json`); }
+function readNutritionDay(date) {
+  try {
+    const v = JSON.parse(fs.readFileSync(nutritionFileFor(date), 'utf8'));
+    return Array.isArray(v && v.entries) ? v.entries : [];
+  } catch { return []; }
+}
+function writeNutritionDay(date, entries) {
+  const next = stampUpdated(readNutritionDay(date), entries);
+  writeAtomic(nutritionFileFor(date), JSON.stringify({ date, entries: next }, null, 2));
+}
+// { date: entries } for the days in a window that have anything in them.
+function nutritionDays(from, to) {
+  const out = {};
+  Nutrition.dayRange(from, to).forEach((d) => {
+    const es = readNutritionDay(d);
+    if (es.length) out[d] = es;
+  });
+  return out;
+}
+function nutritionSettings() { return Nutrition.normSettings(readCollection('nutrition')); }
+// The starter foods go in once, when there has never been a library at all.
+// Not when it is merely empty: archiving every food is a choice, and quietly
+// re-seeding would undo it.
+function nutritionFoods() {
+  if (!fs.existsSync(collectionFile('nutrition-foods'))) {
+    const now = Date.now();
+    writeCollection('nutrition-foods', Nutrition.SEED_FOODS.map((f, i) =>
+      Object.assign(Nutrition.normFood(f), { id: nid() + i, createdAt: now, updatedAt: now })));
+  }
+  return readCollection('nutrition-foods').map(Nutrition.normFood);
+}
+function nutritionWeights() { return readCollection('nutrition-weights'); }
+
+// Everything the day screen needs, in one read. The page renders this; it does
+// not re-add anything itself.
+function nutritionDayView(date) {
+  const settings = nutritionSettings();
+  const entries = Nutrition.live(readNutritionDay(date));
+  const totals = Nutrition.totals(entries);
+  const targets = Nutrition.targetsFor(settings, date);
+  return {
+    date, goal: settings.goal, targets, totals,
+    remaining: Nutrition.remaining(totals, targets),
+    meals: Nutrition.byMeal(entries),
+    weight: Nutrition.weightStats(nutritionWeights(), date),
+  };
+}
+
+// A target is a positive number; fat and carbs may also be switched off (null).
+function checkTarget(k, v) {
+  if (v === null && (k === 'fat' || k === 'carbs')) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0 || n > 20000) throw new Error(k + ' target must be a positive number');
+  return n;
+}
+function checkKg(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 20 || n > 400) throw new Error('weight must be in kilograms, between 20 and 400');
+  return Math.round(n * 10) / 10;
+}
+const FOOD_FIELDS = ['name', 'brand', 'servingSize', 'servingUnit', 'calories', 'protein', 'carbs', 'fat', 'notes', 'estimate', 'archived'];
+
+function handleNutrition(req, res, u) {
+  const route = u.pathname.slice('/api/nutrition'.length) || '/';
+  const M = req.method;
+  const today = isoDate(new Date());
+  const fail = (code, msg) => sendJSON(res, code, { error: msg });
+  // A date in the query string, or a default. A malformed one is an error,
+  // not silently today: logging lunch onto the wrong day is worse than a 400.
+  const dateArg = (v, dflt) => {
+    if (v == null || v === '') return dflt;
+    const d = safeDate(String(v));
+    if (!d) throw new Error('date must be YYYY-MM-DD');
+    return d;
+  };
+  const withBody = (fn) => readBody(req, (err, raw) => {
+    if (err) return fail(413, 'too large');
+    let b;
+    try { b = raw ? JSON.parse(raw) : {}; } catch { return fail(400, 'body is not JSON'); }
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return fail(400, 'body must be an object');
+    try { fn(b); } catch (e) { fail(400, String(e.message || e)); }
+  }, 256 * 1024);
+  const foodsById = () => new Map(nutritionFoods().map((f) => [f.id, f]));
+
+  try {
+    // ---------------------------------------------------------- settings
+    if (route === '/settings') {
+      if (M === 'GET') {
+        const settings = nutritionSettings();
+        return sendJSON(res, 200, { settings, today, targets: Nutrition.targetsFor(settings, today) });
+      }
+      if (M === 'PATCH') return withBody((b) => {
+        let s = nutritionSettings();
+        const from = dateArg(b.effectiveFrom, today);
+        const t = {};
+        ['calories', 'protein', 'fat', 'carbs'].forEach((k) => { if (b[k] !== undefined) t[k] = checkTarget(k, b[k]); });
+        if (Object.keys(t).length) s = Nutrition.withTargets(s, t, from);
+        if (b.goal !== undefined) {
+          if (!Nutrition.GOALS.includes(b.goal)) throw new Error('goal must be one of ' + Nutrition.GOALS.join(', '));
+          s.goal = b.goal;
+        }
+        if (b.weightKg !== undefined) s.weightKg = checkKg(b.weightKg);
+        if (b.heightCm !== undefined) {
+          const h = Number(b.heightCm);
+          if (!Number.isFinite(h) || h < 100 || h > 250) throw new Error('height must be in centimetres');
+          s.heightCm = Math.round(h);
+        }
+        if (b.age !== undefined) {
+          const a = Number(b.age);
+          if (!Number.isInteger(a) || a < 10 || a > 120) throw new Error('age must be a whole number of years');
+          s.age = a;
+        }
+        s = Nutrition.normSettings(s);
+        writeCollection('nutrition', s);
+        sendJSON(res, 200, { ok: true, settings: s, effectiveFrom: from, targets: Nutrition.targetsFor(s, from) });
+      });
+    }
+
+    // -------------------------------------------------------------- foods
+    if (route === '/foods') {
+      if (M === 'GET') {
+        const all = nutritionFoods();
+        const list = u.searchParams.get('include_archived') === 'true' ? all : all.filter((f) => !f.archived);
+        const q = u.searchParams.get('q');
+        return sendJSON(res, 200, {
+          foods: q ? Nutrition.searchFoods(list, q) : list.slice().sort((a, b) => a.name.localeCompare(b.name)),
+        });
+      }
+      if (M === 'POST') return withBody((b) => {
+        const f = Nutrition.checkFood(Nutrition.normFood(b));
+        const all = nutritionFoods();
+        const clash = all.find((x) => !x.archived && x.name.toLowerCase() === f.name.toLowerCase()
+          && (x.brand || '').toLowerCase() === (f.brand || '').toLowerCase());
+        if (clash) return sendJSON(res, 409, { error: 'there is already a food called ' + f.name, food: clash });
+        const now = Date.now();
+        Object.assign(f, { id: nid(), archived: false, createdAt: now, updatedAt: now });
+        writeCollection('nutrition-foods', all.concat(f));
+        sendJSON(res, 201, { ok: true, food: f });
+      });
+      if (M === 'PATCH') return withBody((b) => {
+        const id = u.searchParams.get('id');
+        const all = nutritionFoods();
+        const i = all.findIndex((x) => x.id === id);
+        if (i < 0) return fail(404, 'no food with id ' + id);
+        const patch = {};
+        FOOD_FIELDS.forEach((k) => { if (b[k] !== undefined) patch[k] = b[k]; });
+        all[i] = Nutrition.checkFood(Nutrition.normFood(Object.assign({}, all[i], patch,
+          { id: all[i].id, createdAt: all[i].createdAt })));
+        writeCollection('nutrition-foods', all);
+        // Deliberately touches no day files: past entries keep what they logged.
+        sendJSON(res, 200, { ok: true, food: nutritionFoods().find((x) => x.id === id) });
+      });
+    }
+
+    // ---------------------------------------------------------------- day
+    if (route === '/day' && M === 'GET') {
+      return sendJSON(res, 200, nutritionDayView(dateArg(u.searchParams.get('date'), today)));
+    }
+
+    // ---------------------------------------------------------------- log
+    if (route === '/log') {
+      if (M === 'POST') return withBody((b) => {
+        const date = dateArg(b.date, today);
+        const meal = b.meal ? Nutrition.theMeal(b.meal) : Nutrition.mealForHour(new Date().getHours());
+        let food;
+        if (b.foodId) {
+          food = nutritionFoods().find((f) => f.id === b.foodId);
+          if (!food) return fail(404, 'no food with id ' + b.foodId);
+          if (food.archived) throw new Error(food.name + ' is archived — restore it first');
+        } else if (b.custom) {
+          food = Nutrition.customFood(b.custom);
+          // Saved to the library as well if asked, so the second time is quick.
+          if (b.save) {
+            const all = nutritionFoods();
+            const now = Date.now();
+            Object.assign(food, { id: nid(), createdAt: now, updatedAt: now });
+            writeCollection('nutrition-foods', all.concat(food));
+          }
+        } else {
+          throw new Error('say which food: foodId, or custom with its numbers');
+        }
+        const quantity = b.quantity == null && b.custom ? 1 : b.quantity;
+        const entry = Nutrition.makeEntry(food, { meal, quantity, unit: b.unit, notes: b.notes });
+        const now = Date.now();
+        Object.assign(entry, { id: nid(), createdAt: now, updatedAt: now });
+        writeNutritionDay(date, readNutritionDay(date).concat(entry));
+        sendJSON(res, 201, { ok: true, entry, day: nutritionDayView(date) });
+      });
+      if (M === 'PATCH' || M === 'DELETE') {
+        const date = dateArg(u.searchParams.get('date'), null);
+        const id = u.searchParams.get('id');
+        if (!date || !id) return fail(400, 'date and id are required');
+        const entries = readNutritionDay(date);
+        const i = entries.findIndex((e) => e.id === id);
+        if (i < 0) return fail(404, 'no entry ' + id + ' on ' + date);
+        if (M === 'DELETE') {
+          entries[i] = Object.assign({}, entries[i], { deletedAt: entries[i].deletedAt || Date.now() });
+          writeNutritionDay(date, entries);
+          return sendJSON(res, 200, { ok: true, entry: entries[i], day: nutritionDayView(date) });
+        }
+        return withBody((b) => {
+          let e = Object.assign({}, entries[i]);
+          if (b.restore) delete e.deletedAt;
+          if (b.quantity !== undefined || b.unit !== undefined) {
+            e = Nutrition.requantify(e, b.quantity !== undefined ? b.quantity : e.quantity, b.unit);
+          }
+          if (b.meal !== undefined) e.meal = Nutrition.theMeal(b.meal);
+          if (b.notes !== undefined) e.notes = String(b.notes || '').trim();
+          if (b.name !== undefined) {
+            const n = String(b.name || '').trim();
+            if (!n) throw new Error('name cannot be empty');
+            e.name = n;
+          }
+          entries[i] = e;
+          writeNutritionDay(date, entries);
+          sendJSON(res, 200, { ok: true, entry: e, day: nutritionDayView(date) });
+        });
+      }
+    }
+
+    // The same thing again, in the same meal.
+    if (route === '/duplicate' && M === 'POST') return withBody((b) => {
+      const date = dateArg(b.date, null);
+      if (!date || !b.id) throw new Error('date and id are required');
+      const entries = readNutritionDay(date);
+      const src = Nutrition.live(entries).find((e) => e.id === b.id);
+      if (!src) return fail(404, 'no entry ' + b.id + ' on ' + date);
+      const [copy] = Nutrition.copyEntries([src], src.meal, foodsById());
+      const now = Date.now();
+      Object.assign(copy, { id: nid(), createdAt: now, updatedAt: now });
+      writeNutritionDay(date, entries.concat(copy));
+      sendJSON(res, 201, { ok: true, entry: copy, day: nutritionDayView(date) });
+    });
+
+    // Copy a meal from another day, or — with no fromDate — repeat the most
+    // recent earlier one. That second form is "log my usual breakfast".
+    if (route === '/copy' && M === 'POST') return withBody((b) => {
+      const toDate = dateArg(b.toDate, today);
+      const toMeal = Nutrition.theMeal(b.toMeal || b.meal);
+      const fromMeal = Nutrition.theMeal(b.fromMeal || toMeal);
+      let source;
+      if (b.fromDate) {
+        const fromDate = dateArg(b.fromDate, null);
+        const es = Nutrition.live(readNutritionDay(fromDate)).filter((e) => e.meal === fromMeal);
+        source = es.length ? { date: fromDate, entries: es } : null;
+        if (!source) return fail(404, 'nothing in ' + Nutrition.MEAL_LABEL[fromMeal].toLowerCase() + ' on ' + fromDate);
+      } else {
+        const window = nutritionDays(Nutrition.shiftDay(toDate, -30), Nutrition.shiftDay(toDate, -1));
+        source = Nutrition.lastMealBefore(window, toDate, fromMeal);
+        if (!source) return fail(404, 'no earlier ' + Nutrition.MEAL_LABEL[fromMeal].toLowerCase() + ' in the last 30 days');
+      }
+      const now = Date.now();
+      const copies = Nutrition.copyEntries(source.entries, toMeal, foodsById())
+        .map((e, i) => Object.assign(e, { id: nid() + i, createdAt: now + i, updatedAt: now + i }));
+      writeNutritionDay(toDate, readNutritionDay(toDate).concat(copies));
+      sendJSON(res, 201, { ok: true, from: source.date, count: copies.length, entries: copies, day: nutritionDayView(toDate) });
+    });
+
+    // -------------------------------------------------------------- lists
+    if (route === '/history' && M === 'GET') {
+      const to = dateArg(u.searchParams.get('to'), today);
+      const from = dateArg(u.searchParams.get('from'), Nutrition.shiftDay(to, -13));
+      const settings = nutritionSettings();
+      const w = Nutrition.weightByDay(nutritionWeights());
+      const days = Nutrition.dayRange(from, to).map((d) => {
+        const t = Nutrition.totals(readNutritionDay(d));
+        return { date: d, logged: t.count > 0, totals: t, targets: Nutrition.targetsFor(settings, d),
+          weight: w.has(d) ? w.get(d) : null };
+      });
+      return sendJSON(res, 200, { from, to, days });
+    }
+    if (route === '/summary' && M === 'GET') {
+      const to = dateArg(u.searchParams.get('to'), today);
+      const from = dateArg(u.searchParams.get('from'), Nutrition.shiftDay(to, -6));
+      return sendJSON(res, 200, Nutrition.summary({
+        days: nutritionDays(from, to), weights: nutritionWeights(), settings: nutritionSettings(), from, to,
+      }));
+    }
+    if (route === '/quick' && M === 'GET') {
+      const date = dateArg(u.searchParams.get('date'), today);
+      const q = Nutrition.quickPicks(nutritionDays(Nutrition.shiftDay(date, -29), date), nutritionFoods());
+      return sendJSON(res, 200, q);
+    }
+
+    // ------------------------------------------------------------ weights
+    if (route === '/weights') {
+      if (M === 'GET') {
+        const to = dateArg(u.searchParams.get('to'), today);
+        const from = dateArg(u.searchParams.get('from'), Nutrition.shiftDay(to, -89));
+        const all = nutritionWeights();
+        return sendJSON(res, 200, {
+          from, to,
+          weights: Nutrition.live(all).filter((w) => w.date >= from && w.date <= to)
+            .sort((a, b) => (a.date < b.date ? 1 : -1)),
+          trend: Nutrition.weightTrend(all, from, to),
+          stats: Nutrition.weightStats(all, to),
+        });
+      }
+      // One reading per day: logging again for a day corrects that day.
+      if (M === 'POST') return withBody((b) => {
+        const date = dateArg(b.date, today);
+        const kg = checkKg(b.kg);
+        const all = nutritionWeights();
+        const now = Date.now();
+        let w = all.find((x) => x && !x.deletedAt && x.date === date);
+        const updated = !!w;
+        if (w) w.kg = kg;
+        else { w = { id: nid(), date, kg, createdAt: now, updatedAt: now }; all.push(w); }
+        writeCollection('nutrition-weights', all);
+        sendJSON(res, updated ? 200 : 201, { ok: true, updated, weight: w,
+          stats: Nutrition.weightStats(nutritionWeights(), date) });
+      });
+      if (M === 'PATCH' || M === 'DELETE') {
+        const id = u.searchParams.get('id');
+        const all = nutritionWeights();
+        const w = all.find((x) => x && x.id === id);
+        if (!w) return fail(404, 'no weigh-in with id ' + id);
+        if (M === 'DELETE') {
+          w.deletedAt = w.deletedAt || Date.now();
+          writeCollection('nutrition-weights', all);
+          return sendJSON(res, 200, { ok: true, weight: w });
+        }
+        return withBody((b) => {
+          if (b.restore) delete w.deletedAt;
+          if (b.kg !== undefined) w.kg = checkKg(b.kg);
+          if (b.date !== undefined) {
+            const d = dateArg(b.date, null);
+            if (all.some((x) => x !== w && !x.deletedAt && x.date === d)) throw new Error('there is already a weigh-in on ' + d);
+            w.date = d;
+          }
+          writeCollection('nutrition-weights', all);
+          sendJSON(res, 200, { ok: true, weight: w });
+        });
+      }
+    }
+  } catch (e) {
+    return fail(400, String(e.message || e));
+  }
+  return fail(404, 'no such nutrition endpoint: ' + M + ' ' + u.pathname);
+}
+
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, `http://localhost:${PORT}`);
+
+  if (u.pathname === '/api/nutrition' || u.pathname.startsWith('/api/nutrition/')) return handleNutrition(req, res, u);
 
   // API: /api/tasks?date=YYYY-MM-DD
   if (u.pathname === '/api/tasks') {
@@ -1488,6 +1857,7 @@ const server = http.createServer((req, res) => {
     return sendJSON(res, 200, {
       tasks: date ? fileRev(fileFor(date)) : 0,
       meta: date ? fileRev(metaFileFor(date)) : 0,
+      nutrition: date ? fileRev(nutritionFileFor(date)) : 0,
       stores,
     });
   }

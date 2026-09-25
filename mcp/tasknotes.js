@@ -183,6 +183,82 @@ function mondayOf(d) {
   return iso(x);
 }
 
+// --------------------------------------------------------------- nutrition
+//
+// The arithmetic is shared with the app (public/nutrition-core.js). The
+// server does every sum that is stored; this only uses it to pick the one
+// food a sentence means, and to name meals the way the page does.
+const Nutrition = require('../public/nutrition-core.js');
+
+async function nut(method, p, body) {
+  try { return await api(method, '/api/nutrition' + p, body); } catch (e) {
+    // A copy of the app started before Nutrition existed has no such routes
+    // and answers a bare 404. Saying "reopen it" is the actually useful reply.
+    if (/HTTP 404$/.test(e.message)) {
+      throw new Error('This copy of Task Notes has no Nutrition yet. Quit and reopen the app (or update it), then try again.');
+    }
+    throw e;
+  }
+}
+const kcal = (n) => (n == null ? '?' : Math.round(n).toLocaleString('en-US')) + ' kcal';
+const grams = (n) => (n == null ? '?' : String(Math.round(n * 10) / 10)) + ' g';
+const qtyText = (e) => e.quantity + ' ' + (e.unit === 'serving' ? (e.quantity === 1 ? 'serving' : 'servings') : e.unit);
+function leftText(r, unit) {
+  if (!r) return 'no target';
+  const n = unit === 'kcal' ? kcal : grams;
+  return r.over > 0 ? n(r.over) + ' over' : n(r.left) + ' left';
+}
+function entryText(e) {
+  return '- ' + e.name + ' × ' + qtyText(e) + ' — ' + kcal(e.calories) + ' · ' + grams(e.protein) + ' protein'
+    + ' · ' + grams(e.carbs) + ' carbs · ' + grams(e.fat) + ' fat'
+    + (e.notes ? '  (' + e.notes + ')' : '') + '  [' + e.id + ']';
+}
+function dayText(v) {
+  const t = v.totals, tg = v.targets, r = v.remaining;
+  const out = [
+    v.date + ' — ' + kcal(t.calories) + ' of ' + kcal(tg.calories) + ' (' + leftText(r.calories, 'kcal') + ')'
+      + ' · ' + grams(t.protein) + ' of ' + grams(tg.protein) + ' protein (' + leftText(r.protein, 'g') + ')',
+    'Fat ' + grams(t.fat) + (tg.fat != null ? ' of ' + grams(tg.fat) : '')
+      + ' · carbs ' + grams(t.carbs) + (tg.carbs != null ? ' of ' + grams(tg.carbs) : ''),
+  ];
+  const gaps = ['carbs', 'fat'].filter((k) => t.missing[k]).map((k) => t.missing[k] + ' without ' + k);
+  if (gaps.length) out.push('(' + gaps.join(', ') + ' — those totals are a floor)');
+  let any = false;
+  Nutrition.MEALS.forEach((m) => {
+    const meal = v.meals[m];
+    if (!meal.entries.length) return;
+    any = true;
+    out.push('', Nutrition.MEAL_LABEL[m] + ' — ' + kcal(meal.totals.calories) + ' · ' + grams(meal.totals.protein) + ' protein');
+    meal.entries.forEach((e) => out.push(entryText(e)));
+  });
+  if (!any) out.push('', 'Nothing logged yet.');
+  const w = v.weight || {};
+  if (w.today != null || w.avg7 != null) {
+    out.push('', 'Weight: ' + (w.today != null ? w.today + ' kg today' : 'not weighed today')
+      + (w.avg7 != null ? ' · 7-day average ' + w.avg7 + ' kg' : ''));
+  }
+  return out.join('\n');
+}
+// A sentence names a food; the library has to supply exactly one. A tie is
+// handed back with ids rather than guessed at — logging the wrong chicken is
+// worse than asking.
+async function pickFood(a) {
+  const { foods } = await nut('GET', '/foods');
+  if (a.foodId) {
+    const f = foods.find((x) => x.id === a.foodId);
+    if (!f) throw new Error('no saved food with id ' + a.foodId);
+    return f;
+  }
+  const q = need(a, 'food');
+  const r = Nutrition.resolveFood(foods, q);
+  if (r.food) return r.food;
+  if (r.matches.length) {
+    throw new Error('More than one saved food matches “' + q + '”: '
+      + r.matches.map((f) => f.name + ' [' + f.id + ']').join(', ') + '. Say which, or pass foodId.');
+  }
+  return null;
+}
+
 // -------------------------------------------------------------------- tools
 //
 // Everything the app itself can do, minus removing things. Each tool is
@@ -1584,6 +1660,261 @@ const TOOLS = [
       if (p.supported === false) throw new Error('playback control only works on macOS');
       if (!p.ok) throw new Error('Spotify would not start it — is the desktop app running?');
       return 'Playing ' + said + '.';
+    },
+  },
+
+  // -------------------------------------------------------------- nutrition
+  //
+  // Calories, protein and bodyweight. Nothing here deletes: an entry logged by
+  // mistake is changed with nutrition_update_food_log, and removing one is
+  // something you do on the Nutrition page, where it can be undone.
+  {
+    name: 'nutrition_today',
+    description: "Today's nutrition: calories, protein, fat and carbs eaten against the targets, what is left, every logged food by meal (with ids), and today's weight. Use it for 'what have I eaten today' and 'how much protein do I have left'.",
+    inputSchema: { type: 'object', properties: {} },
+    async run() { return dayText(await nut('GET', '/day?date=' + today())); },
+  },
+  {
+    name: 'nutrition_get_day',
+    description: 'Nutrition for one day — totals against that day\'s targets, what is left, each meal and each logged food with its id.',
+    inputSchema: { type: 'object', required: ['date'], properties: { date: { type: 'string', description: 'YYYY-MM-DD' } } },
+    async run(a) { return dayText(await nut('GET', '/day?date=' + theDate(a))); },
+  },
+  {
+    name: 'nutrition_list_foods',
+    description: 'The saved food library — name, serving, calories and macros per serving, and id. Pass q to search. Values marked ≈ are typical estimates, not label values.',
+    inputSchema: { type: 'object', properties: { q: { type: 'string', description: 'Search words, e.g. "amul" or "chicken".' } } },
+    async run(a) {
+      const { foods } = await nut('GET', '/foods' + (a.q ? '?q=' + encodeURIComponent(a.q) : ''));
+      if (!foods.length) return a.q ? 'No saved food matches “' + a.q + '”.' : 'The food library is empty.';
+      return foods.map((f) => '- ' + (f.estimate ? '≈ ' : '') + f.name + (f.brand && !f.name.includes(f.brand) ? ' (' + f.brand + ')' : '')
+        + ' — per ' + f.servingSize + ' ' + f.servingUnit + ': ' + kcal(f.calories) + ' · ' + grams(f.protein) + ' protein · '
+        + grams(f.carbs) + ' carbs · ' + grams(f.fat) + ' fat  [' + f.id + ']').join('\n');
+    },
+  },
+  {
+    name: 'nutrition_log_food',
+    write: true,
+    description: "Log something eaten. Name the food and the library supplies the numbers: 'two Amul protein shakes' is food \"Amul protein shake\", quantity 2; '200g chicken breast' is food \"chicken breast\", quantity 200, unit \"g\". If nothing saved matches, give calories (and protein, carbs, fat) to log it as a one-off. The numbers are copied onto the entry, so editing the saved food later never changes what was logged.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        food: { type: 'string', description: 'What was eaten, as said.' },
+        foodId: { type: 'string', description: 'A saved food id, instead of food.' },
+        quantity: { type: 'number', description: 'How much. Defaults to 1 serving.' },
+        unit: { type: 'string', description: '"serving" (default) or the food\'s own unit — "g", "ml", "egg"…' },
+        meal: { type: 'string', enum: ['breakfast', 'lunch', 'snack', 'dinner', 'other'], description: 'Defaults from the time of day.' },
+        date: { type: 'string', description: 'YYYY-MM-DD. Defaults to today.' },
+        notes: { type: 'string', description: 'Preparation — "air fried", "restaurant", "with 10 g olive oil".' },
+        calories: { type: 'number', description: 'Only for a one-off food with nothing saved.' },
+        protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' },
+        saveFood: { type: 'boolean', description: 'Save a one-off food to the library as well. Defaults to false.' },
+      },
+    },
+    async run(a) {
+      const date = theDate(a);
+      const body = { date, meal: a.meal, quantity: a.quantity == null ? 1 : a.quantity, unit: a.unit, notes: a.notes };
+      const f = await pickFood(a);
+      if (f) body.foodId = f.id;
+      else if (a.calories != null) {
+        body.custom = { name: need(a, 'food'), calories: a.calories, protein: a.protein, carbs: a.carbs, fat: a.fat };
+        body.save = !!a.saveFood;
+        body.quantity = a.quantity == null ? 1 : a.quantity;
+      } else {
+        throw new Error('No saved food matches “' + a.food + '”. Give its calories (and protein, carbs, fat) to log it as a one-off, or add it with nutrition_add_food first.');
+      }
+      const r = await nut('POST', '/log', body);
+      const e = r.entry, v = r.day;
+      return 'Logged ' + e.name + ' × ' + qtyText(e) + ' to ' + Nutrition.MEAL_LABEL[e.meal].toLowerCase() + ' on ' + date
+        + ' — ' + kcal(e.calories) + ' · ' + grams(e.protein) + ' protein  [' + e.id + ']'
+        + (e.estimate ? '\n(≈ the saved values are a typical estimate — worth checking against the real thing)' : '')
+        + '\nDay so far: ' + kcal(v.totals.calories) + ' (' + leftText(v.remaining.calories, 'kcal') + ') · '
+        + grams(v.totals.protein) + ' protein (' + leftText(v.remaining.protein, 'g') + ')';
+    },
+  },
+  {
+    name: 'nutrition_copy_meal',
+    write: true,
+    description: "Log a meal again. With no fromDate it repeats the most recent earlier one — 'add my usual breakfast'. With fromDate it copies that day's meal. Foods still in the library are logged with their current values.",
+    inputSchema: {
+      type: 'object',
+      required: ['meal'],
+      properties: {
+        meal: { type: 'string', enum: ['breakfast', 'lunch', 'snack', 'dinner', 'other'], description: 'The meal to log into.' },
+        date: { type: 'string', description: 'YYYY-MM-DD to log into. Defaults to today.' },
+        fromDate: { type: 'string', description: 'YYYY-MM-DD to copy from. Left out, the most recent earlier day with that meal.' },
+        fromMeal: { type: 'string', enum: ['breakfast', 'lunch', 'snack', 'dinner', 'other'], description: 'Defaults to the same meal.' },
+      },
+    },
+    async run(a) {
+      const date = theDate(a);
+      const r = await nut('POST', '/copy', { toDate: date, meal: a.meal, fromDate: theDay(a.fromDate, 'fromDate') || undefined, fromMeal: a.fromMeal });
+      const v = r.day;
+      return 'Copied ' + r.count + ' item' + (r.count === 1 ? '' : 's') + ' from ' + r.from + ' into ' + Nutrition.MEAL_LABEL[Nutrition.theMeal(a.meal)].toLowerCase() + ' on ' + date + ':\n'
+        + r.entries.map(entryText).join('\n')
+        + '\nDay so far: ' + kcal(v.totals.calories) + ' (' + leftText(v.remaining.calories, 'kcal') + ') · '
+        + grams(v.totals.protein) + ' protein (' + leftText(v.remaining.protein, 'g') + ')';
+    },
+  },
+  {
+    name: 'nutrition_update_food_log',
+    write: true,
+    description: 'Change a logged food — its quantity, unit, meal or notes. Quantity changes are worked out from the numbers the entry was logged with. Get the id from nutrition_today or nutrition_get_day.',
+    inputSchema: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'string' },
+        date: { type: 'string', description: 'YYYY-MM-DD the entry is on. Defaults to today.' },
+        quantity: { type: 'number' },
+        unit: { type: 'string' },
+        meal: { type: 'string', enum: ['breakfast', 'lunch', 'snack', 'dinner', 'other'] },
+        notes: { type: 'string' },
+      },
+    },
+    async run(a) {
+      const date = theDate(a);
+      const patch = some(pick(a, ['quantity', 'unit', 'meal', 'notes']));
+      const r = await nut('PATCH', '/log?date=' + date + '&id=' + encodeURIComponent(need(a, 'id')), patch);
+      const v = r.day;
+      return 'Updated on ' + date + ':\n' + entryText(r.entry)
+        + '\nDay now: ' + kcal(v.totals.calories) + ' (' + leftText(v.remaining.calories, 'kcal') + ') · '
+        + grams(v.totals.protein) + ' protein (' + leftText(v.remaining.protein, 'g') + ')';
+    },
+  },
+  {
+    name: 'nutrition_add_food',
+    write: true,
+    description: 'Save a food to the library so it can be logged by name. Numbers are per serving — e.g. servingSize 200, servingUnit "ml" for a carton, or 1 "egg".',
+    inputSchema: {
+      type: 'object',
+      required: ['name', 'calories'],
+      properties: {
+        name: { type: 'string' }, brand: { type: 'string' },
+        servingSize: { type: 'number', description: 'Defaults to 1.' },
+        servingUnit: { type: 'string', description: 'g, ml, egg, bar, cup… Defaults to "serving".' },
+        calories: { type: 'number' }, protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' },
+        notes: { type: 'string', description: 'Preparation or source — "label values", "homemade".' },
+      },
+    },
+    async run(a) {
+      const r = await nut('POST', '/foods', pick(a, ['name', 'brand', 'servingSize', 'servingUnit', 'calories', 'protein', 'carbs', 'fat', 'notes']));
+      const f = r.food;
+      return 'Saved ' + f.name + ' — per ' + f.servingSize + ' ' + f.servingUnit + ': ' + kcal(f.calories) + ' · '
+        + grams(f.protein) + ' protein · ' + grams(f.carbs) + ' carbs · ' + grams(f.fat) + ' fat  [' + f.id + ']';
+    },
+  },
+  {
+    name: 'nutrition_update_food',
+    write: true,
+    description: 'Correct a saved food — its serving or its numbers. Takes effect for everything logged from now on; entries already logged keep their own numbers.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'The food id. Or give food to find it by name.' },
+        food: { type: 'string', description: 'The food, by name, if no id.' },
+        name: { type: 'string', description: 'A new name.' }, brand: { type: 'string' },
+        servingSize: { type: 'number' }, servingUnit: { type: 'string' },
+        calories: { type: 'number' }, protein: { type: 'number' }, carbs: { type: 'number' }, fat: { type: 'number' },
+        notes: { type: 'string' },
+      },
+    },
+    async run(a) {
+      const f = await pickFood({ foodId: a.id, food: a.id ? undefined : a.food });
+      if (!f) throw new Error('No saved food matches “' + a.food + '”.');
+      const patch = some(pick(a, ['name', 'brand', 'servingSize', 'servingUnit', 'calories', 'protein', 'carbs', 'fat', 'notes']));
+      // Numbers you give are what the label says, so it is no longer a guess.
+      if (['calories', 'protein', 'carbs', 'fat'].some((k) => patch[k] !== undefined)) patch.estimate = false;
+      const r = await nut('PATCH', '/foods?id=' + encodeURIComponent(f.id), patch);
+      const n = r.food;
+      return 'Updated ' + n.name + ' — per ' + n.servingSize + ' ' + n.servingUnit + ': ' + kcal(n.calories) + ' · '
+        + grams(n.protein) + ' protein · ' + grams(n.carbs) + ' carbs · ' + grams(n.fat) + ' fat  [' + n.id + ']'
+        + '\nEarlier entries keep the numbers they were logged with.';
+    },
+  },
+  {
+    name: 'nutrition_log_weight',
+    write: true,
+    description: 'Record bodyweight in kilograms. Logging again for the same day corrects that day rather than adding a second reading.',
+    inputSchema: {
+      type: 'object',
+      required: ['kg'],
+      properties: { kg: { type: 'number' }, date: { type: 'string', description: 'YYYY-MM-DD. Defaults to today.' } },
+    },
+    async run(a) {
+      const date = theDate(a);
+      const r = await nut('POST', '/weights', { date, kg: a.kg });
+      const s = r.stats;
+      return (r.updated ? 'Corrected ' : 'Logged ') + r.weight.kg + ' kg for ' + date + '  [' + r.weight.id + ']'
+        + (s.avg7 != null ? '\n7-day average ' + s.avg7 + ' kg' : '') + (s.avg30 != null ? ' · 30-day ' + s.avg30 + ' kg' : '');
+    },
+  },
+  {
+    name: 'nutrition_get_weight_history',
+    description: 'Bodyweight over time — every weigh-in with the 7-day average at that point, plus the current 7- and 30-day averages. The average is the trend; single days move with water and food.',
+    inputSchema: { type: 'object', properties: { days: { type: 'number', description: 'How far back. Defaults to 30.' } } },
+    async run(a) {
+      const days = Math.max(1, Math.min(730, Math.round(a.days || 30)));
+      const to = today();
+      const r = await nut('GET', '/weights?from=' + Nutrition.shiftDay(to, -(days - 1)) + '&to=' + to);
+      if (!r.trend.length) return 'No weigh-ins in the last ' + days + ' days.';
+      const s = r.stats;
+      return 'Last ' + days + ' days — latest ' + (s.latest ? s.latest.kg + ' kg on ' + s.latest.date : '—')
+        + (s.avg7 != null ? ' · 7-day average ' + s.avg7 + ' kg' : '') + (s.avg30 != null ? ' · 30-day ' + s.avg30 + ' kg' : '') + '\n'
+        + r.trend.map((x) => '- ' + x.date + '  ' + x.kg + ' kg  (7-day avg ' + x.avg7 + ')').join('\n');
+    },
+  },
+  {
+    name: 'nutrition_summary',
+    description: 'Averages over a stretch of days — calories, protein, carbs, fat, bodyweight and its change, and how many days met the calorie and protein targets. Averages count only days with food logged. Defaults to the last 7 days.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        days: { type: 'number', description: 'How many days, ending on `to`. Defaults to 7.' },
+        to: { type: 'string', description: 'YYYY-MM-DD, the last day. Defaults to today.' },
+      },
+    },
+    async run(a) {
+      const to = theDay(a.to, 'to') || today();
+      const n = Math.max(1, Math.min(366, Math.round(a.days || 7)));
+      const s = await nut('GET', '/summary?from=' + Nutrition.shiftDay(to, -(n - 1)) + '&to=' + to);
+      if (!s.daysLogged && !s.weight.readings) return 'Nothing logged between ' + s.from + ' and ' + s.to + '.';
+      const av = s.averages;
+      const w = s.weight;
+      return s.from + ' – ' + s.to + ' · food logged on ' + s.daysLogged + ' of ' + s.days + ' days\n'
+        + (s.daysLogged
+          ? '- Calories: ' + kcal(av.calories) + '/day\n- Protein: ' + grams(av.protein) + '/day\n- Carbs: ' + grams(av.carbs)
+            + '/day\n- Fat: ' + grams(av.fat) + '/day\n'
+            + '- Calorie target (' + s.calorieTarget.rule + '): ' + s.calorieTarget.hit + ' / ' + s.calorieTarget.of + ' days\n'
+            + '- Protein target hit: ' + s.proteinTarget.hit + ' / ' + s.proteinTarget.of + ' days\n'
+          : '')
+        + (w.readings
+          ? '- Weight: ' + (w.change != null ? w.first.kg + ' → ' + w.last.kg + ' kg (' + (w.change > 0 ? '+' : '') + w.change + ')' : w.last.kg + ' kg')
+            + ' · average ' + w.average + ' kg over ' + w.readings + ' weigh-in' + (w.readings === 1 ? '' : 's')
+          : '- No weigh-ins');
+    },
+  },
+  {
+    name: 'nutrition_update_settings',
+    write: true,
+    description: 'Change nutrition targets or profile. New targets apply from effectiveFrom (default today) onward — earlier days keep the targets they had. Fat and carbs targets can be set to null to switch them off.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        calories: { type: 'number' }, protein: { type: 'number' },
+        fat: { type: ['number', 'null'] }, carbs: { type: ['number', 'null'] },
+        goal: { type: 'string', enum: ['maintain', 'cut', 'gain'] },
+        weightKg: { type: 'number' }, heightCm: { type: 'number' }, age: { type: 'number' },
+        effectiveFrom: { type: 'string', description: 'YYYY-MM-DD the new targets start. Defaults to today.' },
+      },
+    },
+    async run(a) {
+      const patch = some(pick(a, ['calories', 'protein', 'fat', 'carbs', 'goal', 'weightKg', 'heightCm', 'age', 'effectiveFrom']));
+      const r = await nut('PATCH', '/settings', patch);
+      const t = r.targets, s = r.settings;
+      return 'Targets from ' + r.effectiveFrom + ': ' + kcal(t.calories) + ' · ' + grams(t.protein) + ' protein'
+        + ' · fat ' + (t.fat != null ? grams(t.fat) : 'off') + ' · carbs ' + (t.carbs != null ? grams(t.carbs) : 'off')
+        + '\nGoal ' + s.goal + ' · ' + s.weightKg + ' kg · ' + s.heightCm + ' cm · ' + s.age + ' years';
     },
   },
 ];
