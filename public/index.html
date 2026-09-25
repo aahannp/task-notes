@@ -2800,6 +2800,8 @@
     height: calc(100vh - var(--page-top, 170px) - 20px); min-height: 420px; padding: 0; overflow: hidden;
     border: 1px solid var(--line); border-radius: 15px; }
   .wrap > #page-docs .ws { height: 100%; max-height: none; }
+  #page-docs .ws { display: none !important; }
+  .pad-frame { display: block; width: 100%; height: 100%; border: 0; background: var(--bg); }
   /* That row was a window drag handle because it used to be the top of the
      window, and it cleared the traffic lights for the same reason. */
   .wrap > #page-docs .ws-tabrow { -webkit-app-region: no-drag; }
@@ -3845,7 +3847,7 @@
     <button class="nav-btn" data-page="projects"><svg class="ico" viewBox="0 0 24 24"><use href="#i-projects"/></svg>Projects</button>
     <button class="nav-btn" data-page="learning"><svg class="ico" viewBox="0 0 24 24"><use href="#i-learning"/></svg>Learning</button>
     <button class="nav-btn" data-page="inbox"><svg class="ico" viewBox="0 0 24 24"><use href="#i-inbox"/></svg>Inbox</button>
-    <button class="nav-btn" data-page="docs"><svg class="ico" viewBox="0 0 24 24"><use href="#i-docs"/></svg>Docs</button>
+    <button class="nav-btn" data-page="docs"><svg class="ico" viewBox="0 0 24 24"><use href="#i-docs"/></svg>Doc</button>
     <button class="nav-btn" data-page="ideas"><svg class="ico" viewBox="0 0 24 24"><use href="#i-ideas"/></svg>Ideas</button>
     <button class="nav-btn" data-page="calendar"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendar"/></svg>Calendar</button>
     <button class="nav-btn" data-page="graph"><svg class="ico" viewBox="0 0 24 24"><use href="#i-tasks"/></svg>Graph<span class="nav-badge" id="graphBadge"></span></button>
@@ -4624,6 +4626,10 @@
 
 <!-- ============ DOCUMENTS: knowledge workspace ============ -->
 <div class="page hidden" id="page-docs">
+  <!-- The Doc tab is the pad (public/pad.html). The workspace below it is the
+       old Docs editor, kept in the page only so the code that still refers
+       to its elements keeps working; it is never shown. -->
+  <iframe class="pad-frame" id="padFrame" title="Doc" src="about:blank"></iframe>
   <div class="ws" id="ws">
     <!-- sidebar -->
     <aside class="ws-side" id="wsSide">
@@ -6416,7 +6422,7 @@ let todayScrollY = 0;      // where the board was, to come back to it
 
 const PAGES = ['tasks', 'projects', 'learning', 'docs', 'ideas', 'inbox', 'review', 'calendar', 'reminders', 'focus', 'due', 'graph', 'nutrition'];
 const PAGE_TITLE = {
-  tasks: 'Tasks', projects: 'Projects', learning: 'Learning', docs: 'Docs', ideas: 'Ideas',
+  tasks: 'Tasks', projects: 'Projects', learning: 'Learning', docs: 'Doc', ideas: 'Ideas',
   inbox: 'Inbox', review: 'Review', calendar: 'Calendar', reminders: 'Reminders',
   focus: 'Focus', due: 'Due', graph: 'Task Graph', nutrition: 'Nutrition',
 };
@@ -7331,15 +7337,38 @@ const AUTOSAVE_MS = 1200;      // debounced: never a request per keystroke
 
 function wsEl() { return $('#ws'); }
 
+// The Doc tab is the pad, in a frame. It shows whatever doc was last open
+// there — or, the first time, the most recently changed one.
 async function renderDocsPage() {
   await loadDocs(true);
-  renderDocTree();
-  renderDocTabs();
-  if (docActive) await openDocument(docActive, true);
-  else renderDocSurface();
-  // Backlinks need every body scanned; do it in the background once.
-  buildLinkIndex().then(() => { if (activePage === 'docs' && docActive) renderRail(); });
+  if (!docActive) {
+    const recent = activeDocs().slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+    docActive = recent ? recent.id : null;
+  }
+  padShow(docActive);
 }
+// Point the pad at a doc (or, with no id, a new one). The frame loads once;
+// after that a hash change is enough — the pad listens for it. A change that
+// arrives while it is still loading simply restarts the load at the new doc.
+let padReady = false;
+function padShow(id) {
+  const f = $('#padFrame');
+  const hash = id ? '#' + encodeURIComponent(id) : '';
+  if (!padReady) {
+    f.onload = () => { padReady = f.src !== 'about:blank' && !!f.contentWindow; };
+    f.src = '/pad?embed=1' + hash;
+    return;
+  }
+  if (f.contentWindow.location.hash !== hash) f.contentWindow.location.hash = hash;
+}
+function padNew() { docActive = null; if (activePage !== 'docs') openPage('docs').then(() => padShow(null)); else padShow(null); }
+// What the pad reports back: which doc it is on, and that the list changed.
+addEventListener('message', (e) => {
+  if (e.origin !== location.origin || !e.data || typeof e.data.type !== 'string') return;
+  if (e.data.type === 'tn:doc-open') docActive = e.data.id;
+  else if (e.data.type === 'tn:docs-changed') loadDocs(true);
+  else if (e.data.type === 'tn:open-browser') openPad(e.data.id);
+});
 
 // ---------- sidebar ----------
 function renderDocTree() {
@@ -7609,7 +7638,15 @@ function closeDocTab(id) {
 }
 
 // ---------- open / render ----------
-async function openDocument(id, keep) {
+// Every link to a document in the app — a project's docs, search, the
+// palette, the inbox — comes through here, and now lands in the pad.
+async function openDocument(id) {
+  docActive = id;
+  if (activePage !== 'docs') await openPage('docs');
+  else padShow(id);
+}
+// The old workspace's version, unreachable now that the Doc tab is the pad.
+async function openDocumentInWorkspace(id, keep) {
   if (docActive && docActive !== id && docDirty) await flushDocSave();
   const full = await fetchDoc(id);
   if (!full) { flash('That document could not be opened.'); return; }
@@ -8299,20 +8336,15 @@ let cmdkItems = [], cmdkSel = 0;
 function docCommands() {
   const has = !!docActive;
   return [
-    { ic: '📄', t: 'New document', k: '⌘N', run: () => newBlankDocument() },
-    { ic: '🗂', t: 'Open Documents', run: () => openPage('docs') },
-    has && { ic: '✍️', t: 'Write mode (block editor)', run: () => { docMode = 'write'; renderDocSurface(); } },
-    has && { ic: '📝', t: 'Edit mode (markdown source)', run: () => { docMode = 'edit'; renderDocSurface(); } },
-    has && { ic: '⫿', t: 'Split editor / preview', run: () => { docMode = 'split'; renderDocSurface(); } },
-    has && { ic: '📖', t: 'Reading mode', run: () => { docMode = 'read'; renderDocSurface(); } },
-    has && { ic: '⛶', t: 'Distraction-free writing', k: '⌘.', run: toggleDocZen },
-    has && { ic: '🖼', t: 'Insert image', run: () => $('#docImgPicker').click() },
-    has && { ic: '💾', t: 'Save now', k: '⌘S', run: flushDocSave },
-    has && { ic: '📌', t: (docById(docActive) || {}).pinned ? 'Unpin document' : 'Pin document',
-             run: async () => { const d = docById(docActive); await saveDoc(docActive, { pinned: !d.pinned }); renderDocSurface(); renderDocTree(); } },
-    has && { ic: '🗄', t: 'Archive document', run: async () => { await archiveDoc(docActive); renderDocTree(); renderDocSurface(); flash('🗄 Archived'); } },
-    { ic: '☰', t: 'Toggle sidebar', k: '⌘\\', run: () => wsEl().classList.toggle('side-hidden') },
-    { ic: '▤', t: 'Toggle outline panel', run: () => wsEl().classList.toggle('rail-hidden') },
+    { ic: '📄', t: 'New doc', run: () => padNew() },
+    { ic: '🗂', t: 'Open Doc', run: () => openPage('docs') },
+    has && { ic: '↗', t: 'Open doc in browser', run: () => openPad(docActive) },
+    { ic: '✎', t: 'New doc in browser', run: () => openPad(null) },
+    has && { ic: '🗄', t: 'Archive doc', run: async () => {
+      await archiveDoc(docActive); flash('🗄 Archived');
+      docActive = null;
+      if (activePage === 'docs') { padReady = false; renderDocsPage(); }   // reload the pad's list
+    } },
     { ic: '🎒', t: 'Open Learning', run: () => openPage('learning') },
     { ic: '📦', t: 'Open Projects', run: () => openPage('projects') },
     { ic: '💡', t: 'Open Ideas', run: () => openPage('ideas') },
@@ -9595,7 +9627,7 @@ const SETTING_SECTIONS = [
   { k: 'backlog',   sel: '#backlog',        label: 'Backlog strip',       sub: 'Work parked for later' },
 ];
 const SETTING_PAGES = [
-  ['tasks', 'Tasks'], ['projects', 'Projects'], ['learning', 'Learning'], ['docs', 'Docs'],
+  ['tasks', 'Tasks'], ['projects', 'Projects'], ['learning', 'Learning'], ['docs', 'Doc'],
   ['ideas', 'Ideas'], ['inbox', 'Inbox'], ['calendar', 'Calendar'], ['reminders', 'Reminders'],
   ['focus', 'Focus'], ['review', 'Review'], ['due', 'Due'], ['graph', 'Graph'], ['nutrition', 'Nutrition'],
 ];
