@@ -319,6 +319,7 @@ const COLLECTIONS = {
   todos: 'todos.json',
   settings: 'settings.json',
   graph: 'graph.json',
+  checklist: 'checklist.json',
 };
 // reviews is an object keyed by week-start; everything else is an array.
 // `graph` is a workspace, not a list: a set of references to real tasks plus

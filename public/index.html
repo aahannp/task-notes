@@ -1581,6 +1581,104 @@
   .bl-row .bl-del:hover { color: #ff8f8f; border-color: rgba(255,107,129,.4); }
   .bl-empty { font-size: 12.5px; color: var(--muted); padding: 10px 2px; }
 
+  /* ---- Checklist ----
+     The ritual list, as distinct from tasks: things you either do every day or
+     do once and clear. Ticking is the whole interaction, so it gets the care —
+     the box fills, the tick draws itself, and a rule sweeps across the text
+     rather than the text simply switching to line-through. */
+  .ck { margin: 24px 0 4px; }
+  .ck-head { display: flex; align-items: center; gap: 10px; padding: 0 2px 10px; }
+  .ck-title { font-size: 13px; font-weight: 650; letter-spacing: .3px; color: var(--muted); }
+  .ck-count { font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; }
+  .ck-all { margin-left: auto; font-size: 11.5px; color: var(--muted); opacity: 0; transition: opacity var(--t-fast); }
+  .ck.done .ck-all { opacity: 1; color: #7fd6a4; }
+  .ck-body { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel);
+    box-shadow: var(--glass-hi); padding: 12px; }
+
+  /* Progress: a hairline across the top of the panel, not a chunky bar. */
+  .ck-prog { height: 2px; border-radius: 99px; background: var(--panel-2); overflow: hidden; margin-bottom: 12px; }
+  .ck-prog i { display: block; height: 100%; width: 0; border-radius: 99px;
+    background: linear-gradient(90deg, var(--accent), #7fd6a4);
+    transition: width .45s cubic-bezier(.22,1,.36,1); }
+
+  .ck-add { display: flex; gap: 8px; align-items: center; }
+  .ck-add input.ck-new { flex: 1; }
+  /* The repeat switch IS the question "again tomorrow, or just this once?" —
+     it sits in the add row so the choice is made while typing, not after. */
+  .ck-rep { display: flex; align-items: center; gap: 7px; flex-shrink: 0; padding: 0 11px; height: 38px;
+    border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel);
+    color: var(--muted); font-size: 12.5px; cursor: pointer; font-family: var(--ui);
+    transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast); }
+  .ck-rep:hover { color: var(--text); border-color: var(--line-2); }
+  .ck-rep .ck-rep-ic { font-size: 13px; transition: transform .4s cubic-bezier(.22,1,.36,1); }
+  .ck-rep.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .ck-rep.on .ck-rep-ic { transform: rotate(360deg); }
+
+  /* Schedule chooser, revealed only once repeat is on. */
+  .ck-when { display: none; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 11px;
+    padding: 11px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel-2); }
+  .ck-when.show { display: flex; }
+  .ck-when-q { font-size: 12.5px; color: var(--muted); margin-right: 2px; }
+  .ck-mode { font-family: var(--ui); font-size: 12px; padding: 5px 11px; border-radius: 99px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+  .ck-mode:hover { border-color: var(--line-2); }
+  .ck-mode.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .ck-days { display: none; gap: 5px; flex-basis: 100%; margin-top: 3px; }
+  .ck-days.show { display: flex; }
+  .ck-day { width: 30px; height: 28px; border-radius: 8px; font-family: var(--ui); font-size: 11px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; }
+  .ck-day.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+
+  .ck-list { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+  .ck-sec { font-size: 10.5px; font-weight: 650; letter-spacing: .8px; text-transform: uppercase;
+    color: var(--muted); opacity: .75; padding: 8px 2px 2px; }
+  .ck-row { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: var(--r-sm);
+    border: 1px solid transparent; transition: background var(--t-fast), border-color var(--t-fast); }
+  .ck-row:hover { background: var(--panel-2); border-color: var(--line); }
+
+  /* The box. A real <button>, so it is reachable by keyboard and reads as a
+     control; the native checkbox cannot be drawn like this. */
+  .ck-box { flex-shrink: 0; width: 21px; height: 21px; border-radius: 7px; padding: 0; cursor: pointer;
+    border: 1.5px solid var(--line-2); background: var(--panel); display: grid; place-items: center;
+    transition: background .2s, border-color .2s, transform .12s; }
+  .ck-box:hover { border-color: var(--accent); }
+  .ck-box:active { transform: scale(.88); }
+  .ck-box svg { width: 13px; height: 13px; display: block; }
+  .ck-box path { fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 20; stroke-dashoffset: 20; }
+  .ck-row.on .ck-box { background: #4ab87a; border-color: #4ab87a; }
+  /* Drawn, not faded in: the stroke travels the way a tick is made by hand. */
+  .ck-row.on .ck-box path { stroke-dashoffset: 0; transition: stroke-dashoffset .28s cubic-bezier(.65,0,.35,1) .04s; }
+
+  .ck-txt { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.35;
+    color: var(--text); transition: color .3s ease .12s; cursor: text; }
+  /* The rule is drawn on an inline span, not on the row-filling cell: struck
+     text should be struck to the end of the WORDS, not to the far edge of the
+     panel. */
+  .ck-label { position: relative; display: inline; }
+  /* The cut-through scales out from the left, so completing an item reads as a
+     gesture across it rather than a style flipping on. */
+  .ck-label::after { content: ''; position: absolute; left: -1px; right: -1px; top: 50%; height: 1.5px;
+    background: currentColor; border-radius: 2px; transform: scaleX(0); transform-origin: left center;
+    transition: transform .3s cubic-bezier(.22,1,.36,1); }
+  .ck-row.on .ck-txt { color: var(--done); }
+  .ck-row.on .ck-label::after { transform: scaleX(1); }
+
+  .ck-badge { flex-shrink: 0; font-size: 10.5px; font-weight: 600; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 99px; padding: 2px 8px; white-space: nowrap; }
+  .ck-row.on .ck-badge { opacity: .45; }
+  .ck-del { flex-shrink: 0; width: 26px; height: 26px; border-radius: var(--r-sm); border: 1px solid transparent;
+    background: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1;
+    opacity: 0; transition: opacity var(--t-fast), color var(--t-fast); }
+  .ck-row:hover .ck-del { opacity: 1; }
+  .ck-del:hover { color: #ff8f8f; border-color: rgba(255,107,129,.4); }
+  .ck-empty { font-size: 12.5px; color: var(--muted); padding: 12px 2px 6px; }
+  @media (prefers-reduced-motion: reduce) {
+    .ck-prog i, .ck-txt, .ck-label::after, .ck-box, .ck-box path, .ck-rep .ck-rep-ic { transition: none; }
+  }
+
   /* ---- Focus log ---- */
   .fx-date { margin-left: auto; font-size: 12.5px; padding: 7px 10px; }
   .fx-history { display: flex; align-items: flex-end; gap: 4px; height: 74px; margin-bottom: 26px;
@@ -3530,6 +3628,36 @@
 
   <div class="board" id="board"></div>
 
+  <!-- The day's rituals. Unlike the backlog this is expanded by default: a
+       checklist you have to go and open is a checklist you stop doing. -->
+  <div class="ck" id="checklist">
+    <div class="ck-head">
+      <span class="ck-title">Checklist</span>
+      <span class="ck-count" id="ckCount">0/0</span>
+      <span class="ck-all">All clear ✦</span>
+    </div>
+    <div class="ck-body">
+      <div class="ck-prog"><i id="ckProg"></i></div>
+      <div class="ck-add">
+        <input id="ckNew" class="ck-new" placeholder="Something to tick off…" autocomplete="off" aria-label="Add a checklist item" />
+        <button class="ck-rep" id="ckRep" type="button" aria-pressed="false"
+                title="Repeat this every day, or leave it as a one-off">
+          <span class="ck-rep-ic" aria-hidden="true">↻</span><span id="ckRepLabel">Once</span>
+        </button>
+        <button class="addbtn" id="ckAdd" title="Add to checklist">+</button>
+      </div>
+      <div class="ck-when" id="ckWhen">
+        <span class="ck-when-q">Repeat on</span>
+        <button class="ck-mode on" data-mode="daily" type="button">Every day</button>
+        <button class="ck-mode" data-mode="weekdays" type="button">Working days</button>
+        <button class="ck-mode" data-mode="weekends" type="button">Days off</button>
+        <button class="ck-mode" data-mode="custom" type="button">Custom</button>
+        <div class="ck-days" id="ckDays"></div>
+      </div>
+      <div class="ck-list" id="ckList"></div>
+    </div>
+  </div>
+
   <!-- Later, not now. Collapsed by default: the point of a backlog is that it
        is not in your face until you go looking for it. -->
   <div class="bl" id="backlog">
@@ -4462,6 +4590,11 @@ async function load() {
   $('#pickupPick').classList.remove('missing');
 
   renderReminders();
+  // The checklist is scoped to the day being viewed, so it has to follow a day
+  // change. renderTodayExtras() does not run from here, so without this the
+  // panel kept showing the previous day's ticks — a daily item looked already
+  // done tomorrow, which is precisely the thing it exists to tell you.
+  renderChecklist();
   startReminderWatch();
   backlogNotify();
   fetchMcp().then(renderMcpPill);
@@ -5679,11 +5812,11 @@ const saveReviews  = () => saveStore('reviews', reviews);
 
 async function loadStores(force) {
   if (storesLoaded && !force) return;
-  const [p, l, i, a, r, cap, rem, bl, st, td] = await Promise.all([
+  const [p, l, i, a, r, cap, rem, bl, st, td, ck] = await Promise.all([
     loadStore('projects'), loadStore('learning'), loadStore('ideas'),
     loadStore('activity'), loadStore('reviews'), loadStore('captures'),
     loadStore('reminders'), loadStore('backlog'), loadStore('settings'),
-    loadStore('todos'),
+    loadStore('todos'), loadStore('checklist'),
   ]);
   settings = normSettings(st);
   applySettings();
@@ -5696,6 +5829,7 @@ async function loadStores(force) {
   reviews = r || {};
   captures = (cap || []).map(normCapture);
   todos = (td || []).map(normTodo);
+  checklist = (ck || []).map(normChecklist);
   renderDueBadge();
   loadGraph().then(renderGraphBadge);
   storesLoaded = true;
@@ -8421,6 +8555,212 @@ function renderInboxPage() {
 }
 
 // =====================================================================
+// CHECKLIST — the day's rituals, which are neither tasks nor reminders.
+//
+// The distinction that matters is per ITEM, not per list: "clear the email
+// clutter before bed" is the same thing every day, "reply to Priya" is a thing
+// you do once and never again. Both are too small to be tasks and too
+// unscheduled to be reminders, so they live here, and the only question asked
+// at the point of adding is which of the two it is.
+//
+// Completion is recorded per DAY rather than as a boolean, which is what makes
+// a repeating item possible at all: the item is one record, and ticking it on
+// Tuesday says nothing about Wednesday.
+// =====================================================================
+let checklist = [];
+const CK_MODES = { daily: 'Every day', weekdays: 'Working days', weekends: 'Days off', custom: 'Custom' };
+const CK_DAY_NAMES = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const CK_DAY_FULL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// The draft state of the add row: what the NEXT item will be, not any item.
+let ckDraft = { repeat: false, mode: 'daily', days: [1, 2, 3, 4, 5] };
+
+function normChecklist(c) {
+  const r = c && c.repeat;
+  return {
+    id: c.id || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
+    text: String((c && c.text) || ''),
+    repeat: r ? {
+      mode: CK_MODES[r.mode] ? r.mode : 'daily',
+      days: Array.isArray(r.days) ? r.days.filter((d) => d >= 0 && d <= 6) : [1, 2, 3, 4, 5],
+    } : null,
+    createdAt: (c && c.createdAt) || Date.now(),
+    // { 'YYYY-MM-DD': timestamp } — one entry per day it was ticked.
+    done: (c && c.done && typeof c.done === 'object' && !Array.isArray(c.done)) ? c.done : {},
+  };
+}
+function saveChecklist() { saveStore('checklist', checklist); }
+
+function ckIsDone(item, day) { return !!(item.done && item.done[day]); }
+function ckDoneDays(item) { return Object.keys(item.done || {}); }
+
+// Does this item belong on the given day?
+function ckOnDay(item, day) {
+  // Nothing appears before it existed — otherwise adding a daily ritual would
+  // retroactively fill every past day with something you never failed to do.
+  if (iso(new Date(item.createdAt)) > day) return false;
+  if (!item.repeat) {
+    // A one-off stays put until it is cleared, then shows struck through for
+    // the rest of that day and is gone tomorrow.
+    const days = ckDoneDays(item);
+    return days.length === 0 || days.includes(day);
+  }
+  if (ckIsDone(item, day)) return true;           // always show what you did
+  const dow = new Date(day + 'T12:00:00').getDay();
+  const r = item.repeat;
+  if (r.mode === 'daily') return true;
+  if (r.mode === 'weekdays') return dow >= 1 && dow <= 5;
+  if (r.mode === 'weekends') return dow === 0 || dow === 6;
+  return (r.days || []).includes(dow);
+}
+function ckRepeatLabel(item) {
+  const r = item.repeat;
+  if (!r) return '';
+  if (r.mode !== 'custom') return CK_MODES[r.mode];
+  const d = (r.days || []).slice().sort();
+  if (!d.length) return 'Never';
+  return d.map((n) => CK_DAY_FULL[n]).join(' · ');
+}
+
+function renderChecklist() {
+  const wrap = $('#checklist');
+  if (!wrap) return;
+  const day = iso(current);
+  const items = checklist.filter((c) => ckOnDay(c, day));
+  const routine = items.filter((c) => c.repeat);
+  const once = items.filter((c) => !c.repeat);
+  const done = items.filter((c) => ckIsDone(c, day)).length;
+
+  $('#ckCount').textContent = done + '/' + items.length;
+  $('#ckProg').style.width = items.length ? (done / items.length * 100) + '%' : '0%';
+  wrap.classList.toggle('done', items.length > 0 && done === items.length);
+
+  const list = $('#ckList');
+  if (!items.length) {
+    list.innerHTML = '<div class="ck-empty">Nothing on the list' +
+      (isToday(current) ? ' today' : ' for this day') + '. Add something you do every day, or just once.</div>';
+    return;
+  }
+  // Headings only earn their space when both kinds are present.
+  const both = routine.length > 0 && once.length > 0;
+  const rowHtml = (c) => '<div class="ck-row' + (ckIsDone(c, day) ? ' on' : '') + '" data-ck="' + c.id + '">'
+    + '<button class="ck-box" type="button" role="checkbox" aria-checked="' + ckIsDone(c, day) + '"'
+    + ' aria-label="' + escapeHtml(c.text) + '">'
+    + '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5"/></svg></button>'
+    + '<div class="ck-txt" data-cktxt="' + c.id + '" title="Click to edit">'
+    + '<span class="ck-label">' + escapeHtml(c.text) + '</span></div>'
+    + (c.repeat ? '<span class="ck-badge">↻ ' + escapeHtml(ckRepeatLabel(c)) + '</span>' : '')
+    + '<button class="ck-del" data-ckdel="' + c.id + '" title="Remove" aria-label="Remove">×</button>'
+    + '</div>';
+  let html = '';
+  if (both) html += '<div class="ck-sec">Routine</div>';
+  html += routine.map(rowHtml).join('');
+  if (both) html += '<div class="ck-sec">Just once</div>';
+  html += once.map(rowHtml).join('');
+  list.innerHTML = html;
+
+  list.querySelectorAll('[data-ck] .ck-box').forEach((b) => {
+    b.onclick = () => ckToggle(b.closest('[data-ck]').dataset.ck);
+  });
+  list.querySelectorAll('[data-ckdel]').forEach((b) => {
+    b.onclick = () => ckRemove(b.dataset.ckdel);
+  });
+  list.querySelectorAll('[data-cktxt]').forEach((el) => {
+    el.onclick = () => ckEdit(el.dataset.cktxt, el);
+  });
+}
+
+function ckToggle(id) {
+  const c = checklist.find((x) => x.id === id);
+  if (!c) return;
+  const day = iso(current);
+  if (!c.done) c.done = {};
+  if (c.done[day]) delete c.done[day];
+  else c.done[day] = Date.now();
+  saveChecklist();
+  renderChecklist();
+}
+function ckRemove(id) {
+  checklist = checklist.filter((x) => x.id !== id);
+  saveChecklist();
+  renderChecklist();
+}
+// Edit in place: a checklist item is one line of text, so a modal for it would
+// be heavier than the thing being edited.
+function ckEdit(id, el) {
+  const c = checklist.find((x) => x.id === id);
+  if (!c || el.querySelector('input')) return;
+  const input = document.createElement('input');
+  input.className = 'ck-new';
+  input.value = c.text;
+  input.style.width = '100%';
+  el.textContent = '';
+  el.appendChild(input);
+  input.focus();
+  input.select();
+  const commit = () => {
+    const v = input.value.trim();
+    if (v && v !== c.text) { c.text = v; saveChecklist(); }
+    renderChecklist();
+  };
+  input.onblur = commit;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); renderChecklist(); }
+    e.stopPropagation();
+  };
+}
+
+function ckAddItem() {
+  const box = $('#ckNew');
+  const text = box.value.trim();
+  if (!text) return;
+  checklist.push(normChecklist({
+    text,
+    repeat: ckDraft.repeat ? { mode: ckDraft.mode, days: ckDraft.days.slice() } : null,
+  }));
+  box.value = '';
+  saveChecklist();
+  renderChecklist();
+  box.focus();
+}
+
+// --- the add row's own controls ------------------------------------------
+function ckPaintDraft() {
+  const on = ckDraft.repeat;
+  $('#ckRep').classList.toggle('on', on);
+  $('#ckRep').setAttribute('aria-pressed', String(on));
+  $('#ckRepLabel').textContent = on ? CK_MODES[ckDraft.mode] : 'Once';
+  $('#ckWhen').classList.toggle('show', on);
+  $('#ckDays').classList.toggle('show', on && ckDraft.mode === 'custom');
+  document.querySelectorAll('.ck-mode').forEach((b) => b.classList.toggle('on', b.dataset.mode === ckDraft.mode));
+  $('#ckDays').querySelectorAll('[data-ckday]').forEach((b) =>
+    b.classList.toggle('on', ckDraft.days.includes(+b.dataset.ckday)));
+}
+function ckInit() {
+  const days = $('#ckDays');
+  if (!days) return;
+  days.innerHTML = CK_DAY_NAMES.map((n, i) =>
+    '<button class="ck-day" type="button" data-ckday="' + i + '" title="' + CK_DAY_FULL[i] + '">' + n + '</button>').join('');
+  days.querySelectorAll('[data-ckday]').forEach((b) => {
+    b.onclick = () => {
+      const d = +b.dataset.ckday;
+      ckDraft.days = ckDraft.days.includes(d) ? ckDraft.days.filter((x) => x !== d) : ckDraft.days.concat(d);
+      ckPaintDraft();
+    };
+  });
+  document.querySelectorAll('.ck-mode').forEach((b) => {
+    b.onclick = () => { ckDraft.mode = b.dataset.mode; ckPaintDraft(); };
+  });
+  $('#ckRep').onclick = () => { ckDraft.repeat = !ckDraft.repeat; ckPaintDraft(); };
+  $('#ckAdd').onclick = ckAddItem;
+  $('#ckNew').onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); ckAddItem(); }
+    e.stopPropagation();          // N / F / T etc. are page shortcuts
+  };
+  ckPaintDraft();
+}
+
+// =====================================================================
 // TODAY EXTRAS — Continue, day suggestions, resurfacing, inbox nudge.
 // Compact strips, not another dashboard.
 // =====================================================================
@@ -8428,6 +8768,7 @@ function renderTodayExtras() {
   renderResurfaceCard();
   renderInboxNudge();
   renderBacklog();
+  renderChecklist();
   renderNoData();
   applySettings();
 }
@@ -15828,6 +16169,7 @@ $('#calPicker').onclick = (e) => { if (e.target.id === 'calPicker') closeCalenda
 loadCalPrefs();
 loadStaleSnoozes();
 loadRecent();
+ckInit();                                 // add-row controls, before any data arrives
 loadStores().then(async () => {
   await loadDocs();
   await refreshDays();
