@@ -18,8 +18,8 @@ contextBridge.exposeInMainWorld('tn', {
   miniIsOpen: () => ipcRenderer.invoke('mini:isOpen'),
   // The address a pad should open at in a browser (see main.js).
   webBase: (docId) => ipcRenderer.invoke('web:base', docId),
-  // Light or dark, so the window frame matches the page.
-  setTheme: (t) => ipcRenderer.send('theme:set', t),
+  // Which way the theme leans, and its ground, so the window frame matches.
+  setTheme: (mode, bg) => ipcRenderer.send('theme:set', mode, bg),
   pushState: (state) => ipcRenderer.send('focus:state', state),
 
   // native shell → any window

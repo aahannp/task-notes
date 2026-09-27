@@ -3,17 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <title>Focus</title>
+<script src="/themes.js"></script>
 <script>
-  // Light or dark, as the app is set: the same 'tn.theme' the Dark Mode switch
-  // writes (same origin), decided before first paint and followed after.
+  // The app's theme (public/themes.js), read from the same 'tn.theme' key —
+  // same origin — before first paint, and followed when it changes.
   (function () {
-    function pick() {
-      var t = null;
-      try { t = localStorage.getItem('tn.theme'); } catch (e) {}
-      return t === 'light' || t === 'dark' ? t : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    }
-    document.documentElement.dataset.theme = pick();
-    addEventListener('storage', function (e) { if (e.key === 'tn.theme') document.documentElement.dataset.theme = pick(); });
+    function pick() { return TNThemes.resolve(localStorage, matchMedia('(prefers-color-scheme: dark)').matches); }
+    TNThemes.apply(document, pick());
+    addEventListener('storage', function (e) { if (e.key === TNThemes.KEY) TNThemes.apply(document, pick()); });
   })();
 </script>
 <style>
@@ -123,15 +120,12 @@
   .jot-hint.ok { color: var(--green); }
   .jot-hint.bad { color: var(--c-ff8f8f); }
 
-  /* Rustpad's two modes, as in the app: flat, no blur. */
-  html[data-theme="light"] {
-    --ink: 26 32 44; --text: #2d3748; --muted: #718096; --accent: #3182ce; --faint: #a0aec0;
-    --card: #ffffff; --field: #f7fafc; --green: #2f855a; --c-ff8f8f: #c53030; --c-6fd6a4: #2f855a;
-  }
-  html[data-theme="dark"] {
-    --ink: 255 255 255; --text: #e2e8f0; --muted: #a0aec0; --accent: #3182ce; --faint: #718096;
-    --card: #252526; --field: #1e1e1e; --green: #3fb27f; --c-ff8f8f: #ff8f8f; --c-6fd6a4: #6fd6a4;
-  }
+  /* The theme's palette arrives as inline custom properties (themes.js);
+     these are what only depends on the mode, and this window's own names
+     for the theme's surfaces. Flat, no blur. */
+  html[data-mode="light"] { --green: #2f855a; --c-ff8f8f: #c53030; --c-6fd6a4: #2f855a; }
+  html[data-mode="dark"] { --green: #3fb27f; --c-ff8f8f: #ff8f8f; --c-6fd6a4: #6fd6a4; }
+  html[data-theme] { --card: var(--panel); --field: var(--bg); --faint: var(--done); }
   html[data-theme] .card { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none;
     box-shadow: 0 10px 30px rgba(0,0,0,.22), inset 0 0 0 1px rgb(var(--ink) / .08); }
   html[data-theme] input::placeholder, html[data-theme] .hint, html[data-theme] .jot-hint { color: var(--faint); }

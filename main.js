@@ -56,7 +56,7 @@ function createWindow(port) {
     title: 'Task Notes',
     // The page decides light or dark (see theme:set); until it has, match
     // macOS so the first frame is not the wrong one.
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#ffffff',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#f4f4f1',
     titleBarStyle: 'hiddenInset',
     webPreferences: { contextIsolation: true, preload: path.join(__dirname, 'preload.js') },
   });
@@ -163,11 +163,11 @@ ipcMain.handle('mini:isOpen', () => !!(mini && !mini.isDestroyed()));
 // The page's Dark Mode switch, carried to the window itself: the title bar,
 // menus and scroll bars follow it, and so does the colour a window shows
 // before its page has drawn.
-ipcMain.on('theme:set', (_e, t) => {
-  if (t !== 'light' && t !== 'dark') return;
-  nativeTheme.themeSource = t;
-  const bg = t === 'dark' ? '#1e1e1e' : '#ffffff';
-  if (win && !win.isDestroyed()) win.setBackgroundColor(bg);
+ipcMain.on('theme:set', (_e, mode, bg) => {
+  if (mode !== 'light' && mode !== 'dark') return;
+  nativeTheme.themeSource = mode;
+  const ground = /^#[0-9a-f]{6}$/i.test(String(bg)) ? bg : (mode === 'dark' ? '#1e1e1e' : '#f4f4f1');
+  if (win && !win.isDestroyed()) win.setBackgroundColor(ground);
 });
 
 // Where a document opens in a browser, as a pad. This window's own port is

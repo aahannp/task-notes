@@ -3,35 +3,34 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pad — Task Notes</title>
+<title>Doc — Task Notes</title>
 <!--
   A document on its own, in a plain editor — modelled on Rustpad
   (github.com/ekzhang/rustpad): a sidebar, a breadcrumb, and Monaco with
   line numbers. Without the collaboration: there is one writer, and the
-  document is one of your Task Notes documents, saved on this Mac and nowhere
-  else. /pad#<id> opens a document; /pad on its own starts a new one, which
-  only becomes a document once you type something.
+  document is one of your Task Notes docs, saved on this Mac and nowhere
+  else. /pad#<id> opens a doc; /pad on its own starts a new one, which only
+  becomes a doc once you type something. The app's Doc tab is this page in
+  a frame (?embed=1).
 -->
+<script src="/themes.js"></script>
+<script>
+  // The app's theme, before first paint (public/themes.js).
+  TNThemes.apply(document, TNThemes.resolve(localStorage, matchMedia('(prefers-color-scheme: dark)').matches));
+</script>
 <link rel="stylesheet" href="/vendor/monaco/vs/editor/editor.main.css" />
 <style>
-  /* Two themes, and the sidebar follows the editor's. Colours are Rustpad's
-     own (Chakra's gray scale beside Monaco's vs / vs-dark). */
+  /* The palette arrives from themes.js as inline custom properties; these
+     are only the fallback, the soft Light theme. */
   :root {
-    --bar: #e2e8f0; --bar-text: #4a5568;
-    --side: #f7fafc; --side-text: #2d3748; --side-muted: #4a5568; --line: #e2e8f0;
-    --field: #ffffff; --field-line: #e2e8f0;
-    --main: #ffffff; --crumb: #718096;
-    --link: #3182ce; --ok: #38a169; --warn: #dd6b20; --bad: #e53e3e;
-    --btn: #edf2f7; --btn-hover: #e2e8f0; --active: #ebf8ff;
+    --bar: #ecece8; --bar-text: #686c74;
+    --side: #efefeb; --side-text: #34373d; --side-muted: #686c74; --line: #e0e0db;
+    --field: #fcfcfa; --field-line: #e0e0db;
+    --main: #fafaf8; --crumb: #686c74;
+    --link: #3a72bd; --on-accent: #ffffff; --btn: #ecece8; --btn-hover: #e0e0db; --active: #e1e8f1;
+    --ok: #2f855a; --warn: #c05621; --bad: #c53030;
   }
-  body.dark {
-    --bar: #333333; --bar-text: #cbd5e0;
-    --side: #252526; --side-text: #cbd5e0; --side-muted: #a0aec0; --line: #333333;
-    --field: #3c3c3c; --field-line: #3c3c3c;
-    --main: #1e1e1e; --crumb: #a0aec0;
-    --link: #63b3ed; --ok: #68d391; --warn: #f6ad55; --bad: #fc8181;
-    --btn: #3c3c3c; --btn-hover: #474747; --active: #2a3b4d;
-  }
+  html[data-mode="dark"] { --ok: #68d391; --warn: #f6ad55; --bad: #fc8181; }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body { display: flex; flex-direction: column; background: var(--main); color: var(--side-text);
@@ -39,6 +38,8 @@
   .bar { flex-shrink: 0; height: 26px; background: var(--bar); color: var(--bar-text);
     font-size: 13px; display: flex; align-items: center; justify-content: center; }
   .shell { flex: 1; min-height: 0; display: flex; }
+  :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   /* ---- sidebar ---- */
   .side { flex-shrink: 0; width: 20rem; overflow-y: auto; background: var(--side);
@@ -47,15 +48,9 @@
   .status i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
   .status.saving i { background: var(--warn); }
   .status.bad i { background: var(--bad); }
-  .row { display: flex; align-items: center; justify-content: space-between; margin: 0 0 1.4rem; }
+  .row { display: flex; align-items: center; justify-content: space-between; margin: 0 0 .6rem; }
   h2 { font-size: 18px; font-weight: 600; margin: 0 0 .6rem; }
   .row h2 { margin: 0; }
-  .switch { position: relative; width: 42px; height: 24px; border-radius: 99px; border: 0; padding: 0;
-    background: #cbd5e0; cursor: pointer; transition: background .15s; }
-  .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
-    border-radius: 50%; background: #fff; transition: transform .15s; }
-  .switch[aria-checked="true"] { background: var(--link); }
-  .switch[aria-checked="true"]::after { transform: translateX(18px); }
   select, .field { width: 100%; font: inherit; font-size: 15px; color: inherit; background: var(--field);
     border: 1px solid var(--field-line); border-radius: 6px; padding: .5rem .75rem; margin: 0 0 1.4rem; }
   select { appearance: none; cursor: pointer;
@@ -64,63 +59,113 @@
   .btn { font: inherit; font-size: 14px; font-weight: 600; color: inherit; background: var(--btn);
     border: 0; border-radius: 6px; padding: .45rem .8rem; cursor: pointer; }
   .btn:hover { background: var(--btn-hover); }
-  .btn.outline { background: none; border: 1px solid var(--link); color: var(--link); }
-  .docs { list-style: none; margin: .7rem 0 1.4rem; padding: 0; }
-  .docs a { display: block; padding: .35rem .6rem; border-radius: 6px; color: var(--link); text-decoration: none;
-    font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .filter { margin: 0 0 .2rem; font-size: 14px; padding: .4rem .65rem; }
+  .docs { list-style: none; margin: .5rem 0 1.4rem; padding: 0; max-height: 46vh; overflow-y: auto; }
+  .docs a { display: flex; align-items: center; gap: .4rem; padding: .35rem .6rem; border-radius: 6px; color: var(--link);
+    text-decoration: none; font-size: 15px; white-space: nowrap; overflow: hidden; }
+  .docs a span { overflow: hidden; text-overflow: ellipsis; }
   .docs a:hover { background: var(--btn); }
   .docs a[aria-current="page"] { background: var(--active); font-weight: 600; }
+  .docs .pin { font-size: 11px; opacity: .7; flex-shrink: 0; }
   .docs .none { color: var(--side-muted); font-size: 14px; padding: .35rem .6rem; }
   .about p { margin: 0 0 .8rem; font-size: 15px; color: var(--side-text); }
-  .about a { color: var(--link); }
-  :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .about a, .linkbtn { color: var(--link); }
+  .linkbtn { font: inherit; font-size: 15px; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: .25rem .8rem; margin: 0 0 .8rem; font-size: 14px; }
+  .keys dt { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: var(--side-text);
+    background: var(--btn); border-radius: 4px; padding: 0 .35rem; justify-self: start; }
+  .keys dd { margin: 0; color: var(--side-muted); }
 
   /* ---- editor ---- */
   .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--main); }
-  .crumb { flex-shrink: 0; display: flex; align-items: center; gap: .45rem; padding: .45rem 1rem .3rem;
-    font-size: 14px; color: var(--crumb); }
-  .crumb svg { width: 15px; height: 15px; flex-shrink: 0; stroke: var(--link); }
+  .toolbar { flex-shrink: 0; display: flex; align-items: center; gap: .35rem; padding: .3rem .6rem .25rem .5rem; }
+  .crumb { display: flex; align-items: center; gap: .45rem; min-width: 0; font-size: 14px; color: var(--crumb); }
   .crumb .sep { opacity: .7; }
   .title { font: inherit; color: inherit; background: none; border: 1px solid transparent; border-radius: 4px;
     padding: 1px 4px; min-width: 4ch; max-width: 60ch; }
   .title:hover { border-color: var(--line); }
   .title:focus { border-color: var(--link); outline: none; color: var(--side-text); }
-  #editor { flex: 1; min-height: 0; }
+  .spring { flex: 1; }
+  .tool { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 .45rem; border-radius: 6px;
+    border: 1px solid transparent; background: none; color: var(--crumb); cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; }
+  .tool:hover { background: var(--btn); color: var(--side-text); }
+  .tool[aria-pressed="true"] { background: var(--active); color: var(--link); }
+  .tool svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .size { font-size: 12px; color: var(--crumb); min-width: 2.2ch; text-align: center; font-variant-numeric: tabular-nums; }
+  .editwrap { flex: 1; min-height: 0; display: flex; }
+  #editor { flex: 1; min-height: 0; min-width: 0; }
+  .statusbar { flex-shrink: 0; display: flex; gap: 1.2rem; align-items: center; height: 24px; padding: 0 .8rem;
+    font-size: 12px; color: var(--crumb); border-top: 1px solid var(--line); background: var(--side); font-variant-numeric: tabular-nums; }
+  .statusbar .grow { flex: 1; }
   .conflict { flex-shrink: 0; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin: 0 1rem .4rem;
     padding: .5rem .75rem; border-radius: 6px; font-size: 14px; background: #fffaf0; color: #7b341e; border: 1px solid #fbd38d; }
-  body.dark .conflict { background: #3a2a14; color: #fbd38d; border-color: #7b5a1e; }
+  html[data-mode="dark"] .conflict { background: #3a2a14; color: #fbd38d; border-color: #7b5a1e; }
   .conflict[hidden] { display: none; }
   .conflict .btn { font-size: 13px; padding: .3rem .6rem; }
+
+  /* Sidebar hidden (⌘\), and full screen (⌃⌘F): full screen also hides the
+     sidebar and the bar, and sets the text in a comfortable centred column,
+     the way a writing app does, instead of lines running the width of a
+     wide screen. */
+  body.noside .side { display: none; }
+  body.fs .side, body.fs .bar { display: none; }
+  body.fs .editwrap { width: min(100%, 980px); margin: 0 auto; padding-top: 1.2rem; }
+  body.fs .toolbar { width: min(100%, 980px); margin: 0 auto; }
+  /* Full screen hides the sidebar outright, so its button would claim a state
+     it cannot change. */
+  body.fs #sideBtn { display: none; }
   @media (max-width: 720px) { .side { display: none; } }
+
   /* Inside the app's Doc tab: the app's own header is right above, so no
      title bar of our own, and no link back to where you already are. */
   body.embed .bar, body.embed .web-only { display: none; }
   body:not(.embed) .app-only { display: none; }
-  .filter { margin: .5rem 0 .2rem; font-size: 14px; padding: .4rem .65rem; }
-  .docs { max-height: 46vh; overflow-y: auto; }
-  .linkbtn { font: inherit; font-size: 15px; color: var(--link); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+
+  /* ---- the right-click menu on a doc ---- */
+  .menu { position: fixed; z-index: 50; min-width: 220px; padding: .3rem; border-radius: 8px;
+    background: var(--field); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+  .menu[hidden] { display: none; }
+  .menu button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 1rem;
+    font: inherit; font-size: 14px; color: var(--side-text); background: none; border: 0; border-radius: 5px;
+    padding: .38rem .6rem; cursor: pointer; text-align: left; }
+  .menu button:hover, .menu button:focus-visible { background: var(--link); color: var(--on-accent); outline: none; }
+  .menu button kbd { font: inherit; font-size: 12px; opacity: .65; }
+  .menu hr { border: 0; border-top: 1px solid var(--line); margin: .3rem .2rem; }
+  .menu .danger { color: var(--bad); }
+  .toast { position: fixed; z-index: 60; left: 50%; bottom: 36px; transform: translateX(-50%); display: flex; gap: .8rem;
+    align-items: center; padding: .5rem .9rem; border-radius: 8px; font-size: 14px; background: var(--side-text); color: var(--main); }
+  .toast[hidden] { display: none; }
+  .toast button { font: inherit; font-weight: 700; background: none; border: 0; color: inherit; text-decoration: underline; cursor: pointer; }
 </style>
 </head>
 <body>
 <div class="bar" id="bar">Task Notes</div>
 <div class="shell">
-  <aside class="side" aria-label="Pad settings">
+  <aside class="side" id="side" aria-label="Doc settings">
     <p class="status" id="status" role="status"><i aria-hidden="true"></i><span id="statusText">Loading…</span></p>
 
-    <div class="row">
-      <h2 id="darkLabel">Dark Mode</h2>
-      <button class="switch" id="dark" role="switch" aria-checked="false" aria-labelledby="darkLabel"></button>
-    </div>
+    <h2><label for="theme">Theme</label></h2>
+    <select id="theme"></select>
 
     <h2><label for="lang">Language</label></h2>
     <select id="lang"></select>
 
-    <div class="row" style="margin-bottom:0">
-      <h2>Docs</h2>
+    <div class="row">
+      <h2 id="docsLabel">Docs</h2>
       <button class="btn" id="newDoc" title="Start a new doc">+ New</button>
     </div>
     <input class="field filter" id="filter" type="search" placeholder="Filter…" aria-label="Filter docs" autocomplete="off" />
-    <ul class="docs" id="docs" aria-label="Your docs"></ul>
+    <ul class="docs" id="docs" aria-labelledby="docsLabel"></ul>
+
+    <h2>Shortcuts</h2>
+    <dl class="keys">
+      <dt>⌘S</dt><dd>Save now</dd>
+      <dt>⌘\</dt><dd>Hide or show this sidebar</dd>
+      <dt>⌃⌘F</dt><dd>Full screen</dd>
+      <dt>⌘= ⌘− ⌘0</dt><dd>Text size</dd>
+      <dt>F1</dt><dd>Every editor command</dd>
+      <dt>Right-click</dt><dd>On a doc: rename, pin, duplicate, archive…</dd>
+    </dl>
 
     <h2>About</h2>
     <div class="about">
@@ -132,19 +177,36 @@
   </aside>
 
   <main class="main">
-    <nav class="crumb" aria-label="Location">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
-      <span>doc</span><span class="sep" aria-hidden="true">›</span>
-      <input class="title" id="title" aria-label="Document title" spellcheck="false" />
-    </nav>
+    <div class="toolbar" role="toolbar" aria-label="Doc">
+      <button class="tool" id="sideBtn" type="button" aria-pressed="true" aria-keyshortcuts="Meta+Backslash" title="Hide sidebar (⌘\)" aria-label="Sidebar">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9 4.5v15"/></svg>
+      </button>
+      <nav class="crumb" aria-label="Location">
+        <span>doc</span><span class="sep" aria-hidden="true">›</span>
+        <input class="title" id="title" aria-label="Doc title" spellcheck="false" />
+      </nav>
+      <span class="spring"></span>
+      <button class="tool" id="smaller" type="button" aria-keyshortcuts="Meta+Minus" title="Smaller text (⌘−)" aria-label="Smaller text">A−</button>
+      <span class="size" id="size" aria-label="Text size"></span>
+      <button class="tool" id="bigger" type="button" aria-keyshortcuts="Meta+Equal" title="Bigger text (⌘=)" aria-label="Bigger text">A+</button>
+      <button class="tool" id="fsBtn" type="button" aria-pressed="false" aria-keyshortcuts="Control+Meta+F" title="Full screen (⌃⌘F)" aria-label="Full screen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+    </div>
     <div class="conflict" id="conflict" role="alert" hidden>
-      <span>This document changed in Task Notes while you were typing.</span>
+      <span>This doc changed in Task Notes while you were typing.</span>
       <button class="btn" id="keepMine">Keep mine</button>
       <button class="btn" id="takeTheirs">Use the other version</button>
     </div>
-    <div id="editor" aria-label="Document text"></div>
+    <div class="editwrap"><div id="editor" aria-label="Doc text"></div></div>
+    <footer class="statusbar" aria-label="Doc status">
+      <span id="sbPos">Ln 1, Col 1</span><span id="sbWords">0 words</span><span class="grow"></span>
+      <span id="sbLang">markdown</span><span id="sbSaved"></span>
+    </footer>
   </main>
 </div>
+<div class="menu" id="menu" role="menu" aria-label="Doc actions" hidden></div>
+<div class="toast" id="toast" role="status" hidden><span id="toastText"></span><button id="toastUndo" type="button">Undo</button></div>
 
 <script src="/vendor/monaco/vs/loader.js"></script>
 <script>
@@ -170,7 +232,7 @@
 
   // ---------------------------------------------------------------- state
   let editor = null;
-  let doc = null;              // { id, title, version, language } once it exists on disk
+  let doc = null;              // { id, title, version, language, pinned } once it exists on disk
   let dirty = false;
   let saving = false;
   let timer = null;
@@ -178,17 +240,19 @@
   let titleTouched = false;    // once renamed by hand, the first line stops naming it
   const SAVE_MS = 600;
 
-  // Per browser, like Rustpad: a convenience, not something to sync.
+  // Per browser, like Rustpad: conveniences, not something to sync.
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch {} },
   };
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function status(text, kind) {
     $('statusText').textContent = text;
     $('status').className = 'status' + (kind ? ' ' + kind : '');
+    // The status bar says it too, for when the sidebar is hidden.
+    $('sbSaved').textContent = text;
   }
-
   async function api(method, path, body) {
     const r = await fetch(path, {
       method, headers: body ? { 'Content-Type': 'application/json' } : {},
@@ -200,30 +264,30 @@
   }
 
   // ----------------------------------------------------------------- theme
-  // One setting for the whole app: 'tn.theme', the key the app's own Dark
-  // Mode switch uses. Same origin as the app, so flipping it in either place
-  // reaches the other through the 'storage' event.
-  function paintDark(on) {
-    document.body.classList.toggle('dark', on);
-    $('dark').setAttribute('aria-checked', String(on));
-    if (window.monaco) monaco.editor.setTheme(on ? 'vs-dark' : 'vs');
+  // One setting for the whole app, from public/themes.js. The same origin as
+  // the app, so a change in either place reaches the other through the
+  // 'storage' event; the app also calls padTheme directly, to be instant.
+  (function buildThemeMenu() {
+    const groups = {};
+    TNThemes.THEMES.forEach((t) => { (groups[t.group] = groups[t.group] || []).push(t); });
+    $('theme').innerHTML = Object.keys(groups).map((g) => '<optgroup label="' + g + '">'
+      + groups[g].map((t) => '<option value="' + t.id + '">' + t.name + '</option>').join('') + '</optgroup>').join('');
+  })();
+  function current() { return TNThemes.resolve(localStorage, matchMedia('(prefers-color-scheme: dark)').matches); }
+  function paintTheme(t) {
+    TNThemes.apply(document, t);
+    $('theme').value = t.id;
+    if (window.monaco) monaco.editor.setTheme('tn-' + t.id);
   }
-  function themeNow() {
-    const t = store.get('tn.theme');
-    if (t === 'light' || t === 'dark') return t === 'dark';
-    const old = store.get('pad.dark');                      // before the setting was shared
-    if (old != null) return old === '1';
-    return !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-  }
-  $('dark').onclick = () => {
-    const on = !document.body.classList.contains('dark');
-    store.set('tn.theme', on ? 'dark' : 'light');
-    paintDark(on);
-    // The app around us gets the 'storage' event too; this just makes it instant.
-    if (EMBED) try { parent.applyTheme(on ? 'dark' : 'light'); } catch {}
+  window.padTheme = (id) => paintTheme(TNThemes.byId[id] || current());
+  $('theme').onchange = () => {
+    const id = $('theme').value;
+    store.set(TNThemes.KEY, id);
+    paintTheme(TNThemes.byId[id]);
+    if (EMBED) try { parent.applyTheme(id); } catch {}
   };
-  window.addEventListener('storage', (e) => { if (e.key === 'tn.theme') paintDark(themeNow()); });
-  paintDark(themeNow());
+  window.addEventListener('storage', (e) => { if (e.key === TNThemes.KEY) paintTheme(current()); });
+  paintTheme(current());
 
   // --------------------------------------------------------------- saving
   function firstLine(text) {
@@ -244,8 +308,8 @@
     const content = editor.getValue();
     try {
       if (!doc) {
-        // A new pad only becomes a document once there is something in it —
-        // otherwise every visit to /pad would leave an empty one behind.
+        // A new doc only exists once there is something in it — otherwise
+        // every visit to /pad would leave an empty one behind.
         const r = await api('POST', '/api/documents', {
           title: titleTouched ? ($('title').value.trim() || 'Untitled') : firstLine(content),
           content, language: $('lang').value,
@@ -278,15 +342,11 @@
     }
   }
   $('keepMine').onclick = () => { $('conflict').hidden = true; dirty = true; save(true); };
-  $('takeTheirs').onclick = async () => {
-    $('conflict').hidden = true;
-    dirty = false;
-    await open(doc.id);
-  };
+  $('takeTheirs').onclick = async () => { $('conflict').hidden = true; dirty = false; await open(doc.id); };
 
   // ---------------------------------------------------------------- title
   function paintTitle() {
-    const t = doc ? doc.title : 'New document';
+    const t = doc ? doc.title : 'New doc';
     if (document.activeElement !== $('title')) $('title').value = t;
     $('title').style.width = Math.max(6, Math.min(60, t.length + 1)) + 'ch';
     document.title = t + ' — Task Notes';
@@ -299,7 +359,7 @@
     const t = $('title').value.trim();
     if (!t || (doc && t === doc.title)) { paintTitle(); return; }
     titleTouched = true;
-    if (!doc) { paintTitle(); return; }         // used when the document is created
+    if (!doc) { paintTitle(); return; }         // used when the doc is created
     const r = await api('PUT', '/api/documents/' + doc.id, { title: t });
     if (r.code === 200) { doc = r.body.document; loadList(); tell('tn:docs-changed', doc.id); }
     paintTitle();
@@ -309,19 +369,22 @@
   $('lang').onchange = async () => {
     const lang = $('lang').value;
     if (editor) monaco.editor.setModelLanguage(editor.getModel(), lang);
+    $('sbLang').textContent = $('lang').selectedOptions[0].textContent;
+    if (!doc) store.set('pad.lang', lang);
     if (doc) {
       const r = await api('PUT', '/api/documents/' + doc.id, { language: lang });
       if (r.code === 200) doc = r.body.document;
     }
   };
 
-  // ------------------------------------------------------------ documents
-  // Every doc, most recently changed first — this is the only way into them
-  // now that the Doc tab is the pad — with a filter once there are a few.
+  // ------------------------------------------------------------ the list
+  // Every doc, pinned ones first, then most recently changed — this is the
+  // only way into them — with a filter once there are a few.
   let allDocs = [];
   async function loadList() {
     const r = await api('GET', '/api/documents');
-    allDocs = (r.body.documents || []).slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    allDocs = (r.body.documents || []).slice()
+      .sort((a, b) => (!!b.pinned - !!a.pinned) || (b.updatedAt || 0) - (a.updatedAt || 0));
     paintList();
   }
   function paintList() {
@@ -330,33 +393,31 @@
     $('filter').hidden = allDocs.length < 8;
     const here = doc && doc.id;
     $('docs').innerHTML = list.length
-      ? list.map((d) => '<li><a href="#' + encodeURIComponent(d.id) + '"' + (d.id === here ? ' aria-current="page"' : '')
-        + '>' + esc(d.title || 'Untitled') + '</a></li>').join('')
+      ? list.map((d) => '<li><a href="#' + encodeURIComponent(d.id) + '" data-id="' + esc(d.id) + '"'
+        + (d.id === here ? ' aria-current="page"' : '') + ' aria-haspopup="menu">'
+        + (d.pinned ? '<span class="pin" aria-label="Pinned">📌</span>' : '')
+        + '<span>' + esc(d.title || 'Untitled') + '</span></a></li>').join('')
       : '<li class="none">' + (q ? 'No doc matches.' : 'No docs yet.') + '</li>';
   }
   $('filter').oninput = paintList;
-  function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   $('newDoc').onclick = () => { location.hash = ''; openFromHash(); };
-  // From the app's Doc tab, the same doc in a real browser tab.
   $('openBrowser').onclick = () => { if (doc) tell('tn:open-browser', doc.id); };
 
   async function open(id) {
     const r = await api('GET', '/api/documents/' + encodeURIComponent(id));
-    if (r.code !== 200) {
-      status(r.code === 404 ? 'No such document' : 'Could not open it', 'bad');
-      return false;
-    }
+    if (r.code !== 200) { status(r.code === 404 ? 'No such doc' : 'Could not open it', 'bad'); return false; }
     doc = r.body.document;
     titleTouched = doc.title !== 'Untitled';
     const lang = doc.language || 'markdown';
     $('lang').value = LANGS.some(([v]) => v === lang) ? lang : 'plaintext';
+    $('sbLang').textContent = $('lang').selectedOptions[0].textContent;
     applying = true;
     editor.setValue(doc.content || '');
     monaco.editor.setModelLanguage(editor.getModel(), $('lang').value);
     applying = false;
     dirty = false;
     $('conflict').hidden = true;
-    paintTitle();
+    paintTitle(); paintCounts();
     status('Saved on this Mac');
     tell('tn:doc-open', doc.id);
     return true;
@@ -365,9 +426,10 @@
     doc = null; dirty = false; titleTouched = false;
     applying = true; editor.setValue(''); applying = false;
     $('lang').value = store.get('pad.lang') || 'markdown';
+    $('sbLang').textContent = $('lang').selectedOptions[0].textContent;
     monaco.editor.setModelLanguage(editor.getModel(), $('lang').value);
     history.replaceState(null, '', location.pathname + location.search);
-    paintTitle();
+    paintTitle(); paintCounts();
     status('New — saved once you type');
     editor.focus();
   }
@@ -379,6 +441,205 @@
   }
   window.addEventListener('hashchange', openFromHash);
 
+  // ----------------------------------------------------- right-click menu
+  // Two-finger click (or the menu key, or Shift+F10) on a doc in the list:
+  // everything you can do to it, instead of the browser's own link menu.
+  const menu = $('menu');
+  let menuFor = null, menuReturn = null;
+  const inWeb = (id) => location.origin + '/pad#' + encodeURIComponent(id);
+  function menuItems(d) {
+    return [
+      ['Open', () => { location.hash = encodeURIComponent(d.id); }],
+      [EMBED ? 'Open in browser' : 'Open in new tab', () => {
+        if (EMBED) tell('tn:open-browser', d.id); else window.open(inWeb(d.id), '_blank', 'noopener');
+      }, '↗'],
+      null,
+      ['Rename…', () => renameDoc(d)],
+      [d.pinned ? 'Unpin' : 'Pin to top', () => pinDoc(d)],
+      ['Duplicate', () => duplicateDoc(d)],
+      ['Copy link', () => copyLink(d)],
+      null,
+      ['Archive', () => archiveDoc(d), '', 'danger'],
+    ];
+  }
+  function openMenu(d, x, y, returnTo) {
+    menuFor = d; menuReturn = returnTo || null;
+    menu.innerHTML = menuItems(d).map((it, i) => it === null ? '<hr role="separator">'
+      : '<button type="button" role="menuitem" data-i="' + i + '"' + (it[3] ? ' class="' + it[3] + '"' : '') + '>'
+        + esc(it[0]) + (it[2] ? '<kbd aria-hidden="true">' + it[2] + '</kbd>' : '') + '</button>').join('');
+    const items = menuItems(d);
+    menu.querySelectorAll('[data-i]').forEach((b) => { b.onclick = () => { closeMenu(false); items[+b.dataset.i][1](); }; });
+    menu.hidden = false;
+    // Kept on screen, flipping up or left near the edges.
+    const r = menu.getBoundingClientRect();
+    menu.style.left = Math.max(6, Math.min(x, innerWidth - r.width - 6)) + 'px';
+    menu.style.top = Math.max(6, y + r.height > innerHeight - 6 ? y - r.height : y) + 'px';
+    menu.querySelector('button').focus();
+  }
+  function closeMenu(restore) {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    if (restore !== false && menuReturn) menuReturn.focus();
+  }
+  $('docs').addEventListener('contextmenu', (e) => {
+    const a = e.target.closest('a[data-id]'); if (!a) return;
+    const d = allDocs.find((x) => x.id === a.dataset.id); if (!d) return;
+    e.preventDefault();
+    openMenu(d, e.clientX, e.clientY, a);
+  });
+  $('docs').addEventListener('keydown', (e) => {
+    const a = e.target.closest('a[data-id]'); if (!a) return;
+    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+      e.preventDefault();
+      const r = a.getBoundingClientRect();
+      openMenu(allDocs.find((x) => x.id === a.dataset.id), r.left + 12, r.bottom, a);
+    }
+  });
+  menu.addEventListener('keydown', (e) => {
+    const btns = [...menu.querySelectorAll('button')];
+    const i = btns.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); btns[(i + 1) % btns.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); btns[(i - 1 + btns.length) % btns.length].focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); btns[0].focus(); }
+    else if (e.key === 'End') { e.preventDefault(); btns[btns.length - 1].focus(); }
+    else if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); closeMenu(); }
+  });
+  document.addEventListener('mousedown', (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu(false); });
+  window.addEventListener('blur', () => closeMenu(false));
+  window.addEventListener('resize', () => closeMenu(false));
+  $('docs').addEventListener('scroll', () => closeMenu(false));
+
+  // The things the menu does.
+  let toastUndo = null, toastTimer = null;
+  function toast(text, undo) {
+    $('toastText').textContent = text;
+    $('toastUndo').hidden = !undo;
+    toastUndo = undo || null;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $('toast').hidden = true; toastUndo = null; }, undo ? 8000 : 2500);
+  }
+  $('toastUndo').onclick = async () => { const u = toastUndo; $('toast').hidden = true; toastUndo = null; if (u) await u(); };
+
+  async function renameDoc(d) {
+    if (!doc || doc.id !== d.id) { location.hash = encodeURIComponent(d.id); await openFromHash(); }
+    $('title').focus(); $('title').select();
+  }
+  async function pinDoc(d) {
+    const r = await api('PUT', '/api/documents/' + d.id, { pinned: !d.pinned });
+    if (r.code !== 200) return toast('Could not change that');
+    if (doc && doc.id === d.id) doc = r.body.document;
+    toast(d.pinned ? 'Unpinned' : 'Pinned to the top');
+    loadList(); tell('tn:docs-changed', d.id);
+  }
+  async function duplicateDoc(d) {
+    const g = await api('GET', '/api/documents/' + d.id);
+    if (g.code !== 200) return toast('Could not read that doc');
+    const src = g.body.document;
+    const r = await api('POST', '/api/documents', { title: (src.title || 'Untitled') + ' (copy)', content: src.content || '', language: src.language || '' });
+    if (r.code !== 201) return toast('Could not duplicate it');
+    tell('tn:docs-changed', r.body.document.id);
+    location.hash = encodeURIComponent(r.body.document.id);
+    toast('Duplicated');
+  }
+  async function copyLink(d) {
+    // From the app, the app knows the address that survives a restart.
+    if (EMBED) { tell('tn:copy-link', d.id); return; }
+    try { await navigator.clipboard.writeText(inWeb(d.id)); toast('Link copied'); } catch { toast(inWeb(d.id)); }
+  }
+  async function archiveDoc(d) {
+    // Archive, not delete: nothing is lost, and Undo is right there.
+    const r = await api('POST', '/api/documents/' + d.id + '/archive');
+    if (r.code !== 200) return toast('Could not archive it');
+    tell('tn:docs-changed', d.id);
+    if (doc && doc.id === d.id) {
+      await loadList();
+      const next = allDocs[0];
+      location.hash = next ? encodeURIComponent(next.id) : '';
+      if (!next) openFromHash();
+    } else loadList();
+    toast('Archived “' + (d.title || 'Untitled') + '”', async () => {
+      await api('POST', '/api/documents/' + d.id + '/restore');
+      tell('tn:docs-changed', d.id);
+      location.hash = encodeURIComponent(d.id);
+      loadList();
+    });
+  }
+
+  // ------------------------------------------------ sidebar, size, screen
+  function setSide(show) {
+    document.body.classList.toggle('noside', !show);
+    $('sideBtn').setAttribute('aria-pressed', String(show));
+    $('sideBtn').title = (show ? 'Hide' : 'Show') + ' sidebar (⌘\\)';
+    store.set('pad.side', show ? '1' : '0');
+    if (editor) editor.layout();
+  }
+  const toggleSide = () => setSide(document.body.classList.contains('noside'));
+  $('sideBtn').onclick = toggleSide;
+  setSide(store.get('pad.side') !== '0');
+
+  const SIZES = { min: 11, max: 28, def: 15 };
+  let fontSize = Math.min(SIZES.max, Math.max(SIZES.min, parseInt(store.get('pad.font') || SIZES.def, 10) || SIZES.def));
+  function setSize(n) {
+    fontSize = Math.min(SIZES.max, Math.max(SIZES.min, n));
+    store.set('pad.font', String(fontSize));
+    $('size').textContent = fontSize;
+    $('size').setAttribute('aria-label', 'Text size ' + fontSize);
+    if (editor) editor.updateOptions({ fontSize, lineHeight: Math.round(fontSize * 1.6) });
+  }
+  $('smaller').onclick = () => setSize(fontSize - 1);
+  $('bigger').onclick = () => setSize(fontSize + 1);
+  setSize(fontSize);
+
+  // Real full screen where the page may have it (the app's frame allows it);
+  // otherwise the same layout inside the window.
+  function inFs() { return document.body.classList.contains('fs'); }
+  function paintFs(on) {
+    document.body.classList.toggle('fs', on);
+    $('fsBtn').setAttribute('aria-pressed', String(on));
+    $('fsBtn').title = (on ? 'Leave full screen' : 'Full screen') + ' (⌃⌘F)';
+    if (editor) editor.layout();
+  }
+  async function toggleFs() {
+    const want = !inFs();
+    const el = document.documentElement;
+    try {
+      if (want && el.requestFullscreen && document.fullscreenEnabled) await el.requestFullscreen();
+      else if (!want && document.fullscreenElement) await document.exitFullscreen();
+      else paintFs(want);
+    } catch { paintFs(want); }
+    if (editor) editor.focus();
+  }
+  document.addEventListener('fullscreenchange', () => paintFs(!!document.fullscreenElement));
+  $('fsBtn').onclick = toggleFs;
+
+  // Shortcuts that work wherever focus is on the page. Inside the editor
+  // Monaco has them too (below), so they win over its own bindings.
+  document.addEventListener('keydown', (e) => {
+    // Inside the editor its own actions handle these; answering here as
+    // well would toggle twice and look like nothing happened.
+    if (e.target.closest && e.target.closest('.monaco-editor')) return;
+    const k = e.key.toLowerCase();
+    if (e.metaKey && !e.ctrlKey && k === '\\') { e.preventDefault(); toggleSide(); }
+    else if (e.metaKey && e.ctrlKey && k === 'f') { e.preventDefault(); toggleFs(); }
+    else if (e.key === 'Escape' && inFs() && !document.fullscreenElement && menu.hidden) { paintFs(false); }
+  });
+
+  // ----------------------------------------------------------- status bar
+  let countTimer = null;
+  function paintCounts() {
+    if (!editor) return;
+    const text = editor.getValue();
+    const words = (text.match(/\S+/g) || []).length;
+    $('sbWords').textContent = words.toLocaleString() + (words === 1 ? ' word' : ' words');
+  }
+  function paintPos() {
+    const p = editor.getPosition(); if (!p) return;
+    const sel = editor.getSelection();
+    const picked = sel && !sel.isEmpty() ? ' (' + editor.getModel().getValueInRange(sel).length + ' selected)' : '';
+    $('sbPos').textContent = 'Ln ' + p.lineNumber + ', Col ' + p.column + picked;
+  }
+
   // Coming back to the tab: pick up edits made in the app meanwhile, unless
   // there are unsaved ones here (the conflict banner handles that case).
   document.addEventListener('visibilitychange', async () => {
@@ -389,7 +650,7 @@
     doc = r.body.document;
     applying = true; editor.setValue(doc.content || ''); applying = false;
     if (pos) editor.setPosition(pos);
-    paintTitle(); loadList();
+    paintTitle(); paintCounts(); loadList();
   });
   // Closing the tab mid-debounce should not lose the last few keystrokes.
   window.addEventListener('beforeunload', () => {
@@ -422,10 +683,12 @@
     quiet.forEach(([ns, keys, keep]) => keys.forEach((k) => {
       try { ns[k].setModeConfiguration(OFF(keep)); } catch {}
     }));
+    // Every app theme as an editor theme, syntax colours included.
+    TNThemes.THEMES.forEach((t) => monaco.editor.defineTheme('tn-' + t.id, TNThemes.monacoTheme(t)));
     editor = monaco.editor.create($('editor'), {
-      value: '', language: 'markdown', theme: document.body.classList.contains('dark') ? 'vs-dark' : 'vs',
+      value: '', language: 'markdown', theme: 'tn-' + current().id,
       automaticLayout: true, minimap: { enabled: false }, wordWrap: 'on',
-      fontSize: 15, lineHeight: 24, renderLineHighlight: 'line', scrollBeyondLastLine: false,
+      fontSize, lineHeight: Math.round(fontSize * 1.6), renderLineHighlight: 'line', scrollBeyondLastLine: false,
       padding: { top: 6 }, tabSize: 2, unicodeHighlight: { ambiguousCharacters: false },
       // This is for writing, not coding: no completion popup offering back
       // words you have already typed, on every line.
@@ -433,11 +696,29 @@
       parameterHints: { enabled: false },
       // Nor every other "the" lighting up because the cursor is on one.
       occurrencesHighlight: 'off',
+      // Nor rainbow brackets: they are painted in fixed vivid colours that no
+      // theme can calm, and were the loudest thing on a light page.
+      bracketPairColorization: { enabled: false },
+      accessibilitySupport: 'auto',
     });
-    editor.onDidChangeModelContent(() => { if (!applying) schedule(); });
+    editor.onDidChangeModelContent(() => {
+      if (!applying) schedule();
+      clearTimeout(countTimer); countTimer = setTimeout(paintCounts, 250);
+    });
+    editor.onDidChangeCursorSelection(paintPos);
+
+    // The editor's own right-click menu (and F1) gets the doc's actions too.
+    const K = monaco.KeyMod, C = monaco.KeyCode;
+    const act = (id, label, keys, run, order) => editor.addAction({
+      id, label, keybindings: keys, contextMenuGroupId: '9_doc', contextMenuOrder: order, run,
+    });
+    act('doc.sidebar', 'Hide / show sidebar', [K.CtrlCmd | C.Backslash], toggleSide, 1);
+    act('doc.fullscreen', 'Full screen', [K.WinCtrl | K.CtrlCmd | C.KeyF], toggleFs, 2);
+    act('doc.bigger', 'Bigger text', [K.CtrlCmd | C.Equal], () => setSize(fontSize + 1), 3);
+    act('doc.smaller', 'Smaller text', [K.CtrlCmd | C.Minus], () => setSize(fontSize - 1), 4);
+    act('doc.resetSize', 'Reset text size', [K.CtrlCmd | C.Digit0], () => setSize(SIZES.def), 5);
     // ⌘S saves now rather than opening the browser's "save page" dialog.
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => { clearTimeout(timer); save(); });
-    $('lang').addEventListener('change', () => { if (!doc) store.set('pad.lang', $('lang').value); });
+    editor.addCommand(K.CtrlCmd | C.KeyS, () => { clearTimeout(timer); save(); });
     openFromHash();
   });
 })();

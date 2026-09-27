@@ -21,3 +21,43 @@ test('every link to a doc lands in the pad', () => {
   const body = fn.slice(0, fn.indexOf('\n}\n'));
   assert.match(body, /padShow\(id\)|openPage\('docs'\)/);
 });
+
+// ------------------------------------------------------- the Doc's tools
+const PAD = read('pad.html');
+
+test('right-clicking a doc opens our menu, not the browser\'s link menu', () => {
+  assert.match(PAD, /\$\('docs'\)\.addEventListener\('contextmenu'[\s\S]*?e\.preventDefault\(\)/);
+  for (const label of ['Open', 'Rename…', 'Pin to top', 'Duplicate', 'Copy link', 'Archive']) assert.ok(PAD.includes("'" + label + "'"), label);
+  // and it works without a mouse: the menu key or Shift+F10, arrows, Escape
+  assert.match(PAD, /e\.key === 'ContextMenu' \|\| \(e\.shiftKey && e\.key === 'F10'\)/);
+  assert.match(PAD, /role="menu"/);
+  assert.match(PAD, /role="menuitem"/);
+});
+
+test('archiving from the menu is undoable, never a delete', () => {
+  assert.match(PAD, /'\/archive'/);
+  assert.match(PAD, /'\/restore'/);
+  assert.doesNotMatch(PAD, /method: 'DELETE'|api\('DELETE'/);
+});
+
+test('the sidebar hides, the text resizes, and both are remembered', () => {
+  assert.match(PAD, /store\.set\('pad\.side'/);
+  assert.match(PAD, /store\.set\('pad\.font'/);
+  assert.match(PAD, /aria-keyshortcuts="Meta\+Backslash"/);
+});
+
+test('full screen is allowed from inside the app, and falls back if not', () => {
+  assert.match(INDEX, /id="padFrame"[^>]*allow="fullscreen"/);
+  assert.match(PAD, /requestFullscreen/);
+  assert.match(PAD, /catch \{ paintFs\(want\); \}/, 'no Fullscreen API: the same layout inside the window');
+});
+
+test('the editor\'s own right-click menu has the doc\'s actions', () => {
+  for (const id of ['doc.sidebar', 'doc.fullscreen', 'doc.bigger', 'doc.smaller', 'doc.resetSize']) assert.ok(PAD.includes("'" + id + "'"), id);
+  assert.match(PAD, /contextMenuGroupId: '9_doc'/);
+});
+
+test('the editor is calm: no rainbow brackets, no completion popups', () => {
+  assert.match(PAD, /bracketPairColorization: \{ enabled: false \}/);
+  assert.match(PAD, /quickSuggestions: false/);
+});
