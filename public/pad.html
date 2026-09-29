@@ -28,9 +28,9 @@
     --field: #fcfcfa; --field-line: #e0e0db;
     --main: #fafaf8; --crumb: #686c74;
     --link: #3a72bd; --on-accent: #ffffff; --btn: #ecece8; --btn-hover: #e0e0db; --active: #e1e8f1;
-    --ok: #2f855a; --warn: #c05621; --bad: #c53030;
+    --ok: #2f855a; --warn: #c05621; --bad: #c53030; --folder: #c98a1b;
   }
-  html[data-mode="dark"] { --ok: #68d391; --warn: #f6ad55; --bad: #fc8181; }
+  html[data-mode="dark"] { --ok: #68d391; --warn: #f6ad55; --bad: #fc8181; --folder: #e2b457; }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body { display: flex; flex-direction: column; background: var(--main); color: var(--side-text);
@@ -60,14 +60,65 @@
     border: 0; border-radius: 6px; padding: .45rem .8rem; cursor: pointer; }
   .btn:hover { background: var(--btn-hover); }
   .filter { margin: 0 0 .2rem; font-size: 14px; padding: .4rem .65rem; }
-  .docs { list-style: none; margin: .5rem 0 1.4rem; padding: 0; max-height: 46vh; overflow-y: auto; }
-  .docs a { display: flex; align-items: center; gap: .4rem; padding: .35rem .6rem; border-radius: 6px; color: var(--link);
-    text-decoration: none; font-size: 15px; white-space: nowrap; overflow: hidden; }
-  .docs a span { overflow: hidden; text-overflow: ellipsis; }
-  .docs a:hover { background: var(--btn); }
+  .docs, .docs ul { list-style: none; margin: 0; padding: 0; }
+  .docs { margin: .5rem 0 1.4rem; max-height: 46vh; overflow-y: auto; }
+  .docs a, .docs .frow { display: flex; align-items: center; gap: .3rem; width: 100%; padding: .3rem .5rem .3rem .3rem;
+    border-radius: 6px; color: var(--link); text-decoration: none; font: inherit; font-size: 15px; white-space: nowrap; overflow: hidden; }
+  .docs .dname, .docs .fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .docs a:hover, .docs .frow:hover { background: var(--btn); }
   .docs a[aria-current="page"] { background: var(--active); font-weight: 600; }
   .docs .pin { font-size: 11px; opacity: .7; flex-shrink: 0; }
   .docs .none { color: var(--side-muted); font-size: 14px; padding: .35rem .6rem; }
+  .dic { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: var(--side-muted); stroke-width: 1.3; stroke-linejoin: round; }
+
+  /* Folders, the way VS Code's explorer has them: every row keeps room for a
+     chevron so the icons line up, the chevron turns, the folder opens, and
+     what is inside slides out under an indent guide. Collapsing is the same
+     in reverse. The list is only repainted when what is in it changes, so a
+     click just flips a class and the transition runs on the rows already
+     there. */
+  .twist { width: 16px; height: 16px; flex-shrink: 0; display: grid; place-items: center; }
+  .chev { width: 16px; height: 16px; fill: none; stroke: var(--side-muted); stroke-width: 1.6;
+    stroke-linecap: round; stroke-linejoin: round; transition: transform 170ms cubic-bezier(.2, .7, .3, 1); }
+  .folder.open > .frow .chev { transform: rotate(90deg); }
+  .fic { width: 17px; height: 17px; flex-shrink: 0; overflow: visible; color: var(--folder); fill: currentColor; }
+  .fic .back { opacity: .55; }
+  .fic .flap { transform-box: fill-box; transform-origin: 30% 100%;
+    transition: transform 210ms cubic-bezier(.2, .7, .3, 1), opacity 210ms; }
+  .folder.open > .frow .fic .flap { transform: skewX(-20deg) scaleY(.76); opacity: .92; }
+  .docs .frow { color: var(--side-text); background: none; border: 0; cursor: pointer; text-align: left; }
+  .frow .fcount { flex-shrink: 0; font-size: 12px; color: var(--side-muted); font-variant-numeric: tabular-nums; padding-left: .3rem; }
+  .kids { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 210ms cubic-bezier(.2, .7, .3, 1); }
+  .folder.open > .kids { grid-template-rows: 1fr; }
+  .kids > ul { min-height: 0; overflow: hidden; margin-left: calc(.3rem + 7.5px); padding-left: 7.5px;
+    border-left: 1px solid var(--line); opacity: 0; transform: translateY(-4px);
+    transition: opacity 170ms ease, transform 210ms cubic-bezier(.2, .7, .3, 1); }
+  .folder.open > .kids > ul { opacity: 1; transform: none; }
+  .docs:hover .kids > ul { border-left-color: var(--btn-hover); }
+  .kids .empty { color: var(--side-muted); font-size: 13px; font-style: italic; padding: .2rem .5rem .35rem 1.5rem; }
+  /* However deep it goes, a long name ends in … rather than pushing the
+     count off the side. */
+  .docs li { min-width: 0; }
+  .fedit { flex: 1; min-width: 0; font: inherit; font-size: 14px; color: var(--side-text); background: var(--field);
+    border: 1px solid var(--link); border-radius: 4px; padding: 0 .3rem; outline: none; }
+  /* Dragging a doc onto a folder files it; onto the list itself, takes it out. */
+  .docs a.dragging, .docs .frow.dragging { opacity: .45; }
+  .docs .frow.sel { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--link) 55%, transparent); }
+  .folder.drop { background: color-mix(in srgb, var(--link) 11%, transparent); border-radius: 6px; }
+  .docs.drop-root { background: color-mix(in srgb, var(--link) 7%, transparent); border-radius: 6px; }
+  .docs.dragging-filed::after { content: 'Drop here for the top level'; display: block; margin-top: .3rem; padding: .45rem .6rem;
+    font-size: 13px; color: var(--side-muted); border: 1px dashed var(--field-line); border-radius: 6px; text-align: center; }
+  .docs a.landed { animation: landed 1s ease-out; }
+  @keyframes landed { from { background: color-mix(in srgb, var(--link) 24%, transparent); } }
+  @media (prefers-reduced-motion: reduce) {
+    .chev, .fic .flap, .kids, .kids > ul { transition: none; }
+    .docs a.landed { animation: none; }
+  }
+  .acts { display: flex; align-items: center; gap: .15rem; }
+  .iconbtn { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 6px;
+    background: none; color: var(--side-muted); cursor: pointer; }
+  .iconbtn:hover { background: var(--btn); color: var(--side-text); }
+  .iconbtn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
   .about p { margin: 0 0 .8rem; font-size: 15px; color: var(--side-text); }
   .about a, .linkbtn { color: var(--link); }
   .linkbtn { font: inherit; font-size: 15px; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
@@ -122,7 +173,7 @@
   body:not(.embed) .app-only { display: none; }
 
   /* ---- the right-click menu on a doc ---- */
-  .menu { position: fixed; z-index: 50; min-width: 220px; padding: .3rem; border-radius: 8px;
+  .menu { position: fixed; z-index: 50; min-width: 220px; max-height: 70vh; overflow-y: auto; padding: .3rem; border-radius: 8px;
     background: var(--field); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.18); }
   .menu[hidden] { display: none; }
   .menu button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 1rem;
@@ -152,7 +203,15 @@
 
     <div class="row">
       <h2 id="docsLabel">Docs</h2>
-      <button class="btn" id="newDoc" title="Start a new doc">+ New</button>
+      <div class="acts">
+        <button class="iconbtn" id="newFolder" type="button" title="New folder" aria-label="New folder">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M12 10.5v5M9.5 13h5"/></svg>
+        </button>
+        <button class="iconbtn" id="collapseAll" type="button" title="Collapse all folders" aria-label="Collapse all folders">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M8.5 12h7"/></svg>
+        </button>
+        <button class="btn" id="newDoc" title="Start a new doc">+ New</button>
+      </div>
     </div>
     <input class="field filter" id="filter" type="search" placeholder="Filter…" aria-label="Filter docs" autocomplete="off" />
     <ul class="docs" id="docs" aria-labelledby="docsLabel"></ul>
@@ -164,7 +223,10 @@
       <dt>⌃⌘F</dt><dd>Full screen</dd>
       <dt>⌘= ⌘− ⌘0</dt><dd>Text size</dd>
       <dt>F1</dt><dd>Every editor command</dd>
-      <dt>Right-click</dt><dd>On a doc: rename, pin, duplicate, archive…</dd>
+      <dt>Right-click</dt><dd>On a doc: rename, pin, move, duplicate, archive…</dd>
+      <dt>Drag</dt><dd>A doc onto a folder to file it</dd>
+      <dt>F2</dt><dd>On a folder: rename it</dd>
+      <dt>← →</dt><dd>On a folder: close or open it</dd>
     </dl>
 
     <h2>About</h2>
@@ -183,6 +245,7 @@
       </button>
       <nav class="crumb" aria-label="Location">
         <span>doc</span><span class="sep" aria-hidden="true">›</span>
+        <span id="crumbFolder" hidden></span><span class="sep" id="crumbFolderSep" aria-hidden="true" hidden>›</span>
         <input class="title" id="title" aria-label="Doc title" spellcheck="false" />
       </nav>
       <span class="spring"></span>
@@ -238,6 +301,7 @@
   let timer = null;
   let applying = false;        // setValue from the server is not an edit
   let titleTouched = false;    // once renamed by hand, the first line stops naming it
+  let newDocFolder = '';       // the folder a new doc goes in, once it is saved
   const SAVE_MS = 600;
 
   // Per browser, like Rustpad: conveniences, not something to sync.
@@ -312,10 +376,11 @@
         // every visit to /pad would leave an empty one behind.
         const r = await api('POST', '/api/documents', {
           title: titleTouched ? ($('title').value.trim() || 'Untitled') : firstLine(content),
-          content, language: $('lang').value,
+          content, language: $('lang').value, folder: newDocFolder,
         });
         if (r.code !== 201) throw new Error(r.body.error || 'could not create');
         doc = r.body.document;
+        newDocFolder = '';
         history.replaceState(null, '', location.pathname + location.search + '#' + doc.id);
         dirty = editor.getValue() !== content;
         loadList();
@@ -350,6 +415,9 @@
     if (document.activeElement !== $('title')) $('title').value = t;
     $('title').style.width = Math.max(6, Math.min(60, t.length + 1)) + 'ch';
     document.title = t + ' — Task Notes';
+    const f = doc ? doc.folder : newDocFolder;
+    $('crumbFolder').textContent = (f || '').split('/').join(' › ');
+    $('crumbFolder').hidden = $('crumbFolderSep').hidden = !f;
   }
   $('title').onkeydown = (e) => {
     if (e.key === 'Enter') { e.preventDefault(); $('title').blur(); }
@@ -378,36 +446,407 @@
   };
 
   // ------------------------------------------------------------ the list
-  // Every doc, pinned ones first, then most recently changed — this is the
-  // only way into them — with a filter once there are a few.
+  // A tree, like an editor's file explorer: folders inside folders, A to Z,
+  // then the docs in each — pinned first, then most recently changed. This is
+  // the only way into them, with a filter once there are a few. A folder is
+  // a path, "Eng/Kafka", as the server stores it.
   let allDocs = [];
+  let allFolders = [];
+  // Which folders are open, per browser like the other conveniences here.
+  // Closed unless opened, as in VS Code; opening a doc opens its folders.
+  const OPEN_KEY = 'pad.openFolders';
+  let openFolders = new Set();
+  try { openFolders = new Set(JSON.parse(store.get(OPEN_KEY) || '[]')); } catch {}
+  const saveOpen = () => store.set(OPEN_KEY, JSON.stringify([...openFolders]));
+  let listSig = null;          // what the painted list shows, so an unchanged one is not rebuilt
+  let folderEditing = false;   // a name being typed in the list: repainting would throw it away
+  // Where the new-folder button and + New put things, as in VS Code: the
+  // folder last clicked, or the one holding the doc last opened or clicked.
+  let selFolder = '';
+  let selMarked = false;        // outlined: only when the folder itself was clicked
+
+  const baseName = (f) => f.slice(f.lastIndexOf('/') + 1);
+  const parentOf = (f) => (f.includes('/') ? f.slice(0, f.lastIndexOf('/')) : '');
+  const within = (f, top) => f === top || f.startsWith(top + '/');
+  const joinPath = (a, b) => (a ? a + '/' + b : b);
+  const cleanPath = (s) => String(s || '').replace(/[\u0000-\u001f\u007f]/g, '').split('/').map((x) => x.trim()).filter(Boolean).join('/');
+  const ancestors = (f) => f.split('/').map((_, i, segs) => segs.slice(0, i + 1).join('/'));
+  const pretty = (f) => f.split('/').join(' / ');
+
   async function loadList() {
-    const r = await api('GET', '/api/documents');
+    const [r, f] = await Promise.all([api('GET', '/api/documents'), api('GET', '/api/doc-folders')]);
     allDocs = (r.body.documents || []).slice()
       .sort((a, b) => (!!b.pinned - !!a.pinned) || (b.updatedAt || 0) - (a.updatedAt || 0));
+    allFolders = f.body.folders
+      || [...new Set(allDocs.filter((d) => d.folder).flatMap((d) => ancestors(d.folder)))].sort();
     paintList();
   }
+
+  // Folder paths and docs into nested nodes. A doc filed in a folder the
+  // list does not know makes the folder, rather than disappearing.
+  function buildTree() {
+    const root = { path: '', name: '', kids: new Map(), docs: [] };
+    const node = (f) => {
+      let n = root;
+      if (f) f.split('/').forEach((seg) => {
+        if (!n.kids.has(seg)) n.kids.set(seg, { path: joinPath(n.path, seg), name: seg, kids: new Map(), docs: [] });
+        n = n.kids.get(seg);
+      });
+      return n;
+    };
+    allFolders.forEach(node);
+    allDocs.forEach((d) => node(d.folder || '').docs.push(d));
+    return root;
+  }
+  const total = (n) => n.docs.length + [...n.kids.values()].reduce((s, k) => s + total(k), 0);
+  const sortedKids = (n) => [...n.kids.values()].sort((a, b) => a.name.localeCompare(b.name));
+
+  const CHEV = '<span class="twist" aria-hidden="true"><svg class="chev" viewBox="0 0 16 16"><path d="M6 3.8 10.2 8 6 12.2"/></svg></span>';
+  const FOLDER_IC = '<svg class="fic" viewBox="0 0 16 16" aria-hidden="true">'
+    + '<path class="back" d="M1.5 3.6c0-.6.4-1 1-1h3.4l1.6 1.6h6c.6 0 1 .4 1 1v8c0 .6-.4 1-1 1h-11c-.6 0-1-.4-1-1z"/>'
+    + '<path class="flap" d="M1.5 6.6c0-.6.4-1 1-1h11c.6 0 1 .4 1 1v6.6c0 .6-.4 1-1 1h-11c-.6 0-1-.4-1-1z"/></svg>';
+  const DOC_IC = '<svg class="dic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.8h5.3l3 3v9.4H4z"/><path d="M9.2 1.8v3.1h3.1"/></svg>';
+
+  function docRow(d, here) {
+    return '<li><a href="#' + encodeURIComponent(d.id) + '" data-id="' + esc(d.id) + '" draggable="true"'
+      + (d.id === here ? ' aria-current="page"' : '') + ' aria-haspopup="menu">'
+      + '<span class="twist" aria-hidden="true"></span>' + DOC_IC
+      + '<span class="dname">' + esc(d.title || 'Untitled') + '</span>'
+      + (d.pinned ? '<span class="pin" aria-label="Pinned">📌</span>' : '') + '</a></li>';
+  }
+  function folderRow(n, inner, count, open) {
+    return '<li class="folder' + (open ? ' open' : '') + '" data-folder="' + esc(n.path) + '">'
+      + '<button type="button" class="frow' + (selMarked && n.path === selFolder ? ' sel' : '') + '" draggable="true"'
+      + ' aria-expanded="' + open + '" title="' + esc(pretty(n.path)) + '">'
+      + CHEV + FOLDER_IC + '<span class="fname">' + esc(n.name) + '</span>'
+      + '<span class="fcount" aria-label="' + count + (count === 1 ? ' doc' : ' docs') + '">' + count + '</span></button>'
+      + '<div class="kids"' + (open ? '' : ' inert') + '><ul>'
+      + (inner || '<li class="empty">Empty — drag a doc here</li>')
+      + '</ul></div></li>';
+  }
+  // One folder and everything under it. Filtering, a folder shows when its
+  // name matches (with all it holds) or when something under it does — open,
+  // since that is the point.
+  function paintNode(n, q, here, showAll) {
+    const hit = (d) => (d.title || 'Untitled').toLowerCase().includes(q);
+    const all = !q || showAll || (!!n.path && n.name.toLowerCase().includes(q));
+    const inner = sortedKids(n).map((k) => paintNode(k, q, here, all)).join('')
+      + (all ? n.docs : n.docs.filter(hit)).map((d) => docRow(d, here)).join('');
+    if (!n.path) return inner;
+    if (q && !all && !inner) return '';
+    return folderRow(n, inner, total(n), !!q || openFolders.has(n.path));
+  }
   function paintList() {
+    if (folderEditing) return;
     const q = $('filter').value.trim().toLowerCase();
-    const list = q ? allDocs.filter((d) => (d.title || '').toLowerCase().includes(q)) : allDocs;
     $('filter').hidden = allDocs.length < 8;
     const here = doc && doc.id;
-    $('docs').innerHTML = list.length
-      ? list.map((d) => '<li><a href="#' + encodeURIComponent(d.id) + '" data-id="' + esc(d.id) + '"'
-        + (d.id === here ? ' aria-current="page"' : '') + ' aria-haspopup="menu">'
-        + (d.pinned ? '<span class="pin" aria-label="Pinned">📌</span>' : '')
-        + '<span>' + esc(d.title || 'Untitled') + '</span></a></li>').join('')
-      : '<li class="none">' + (q ? 'No doc matches.' : 'No docs yet.') + '</li>';
+    // Moving between docs changes only which one is current: no rebuild, so
+    // a folder mid-way through opening keeps opening.
+    const sig = JSON.stringify([q, allFolders, allDocs.map((d) => [d.id, d.title, d.folder, d.pinned])]);
+    if (sig === listSig) {
+      $('docs').querySelectorAll('a[data-id]').forEach((a) => {
+        if (a.dataset.id === here) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      });
+      return;
+    }
+    listSig = sig;
+    $('docs').innerHTML = paintNode(buildTree(), q, here, false)
+      || '<li class="none">' + (q ? 'No doc matches.' : 'No docs yet.') + '</li>';
   }
+  const folderEl = (f) => [...$('docs').querySelectorAll('li.folder')].find((li) => li.dataset.folder === f);
+  const rowOf = (li) => li.querySelector(':scope > .frow');
+
+  // Open or close one. Only the class changes, so the CSS transition runs.
+  function setOpen(f, open) {
+    if (open) openFolders.add(f); else openFolders.delete(f);
+    saveOpen();
+    const li = folderEl(f);
+    if (!li || li.classList.contains('open') === open) return;
+    li.classList.toggle('open', open);
+    rowOf(li).setAttribute('aria-expanded', String(open));
+    li.querySelector(':scope > .kids').inert = !open;
+  }
+  // A folder and every folder above it, so it can be seen.
+  function revealFolder(f) { if (f) ancestors(f).forEach((x) => setOpen(x, true)); }
+  // `mark` outlines the folder, when it was the folder itself that was clicked.
+  function setSel(f, mark) {
+    selFolder = f || '';
+    selMarked = !!mark;
+    $('docs').querySelectorAll('.frow.sel').forEach((b) => b.classList.remove('sel'));
+    const li = mark && selFolder && folderEl(selFolder);
+    if (li) rowOf(li).classList.add('sel');
+    const where = selFolder ? ' in ' + baseName(selFolder) : '';
+    $('newFolder').title = 'New folder' + where;
+    $('newFolder').setAttribute('aria-label', 'New folder' + where);
+    $('newDoc').title = 'Start a new doc' + where;
+  }
+
   $('filter').oninput = paintList;
-  $('newDoc').onclick = () => { location.hash = ''; openFromHash(); };
+  $('newDoc').onclick = () => startNewIn(selFolder);
+  $('newFolder').onclick = () => editFolderName(null, selFolder);
+  $('collapseAll').onclick = () => { [...openFolders].forEach((f) => setOpen(f, false)); };
   $('openBrowser').onclick = () => { if (doc) tell('tn:open-browser', doc.id); };
+  $('docs').addEventListener('click', (e) => {
+    const b = e.target.closest('button.frow');
+    if (b) {
+      const li = b.closest('li.folder');
+      setSel(li.dataset.folder, true);
+      setOpen(li.dataset.folder, !li.classList.contains('open'));
+      return;
+    }
+    const a = e.target.closest('a[data-id]');
+    if (a) { const d = allDocs.find((x) => x.id === a.dataset.id); setSel(d ? d.folder : '', false); }
+    else if (e.target === $('docs')) setSel('', false);
+  });
+
+  // ---------------------------------------------------------- the folders
+  function startNewIn(folder) {
+    newDocFolder = folder || '';
+    revealFolder(newDocFolder);
+    location.hash = ''; openFromHash();
+  }
+
+  // A name typed straight into the list, the way VS Code asks for one: a new
+  // folder at the top of the folder it goes in (`parent`, '' for the top
+  // level), or a folder's own row for a rename. "a/b" makes b inside a. Enter
+  // or clicking away keeps it, Escape does not.
+  function editFolderName(from, parent, then) {
+    if (folderEditing) return;
+    parent = from ? parentOf(from) : (parent || '');
+    const input = document.createElement('input');
+    input.className = 'fedit';
+    input.maxLength = 240;
+    input.spellcheck = false;
+    input.value = from ? baseName(from) : '';
+    input.setAttribute('aria-label', from ? 'New name for ' + baseName(from) : 'Name of the new folder');
+    const row = document.createElement('div');
+    row.className = 'frow';
+    row.innerHTML = CHEV + FOLDER_IC;
+    row.appendChild(input);
+    if (from) {
+      const li = folderEl(from);
+      if (!li) return;
+      rowOf(li).replaceWith(row);
+    } else {
+      revealFolder(parent);
+      const host = parent && folderEl(parent);
+      const ul = host ? host.querySelector(':scope > .kids > ul') : $('docs');
+      if (!ul) return;
+      ul.querySelectorAll(':scope > .empty, :scope > .none').forEach((x) => x.remove());
+      const li = document.createElement('li');
+      li.className = 'folder';
+      li.appendChild(row);
+      ul.prepend(li);
+      if (!host) $('docs').scrollTop = 0;
+    }
+    folderEditing = true;
+    listSig = null;
+    input.focus(); input.select();
+    let done = false;
+    const finish = async (keep) => {
+      if (done) return;
+      done = true;
+      folderEditing = false;
+      const typed = cleanPath(input.value);
+      if (!keep || !typed) return loadList();
+      const name = joinPath(parent, typed);
+      if (from) { if (name === from) return loadList(); await renameFolder(from, name); }
+      else if (await createFolder(name) && then) then(name);
+    };
+    input.onkeydown = (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    };
+    input.onblur = () => finish(true);
+  }
+
+  async function createFolder(name) {
+    if (allFolders.includes(name)) {
+      await loadList();
+      toast('There is already a folder called “' + baseName(name) + '” there');
+      revealFolder(parentOf(name));
+      const li = folderEl(name); if (li) rowOf(li).focus();
+      return true;
+    }
+    const r = await api('POST', '/api/doc-folders', { name });
+    if (r.code !== 201 && r.code !== 200) { await loadList(); toast('Could not make that folder'); return false; }
+    const made = r.body.folder;
+    ancestors(made).forEach((x) => openFolders.add(x));
+    saveOpen();
+    await loadList();
+    setSel(made, true);
+    const li = folderEl(made); if (li) rowOf(li).focus();
+    return true;
+  }
+
+  // Rename or move a folder: everything under it goes too. Onto one that is
+  // already there asks first, then pours one into the other.
+  async function renameFolder(from, to) {
+    let r = await api('PUT', '/api/doc-folders', { from, to });
+    if (r.code === 409) {
+      if (!confirm('There is already a folder called “' + pretty(to) + '”. Move everything in “' + pretty(from) + '” into it?')) return loadList();
+      r = await api('PUT', '/api/doc-folders', { from, to, merge: true });
+    }
+    if (r.code !== 200) { await loadList(); return toast(r.body.error === 'a folder cannot go inside itself' ? 'A folder can’t go inside itself' : 'Could not do that'); }
+    const re = (f) => (f && within(f, from) ? to + f.slice(from.length) : f);
+    openFolders = new Set([...openFolders].map(re));
+    ancestors(to).forEach((x) => { if (x !== to) openFolders.add(x); });
+    saveOpen();
+    if (doc && doc.folder && within(doc.folder, from)) { doc.folder = re(doc.folder); }
+    newDocFolder = re(newDocFolder);
+    paintTitle();
+    await loadList();
+    setSel(to, true);
+    tell('tn:docs-changed');
+    const li = folderEl(to); if (li) rowOf(li).focus();
+    return true;
+  }
+  async function moveFolder(from, into) {
+    const to = joinPath(into, baseName(from));
+    if (to === from) return;
+    if (within(into, from)) return toast('A folder can’t go inside itself');
+    if (await renameFolder(from, to) === true) {
+      toast('Moved “' + baseName(from) + '” to ' + (into ? baseName(into) : 'the top level'), () => moveFolder(to, parentOf(from)));
+    }
+  }
+
+  // Deleting a folder never deletes a doc: everything under it goes up to
+  // its parent, and Undo puts the folders and every doc back where it was.
+  async function deleteFolder(name) {
+    const r = await api('POST', '/api/doc-folders', { name, remove: true });
+    if (r.code !== 200) return toast('Could not delete it');
+    const moved = r.body.moved || [], removed = r.body.removed || [];
+    const up = parentOf(name);
+    const wasOpen = [...openFolders].filter((f) => within(f, name));
+    wasOpen.forEach((f) => openFolders.delete(f));
+    saveOpen();
+    if (doc && doc.folder && within(doc.folder, name)) { doc.folder = up; paintTitle(); }
+    if (within(selFolder, name)) setSel(up, false);
+    await loadList();
+    tell('tn:docs-changed');
+    const n = moved.length;
+    toast('Deleted “' + baseName(name) + '”' + (n ? (n === 1 ? ' — its doc is' : ' — its ' + n + ' docs are')
+      + (up ? ' in ' + baseName(up) : ' at the top level') + ' now' : ''), async () => {
+      for (const f of new Set(removed.concat(name))) await api('POST', '/api/doc-folders', { name: f });
+      for (const m of moved) await api('PUT', '/api/documents/' + m.id, { folder: m.folder });
+      const mine = doc && moved.find((m) => m.id === doc.id);
+      if (mine) { doc.folder = mine.folder; paintTitle(); }
+      wasOpen.forEach((f) => openFolders.add(f));
+      saveOpen();
+      await loadList();
+      tell('tn:docs-changed');
+    });
+  }
+
+  // File a doc in a folder ('' is the top level).
+  async function moveDoc(id, folder) {
+    const d = allDocs.find((x) => x.id === id);
+    const from = d ? d.folder || '' : '';
+    if (!d || from === folder) return;
+    // The folder it leaves stays, even when this was the last thing in it.
+    if (from) await api('POST', '/api/doc-folders', { name: from });
+    const r = await api('PUT', '/api/documents/' + id, { folder });
+    if (r.code !== 200) return toast('Could not move it');
+    if (doc && doc.id === id) { doc = r.body.document; paintTitle(); }
+    await loadList();
+    // The folder opens to take it in, and the doc lights up where it landed.
+    void $('docs').offsetHeight;
+    revealFolder(folder);
+    const a = $('docs').querySelector('a[data-id="' + id + '"]');
+    if (a) { a.classList.add('landed'); a.addEventListener('animationend', () => a.classList.remove('landed'), { once: true }); }
+    tell('tn:docs-changed', id);
+    toast(folder ? 'Moved to ' + baseName(folder) : 'Moved to the top level', () => moveDoc(id, from));
+  }
+
+  // --------------------------------------------------------- drag to file
+  // Docs and folders both drag. Onto a folder (its row or anything in it)
+  // puts it there; onto the rest of the list, at the top level. Holding over
+  // a closed folder opens it, so you can go deeper.
+  const docsEl = $('docs');
+  let drag = null, dragHover = null, dragTimer = null;
+  const dropFolder = (e) => {
+    const li = e.target.closest && e.target.closest('li.folder[data-folder]');
+    return li ? li.dataset.folder : '';
+  };
+  // Where the dragged thing is now, and whether `target` is somewhere new.
+  function dropOk(target) {
+    if (!drag) return false;
+    if (drag.folder) return target !== parentOf(drag.folder) && !within(target, drag.folder);
+    const d = allDocs.find((x) => x.id === drag.doc);
+    return !!d && (d.folder || '') !== target;
+  }
+  function clearDrop() {
+    docsEl.classList.remove('drop-root');
+    docsEl.querySelectorAll('li.folder.drop').forEach((x) => x.classList.remove('drop'));
+  }
+  function endDrag() {
+    drag = null; dragHover = null;
+    clearTimeout(dragTimer);
+    clearDrop();
+    docsEl.classList.remove('dragging-filed');
+    docsEl.querySelectorAll('.dragging').forEach((x) => x.classList.remove('dragging'));
+  }
+  docsEl.addEventListener('dragstart', (e) => {
+    const a = e.target.closest && e.target.closest('a[data-id]');
+    const f = !a && e.target.closest && e.target.closest('button.frow');
+    if (folderEditing || (!a && !f)) { e.preventDefault(); return; }
+    let from;
+    if (a) {
+      drag = { doc: a.dataset.id };
+      const d = allDocs.find((x) => x.id === drag.doc);
+      from = d ? d.folder || '' : '';
+    } else {
+      drag = { folder: f.closest('li.folder').dataset.folder };
+      from = parentOf(drag.folder);
+    }
+    (a || f).classList.add('dragging');
+    if (from) docsEl.classList.add('dragging-filed');
+    // Only ours: without the link's own URL, dropping it in the editor by
+    // mistake types nothing.
+    e.dataTransfer.clearData();
+    e.dataTransfer.setData('application/x-tasknotes-' + (a ? 'doc' : 'folder'), a ? drag.doc : drag.folder);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  docsEl.addEventListener('dragover', (e) => {
+    if (!drag) return;
+    e.preventDefault();
+    const target = dropFolder(e);
+    const ok = dropOk(target);
+    e.dataTransfer.dropEffect = ok ? 'move' : 'none';
+    clearDrop();
+    if (ok) { if (target) folderEl(target).classList.add('drop'); else docsEl.classList.add('drop-root'); }
+    if (target !== dragHover) {
+      dragHover = target;
+      clearTimeout(dragTimer);
+      if (target && !openFolders.has(target) && !(drag.folder && within(target, drag.folder))) {
+        dragTimer = setTimeout(() => setOpen(target, true), 600);
+      }
+    }
+  });
+  docsEl.addEventListener('dragleave', (e) => {
+    if (!docsEl.contains(e.relatedTarget)) { clearDrop(); clearTimeout(dragTimer); dragHover = null; }
+  });
+  docsEl.addEventListener('drop', (e) => {
+    if (!drag) return;
+    e.preventDefault();
+    const what = drag, target = dropFolder(e), ok = dropOk(target);
+    endDrag();
+    if (!ok) return;
+    if (what.doc) moveDoc(what.doc, target); else moveFolder(what.folder, target);
+  });
+  docsEl.addEventListener('dragend', endDrag);
 
   async function open(id) {
     const r = await api('GET', '/api/documents/' + encodeURIComponent(id));
     if (r.code !== 200) { status(r.code === 404 ? 'No such doc' : 'Could not open it', 'bad'); return false; }
     doc = r.body.document;
+    newDocFolder = '';
     titleTouched = doc.title !== 'Untitled';
+    // Like VS Code revealing the file you open: its folders open around it.
+    revealFolder(doc.folder);
+    setSel(doc.folder, false);
     const lang = doc.language || 'markdown';
     $('lang').value = LANGS.some(([v]) => v === lang) ? lang : 'plaintext';
     $('sbLang').textContent = $('lang').selectedOptions[0].textContent;
@@ -442,10 +881,10 @@
   window.addEventListener('hashchange', openFromHash);
 
   // ----------------------------------------------------- right-click menu
-  // Two-finger click (or the menu key, or Shift+F10) on a doc in the list:
-  // everything you can do to it, instead of the browser's own link menu.
+  // Two-finger click (or the menu key, or Shift+F10) on a doc or a folder in
+  // the list: everything you can do to it, instead of the browser's own menu.
   const menu = $('menu');
-  let menuFor = null, menuReturn = null;
+  let menuReturn = null, menuAt = { x: 0, y: 0 };
   const inWeb = (id) => location.origin + '/pad#' + encodeURIComponent(id);
   function menuItems(d) {
     return [
@@ -456,18 +895,48 @@
       null,
       ['Rename…', () => renameDoc(d)],
       [d.pinned ? 'Unpin' : 'Pin to top', () => pinDoc(d)],
+      ['Move to…', () => openMenu(moveItems(d), menuAt.x, menuAt.y, menuReturn, 'Move to'), '›'],
       ['Duplicate', () => duplicateDoc(d)],
       ['Copy link', () => copyLink(d)],
       null,
       ['Archive', () => archiveDoc(d), '', 'danger'],
     ];
   }
-  function openMenu(d, x, y, returnTo) {
-    menuFor = d; menuReturn = returnTo || null;
-    menu.innerHTML = menuItems(d).map((it, i) => it === null ? '<hr role="separator">'
+  // Where a doc can go: the top level, any other folder, or a new one.
+  function moveItems(d) {
+    const here = d.folder || '';
+    const items = allFolders.filter((f) => f !== here).map((f) => [pretty(f), () => moveDoc(d.id, f)]);
+    if (here) items.unshift(['Top level (no folder)', () => moveDoc(d.id, '')]);
+    if (items.length) items.push(null);
+    items.push(['New folder…', () => editFolderName(null, '', (name) => moveDoc(d.id, name))]);
+    return items;
+  }
+  // Where a folder can go: anywhere but inside itself, or where it already is.
+  function folderMoveItems(name) {
+    const up = parentOf(name);
+    const items = allFolders.filter((f) => f !== up && !within(f, name)).map((f) => [pretty(f), () => moveFolder(name, f)]);
+    if (up) items.unshift(['Top level', () => moveFolder(name, '')]);
+    return items.length ? items : [['Nowhere else to put it', () => {}]];
+  }
+  function folderItems(name) {
+    const open = openFolders.has(name);
+    return [
+      ['New doc in here', () => startNewIn(name)],
+      ['New folder in here', () => editFolderName(null, name)],
+      [open ? 'Collapse' : 'Expand', () => setOpen(name, !open)],
+      null,
+      ['Rename…', () => editFolderName(name), 'F2'],
+      ['Move to…', () => openMenu(folderMoveItems(name), menuAt.x, menuAt.y, menuReturn, 'Move to'), '›'],
+      ['Delete folder', () => deleteFolder(name), '', 'danger'],
+    ];
+  }
+  function openMenu(items, x, y, returnTo, label) {
+    menuReturn = returnTo || null;
+    menuAt = { x, y };
+    menu.setAttribute('aria-label', label || 'Doc actions');
+    menu.innerHTML = items.map((it, i) => it === null ? '<hr role="separator">'
       : '<button type="button" role="menuitem" data-i="' + i + '"' + (it[3] ? ' class="' + it[3] + '"' : '') + '>'
         + esc(it[0]) + (it[2] ? '<kbd aria-hidden="true">' + it[2] + '</kbd>' : '') + '</button>').join('');
-    const items = menuItems(d);
     menu.querySelectorAll('[data-i]').forEach((b) => { b.onclick = () => { closeMenu(false); items[+b.dataset.i][1](); }; });
     menu.hidden = false;
     // Kept on screen, flipping up or left near the edges.
@@ -482,17 +951,51 @@
     if (restore !== false && menuReturn) menuReturn.focus();
   }
   $('docs').addEventListener('contextmenu', (e) => {
+    const f = e.target.closest('button.frow');
+    if (f) {
+      e.preventDefault();
+      const name = f.closest('li.folder').dataset.folder;
+      return openMenu(folderItems(name), e.clientX, e.clientY, f, 'Folder actions');
+    }
     const a = e.target.closest('a[data-id]'); if (!a) return;
     const d = allDocs.find((x) => x.id === a.dataset.id); if (!d) return;
     e.preventDefault();
-    openMenu(d, e.clientX, e.clientY, a);
+    openMenu(menuItems(d), e.clientX, e.clientY, a);
   });
+  const menuKey = (e) => e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10');
   $('docs').addEventListener('keydown', (e) => {
+    // On a folder, the arrows open and close it as in VS Code, and F2 renames.
+    const f = e.target.closest('button.frow');
+    if (f) {
+      const li = f.closest('li.folder'), name = li.dataset.folder, isOpen = li.classList.contains('open');
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (!isOpen) setOpen(name, true);
+        else {
+          const first = li.querySelector(':scope > .kids > ul > li > a, :scope > .kids > ul > li.folder > .frow');
+          if (first) first.focus();
+        }
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const up = li.parentElement.closest('li.folder');
+        if (isOpen) setOpen(name, false); else if (up) rowOf(up).focus();
+      }
+      else if (e.key === 'F2') { e.preventDefault(); editFolderName(name); }
+      else if (menuKey(e)) {
+        e.preventDefault();
+        const r = f.getBoundingClientRect();
+        openMenu(folderItems(name), r.left + 12, r.bottom, f, 'Folder actions');
+      }
+      return;
+    }
     const a = e.target.closest('a[data-id]'); if (!a) return;
-    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+    if (e.key === 'ArrowLeft' && a.closest('li.folder')) {
+      e.preventDefault();
+      rowOf(a.closest('li.folder')).focus();
+    } else if (menuKey(e)) {
       e.preventDefault();
       const r = a.getBoundingClientRect();
-      openMenu(allDocs.find((x) => x.id === a.dataset.id), r.left + 12, r.bottom, a);
+      openMenu(menuItems(allDocs.find((x) => x.id === a.dataset.id)), r.left + 12, r.bottom, a);
     }
   });
   menu.addEventListener('keydown', (e) => {
@@ -536,7 +1039,7 @@
     const g = await api('GET', '/api/documents/' + d.id);
     if (g.code !== 200) return toast('Could not read that doc');
     const src = g.body.document;
-    const r = await api('POST', '/api/documents', { title: (src.title || 'Untitled') + ' (copy)', content: src.content || '', language: src.language || '' });
+    const r = await api('POST', '/api/documents', { title: (src.title || 'Untitled') + ' (copy)', content: src.content || '', language: src.language || '', folder: src.folder || '' });
     if (r.code !== 201) return toast('Could not duplicate it');
     tell('tn:docs-changed', r.body.document.id);
     location.hash = encodeURIComponent(r.body.document.id);
