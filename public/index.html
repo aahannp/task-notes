@@ -5426,16 +5426,9 @@ if (DESKTOP) {
 
 const CARRY_OPEN = (t) => t.status === 'todo' || t.status === 'progress' || t.status === 'blocked';
 
-// The most recent earlier day that has any tasks on it at all.
-async function carrySourceDay(days) {
-  const prior = days.filter((d) => d < iso(current)).sort().reverse();
-  for (const src of prior.slice(0, 14)) {
-    let arr = [];
-    try { arr = ((await (await fetch('/api/tasks?date=' + src)).json()).tasks || []); } catch { continue; }
-    if (arr.length) return { date: src, tasks: arr.map(normalize) };
-  }
-  return null;
-}
+// How far back the carry looks: for a day to carry from, and for days in
+// between that have to be caught up first.
+const CARRY_REACH = 14;
 
 // Carrying work forward is a *reconciliation*, not a one-off snapshot.
 //
@@ -5458,9 +5451,10 @@ const carryBaseNote = (mine, s) => (mine.carriedNote != null ? mine.carriedNote 
 const carryUntouched = (mine, s) => mine.status === (mine.carriedAs || 'todo')
   && (mine.note || '') === carryBaseNote(mine, s);
 
-async function reconcileCarry(days) {
-  const src = await carrySourceDay(days);
-  if (!src) return false;
+// Brings one day's board in step with `src`, the day it carries from. The
+// parameters shadow the page's own `tasks` and `meta` on purpose: this runs on
+// any day, not only the one on screen. `tasks` is changed in place.
+function reconcileDay(tasks, meta, src) {
   const dropped = Array.isArray(meta.carryDropped) ? meta.carryDropped : [];
   // Tasks carried before lineage existed are matched on their wording, which
   // is the only handle they have.
@@ -5549,6 +5543,85 @@ async function reconcileCarry(days) {
     if (!s || !CARRY_OPEN(s)) { tasks.splice(i, 1); changed = true; }
   }
   return changed;
+}
+
+// A day can only carry correctly from a day that is itself in step, and
+// "the most recent earlier day with tasks on it" is not that. Friday Sep 25
+// → Tuesday Sep 29 is how that went wrong. Saturday was never opened, so it
+// had no file and nothing carried into it. Sunday did have a file — a stale
+// forecast from Sep 7, when paging forward through the calendar reconciled
+// and saved every future day on the way past — and it was never opened on
+// the day either, so nothing caught it up. Monday then took Sunday as its
+// yesterday and copied Sep 7's list, and Tuesday copied Monday. Friday's work
+// reached none of them.
+//
+// So before carrying into `day`, every day in the reach before it is brought
+// in step with the one before *it*, oldest first: a day you skipped is filled
+// in, a stale forecast is corrected, and each one hands the next an honest
+// yesterday. This is the same reconciliation the day on screen gets, so it
+// never touches anything you worked on — only copies you never changed. A
+// day already in step is not rewritten.
+//
+// `here` is `day`'s own board ({ tasks, meta }); it is reconciled in place and
+// left for the caller to save. Returns whether it changed.
+async function catchUpCarry(days, day, here) {
+  const onDisk = new Set(days);
+  const boards = new Map([[day, here]]);
+  const read = async (d) => {
+    if (!boards.has(d)) {
+      const get = async (url, key, empty) => {
+        try { return ((await (await fetch(url + d)).json())[key]) || empty; } catch { return empty; }
+      };
+      const [t, m] = await Promise.all([
+        onDisk.has(d) ? get('/api/tasks?date=', 'tasks', []) : [],
+        get('/api/meta?date=', 'meta', {}),
+      ]);
+      if (!boards.has(d)) boards.set(d, { tasks: t.map(normalize), meta: m });
+    }
+    return boards.get(d);
+  };
+  // The most recent earlier day that has any tasks on it at all — seeing the
+  // days already caught up here, not only what is on disk.
+  const sourceFor = async (d) => {
+    const prior = [...new Set([...onDisk, ...boards.keys()])].filter((x) => x < d).sort().reverse();
+    for (const s of prior.slice(0, CARRY_REACH)) {
+      const b = await read(s);
+      if (b.tasks.length) return { date: s, tasks: b.tasks };
+    }
+    return null;
+  };
+
+  const between = [];
+  for (let i = CARRY_REACH; i >= 1; i--) between.push(calShift(day, -i));
+  await Promise.all(between.map(read));
+  for (const d of between) {
+    const b = boards.get(d);
+    if (b.meta.noCarry) continue;              // emptied on purpose
+    const src = await sourceFor(d);
+    if (!src || !reconcileDay(b.tasks, b.meta, src)) continue;
+    onDisk.add(d);
+    try {
+      await fetch('/api/tasks?date=' + d, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(b.tasks),
+      });
+    } catch {}
+  }
+
+  const src = await sourceFor(day);
+  return src ? reconcileDay(here.tasks, here.meta, src) : false;
+}
+
+// One catch-up at a time. Holding → pages through days faster than a catch-up
+// finishes, and two running at once would each fill the same skipped day with
+// copies of their own, the second quietly orphaning the first's.
+let carryQueue = Promise.resolve();
+function reconcileCarry(days) {
+  const day = iso(current), here = { tasks, meta };   // the day this load is for
+  const run = carryQueue.then(() => catchUpCarry(days, day, here));
+  carryQueue = run.catch(() => {});
+  return run;
 }
 
 async function carryForward(days) {
