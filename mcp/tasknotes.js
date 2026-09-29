@@ -1229,7 +1229,7 @@ const TOOLS = [
         id: { type: 'string', description: 'Omit to create a new document.' },
         title: { type: 'string', description: 'Required when creating.' },
         mode: { type: 'string', enum: ['append', 'replace'], description: 'Only when editing. Defaults to append.' },
-        folder: { type: 'string', description: 'When creating — which folder it goes in.' },
+        folder: { type: 'string', description: 'When creating — which folder it goes in. "A/B" is folder B inside folder A.' },
         tags: { type: 'array', items: { type: 'string' } },
       },
     },
@@ -1263,7 +1263,7 @@ const TOOLS = [
       properties: {
         id: { type: 'string' },
         title: { type: 'string' },
-        folder: { type: 'string', description: 'Use "" for the top level.' },
+        folder: { type: 'string', description: 'Use "" for the top level, and "A/B" for folder B inside folder A.' },
         tags: { type: 'array', items: { type: 'string' } },
         pinned: { type: 'boolean' },
         archived: { type: 'boolean', description: 'true files it away, false brings it back. Nothing is lost either way.' },

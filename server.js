@@ -447,6 +447,19 @@ function deleteDocFiles(id) {
 }
 
 // Everything a list view needs — deliberately without the body.
+// A document's folder is a path of names joined by "/", "Engineering/Kafka".
+// Spaces around a name and empty steps ("a//b", "/a/") mean nothing, so they
+// are dropped rather than making a second folder that looks the same.
+function cleanFolder(s) {
+  return typeof s === 'string'
+    ? s.replace(/[\u0000-\u001f\u007f]/g, '').split('/').map((x) => x.trim()).filter(Boolean).join('/')
+    : '';
+}
+function folderOk(f) {
+  const segs = f.split('/');
+  return f.length > 0 && f.length <= 400 && segs.length <= 12 && segs.every((x) => x.length <= 80);
+}
+
 function docSummary(d) {
   return {
     id: d.id, title: d.title || 'Untitled', tags: d.tags || [], folder: d.folder || '',
@@ -1519,6 +1532,101 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ---- Document folders ---------------------------------------------------
+  // A folder is a path, "Engineering/Kafka", and only exists as the `folder`
+  // on each document — so one with nothing in it would vanish.
+  // doc-folders.json keeps the ones made by hand; the list is those, every
+  // folder a live document is filed in, and every folder above either.
+  // Renaming, moving and removing carry the whole subtree with them, archived
+  // documents included, so a restored document goes back to where it was.
+  if (u.pathname === '/api/doc-folders') {
+    const docsFile = path.join(DATA_DIR, 'documents.json');
+    const keptFile = path.join(DATA_DIR, 'doc-folders.json');
+    const readDocs = () => { try { const v = JSON.parse(fs.readFileSync(docsFile, 'utf8')); return Array.isArray(v) ? v : []; } catch { return []; } };
+    const writeDocs = (arr) => writeAtomic(docsFile, JSON.stringify(arr, null, 2));
+    const readKept = () => { try { const v = JSON.parse(fs.readFileSync(keptFile, 'utf8')); return Array.isArray(v) ? v.map(cleanFolder).filter(Boolean) : []; } catch { return []; } };
+    const writeKept = (arr) => writeAtomic(keptFile, JSON.stringify([...new Set(arr)].sort((a, b) => a.localeCompare(b)), null, 2));
+    const allFolders = () => {
+      const out = new Set();
+      readKept().concat(readDocs().filter((d) => d.status !== 'archived').map((d) => cleanFolder(d.folder)))
+        .filter(Boolean).forEach((f) => {
+          const segs = f.split('/');
+          for (let i = 1; i <= segs.length; i++) out.add(segs.slice(0, i).join('/'));
+        });
+      return [...out].sort((a, b) => a.localeCompare(b));
+    };
+    const within = (f, top) => f === top || f.startsWith(top + '/');
+    const parentOf = (f) => (f.includes('/') ? f.slice(0, f.lastIndexOf('/')) : '');
+
+    if (req.method === 'GET') return sendJSON(res, 200, { folders: allFolders() });
+
+    readBody(req, (err, body) => {
+      if (err) return sendJSON(res, 413, { error: 'too large' });
+      let p; try { p = JSON.parse(body || '{}'); } catch { return sendJSON(res, 400, { error: 'bad body' }); }
+
+      // Remove one, { name, remove: true }. Nothing in it is lost: every
+      // document anywhere under it goes up to its parent (or the top level),
+      // and what moved comes back so the pad can offer Undo. A POST, not a
+      // DELETE — the pad never sends one of those.
+      if (req.method === 'POST' && p.remove === true) {
+        const name = cleanFolder(p.name);
+        if (!folderOk(name)) return sendJSON(res, 400, { error: 'bad name' });
+        const up = parentOf(name);
+        const docs = readDocs();
+        const moved = [];
+        docs.forEach((d) => {
+          const f = cleanFolder(d.folder);
+          if (f && within(f, name)) { moved.push({ id: d.id, folder: f }); d.folder = up; }
+        });
+        if (moved.length) writeDocs(docs);
+        const kept = readKept();
+        const removed = kept.filter((f) => within(f, name));
+        // The parent stays, even if this was all that was holding it up.
+        writeKept(kept.filter((f) => !within(f, name)).concat(up ? [up] : []));
+        return sendJSON(res, 200, { moved, removed, folders: allFolders() });
+      }
+
+      // Make one — "A/B" makes B inside A. Asking again for one that exists
+      // is not an error: the pad does it to keep a folder around when its
+      // last document moves out.
+      if (req.method === 'POST') {
+        const name = cleanFolder(p.name);
+        if (!folderOk(name)) return sendJSON(res, 400, { error: 'bad name' });
+        const existed = allFolders().includes(name);
+        const kept = readKept();
+        if (!kept.includes(name)) writeKept(kept.concat(name));
+        return sendJSON(res, existed ? 200 : 201, { folder: name, folders: allFolders() });
+      }
+
+      // Rename or move, { from, to }: "A/B" → "A/C" renames, → "D/B" moves it
+      // into D. Everything under it comes along. Onto a folder that already
+      // exists is refused unless `merge` says to pour one into the other.
+      if (req.method === 'PUT') {
+        const from = cleanFolder(p.from), to = cleanFolder(p.to);
+        if (!folderOk(from) || !folderOk(to)) return sendJSON(res, 400, { error: 'bad name' });
+        const before = allFolders();
+        if (!before.includes(from)) return sendJSON(res, 404, { error: 'no such folder' });
+        if (from === to) return sendJSON(res, 200, { folder: to, moved: [], folders: before });
+        if (within(to, from)) return sendJSON(res, 400, { error: 'a folder cannot go inside itself' });
+        if (before.includes(to) && !p.merge) return sendJSON(res, 409, { error: 'exists' });
+        const re = (f) => to + f.slice(from.length);
+        const docs = readDocs();
+        const moved = [];
+        docs.forEach((d) => {
+          const f = cleanFolder(d.folder);
+          if (f && within(f, from)) { d.folder = re(f); moved.push(d.id); }
+        });
+        if (moved.length) writeDocs(docs);
+        // Where it came from stays, like the parent on a remove.
+        const up = parentOf(from);
+        writeKept(readKept().map((f) => (within(f, from) ? re(f) : f)).concat(to, up ? [up] : []));
+        return sendJSON(res, 200, { folder: to, moved, folders: allFolders() });
+      }
+      res.writeHead(405); res.end('Method not allowed');
+    });
+    return;
+  }
+
   // ---- Documents ----------------------------------------------------------
   if (u.pathname === '/api/documents') {
     const docsFile = path.join(DATA_DIR, 'documents.json');
@@ -1574,7 +1682,7 @@ const server = http.createServer((req, res) => {
         const d = {
           id, title: (p.title || 'Untitled').slice(0, 300),
           tags: Array.isArray(p.tags) ? p.tags.slice(0, 30) : [],
-          folder: p.folder || '', status: 'active', pinned: false,
+          folder: cleanFolder(p.folder), status: 'active', pinned: false,
           projectId: p.projectId || null, learningId: p.learningId || null,
           taskId: p.taskId || null, ideaId: p.ideaId || null,
           version: 1, createdAt: now, updatedAt: now, archivedAt: null,
@@ -1628,7 +1736,7 @@ const server = http.createServer((req, res) => {
         if (contentChanged || titleChanged) snapshotDocVersion(id, doc, readDocBody(id));
         if (typeof p.title === 'string') doc.title = p.title.slice(0, 300) || 'Untitled';
         if (Array.isArray(p.tags)) doc.tags = p.tags.slice(0, 30);
-        if (typeof p.folder === 'string') doc.folder = p.folder;
+        if (typeof p.folder === 'string') doc.folder = cleanFolder(p.folder);
         if (typeof p.pinned === 'boolean') doc.pinned = p.pinned;
         // Not a content change: it moves no version and snapshots nothing.
         if (typeof p.language === 'string' && /^[a-z0-9+#-]{0,32}$/.test(p.language)) doc.language = p.language;
